@@ -203,6 +203,7 @@ int main(void) {
    */
   signal(SIGPIPE, SIG_IGN);
   while(do_fread(&len, sizeof len, 1, stdin)) {
+    job = xmalloc(sizeof *job);
     job->len = ntohl(len);
     job->data = xmalloc(len);
     if(!do_fread(job->data, 1, job->len, stdin))
