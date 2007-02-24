@@ -11,6 +11,14 @@ void generic_status(struct sftpjob *job,
 		    uint32_t status,
 		    uint32_t original_status,
 		    const char *msg) {
+  if(status == (uint32_t)-1) {
+    /* Bodge to allow us to treat -1 as a magical status meaning 'consult
+     * errno'.  This goes back via the protocol-specific status callback, so
+     * statuses out of range for the current protocol version get properly
+     * laundered. */
+    send_errno_status(job);
+    return;
+  }
   if(!msg) {
     switch(original_status) {
     case SSH_FX_OK: msg = "OK"; break;

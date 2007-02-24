@@ -9,6 +9,21 @@
 # define MAXNAMES 32
 #endif
 
+/* Maximum number of concurrent handles supported */
+#ifndef MAXHANDLES
+# define MAXHANDLES 128
+#endif
+
+/* Maximum read size */
+#ifndef MAXREAD
+# define MAXREAD 1048576
+#endif
+
+/* Maximum request size (NOT IMPLEMENTED!) */
+#ifndef MAXREQUEST
+# define MAXREQUEST 1048576
+#endif
+
 struct queue;
 struct allocator;
 struct handleid;

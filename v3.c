@@ -14,6 +14,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 #include <time.h>
 #include <sys/stat.h>
 #include <inttypes.h>
@@ -25,7 +26,7 @@
 void v3_status(struct sftpjob *job,
                uint32_t status,
                const char *msg) {
-  if(status > SSH_FX_OP_UNSUPPORTED)
+  if(status > SSH_FX_OP_UNSUPPORTED && status != (uint32_t)-1)
     /* Launder out statuses that don't exist in v3 */
     generic_status(job, SSH_FX_FAILURE, status, msg);
   else
@@ -336,8 +337,10 @@ void sftp_readdir(struct sftpjob *job) {
   
   pcheck(parse_handle(job, &id));
   D(("sftp_readdir %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_dir(&id, &dp, &path)))
+  if((rc = handle_get_dir(&id, &dp, &path))) {
     protocol->status(job, rc, "invalid directory handle");
+    return;
+  }
   memset(d, 0, sizeof d);
   for(n = 0; n < MAXNAMES;) {
     /* readdir() has a slightly shonky interface - a null return can mean EOF
@@ -437,7 +440,22 @@ void sftp_v3_stat(struct sftpjob *job) {
   D(("sftp_stat %s", path));
   sftp_v3_stat_core(job, stat(path, &sb), &sb);
 }
- 
+
+void sftp_v3_fstat(struct sftpjob *job) {
+  int fd;
+  struct handleid id;
+  struct stat sb;
+  uint32_t rc;
+
+  pcheck(parse_handle(job, &id));
+  D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
+  if((rc = handle_get_fd(&id, &fd, 0))) {
+    protocol->status(job, rc, "invalid file handle");
+    return;
+  }
+  sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
+}
+
 static int set_status(struct sftpjob *job,
                       const char *path,
                       const struct stat *sb,
@@ -497,6 +515,65 @@ static int set_status(struct sftpjob *job,
   return 0;
 }
 
+static int set_fstatus(struct sftpjob *job,
+                       int fd,
+                       const struct stat *sb,
+                       unsigned long bits) {
+  uid_t uid;
+  gid_t gid;
+  struct timeval times[2];
+  struct stat current;
+
+  if(bits & ATTR_SIZE) {
+    D(("...truncate %ju", (uintmax_t)sb->st_size));
+    if(ftruncate(fd, sb->st_size) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  uid = (bits & ATTR_UID) ? sb->st_uid : (uid_t)-1;
+  gid = (bits & ATTR_GID) ? sb->st_gid : (gid_t)-1;
+  if(uid != (uid_t)-1 || gid != (gid_t)-1) {
+    D(("...fchown %jd/%jd", (intmax_t)uid, (intmax_t)gid));
+    if(fchown(fd, uid, gid) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  if(bits & ATTR_PERMISSIONS) {
+    D(("...fchmod %#o", (unsigned)sb->st_mode & 0777));
+    if(fchmod(fd, sb->st_mode & 0777) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  if(bits & (ATTR_MTIME|ATTR_ATIME)) {
+    if(fstat(fd, &current) < 0) {
+      D(("cannot fstat"));
+      send_errno_status(job);
+      return -1;
+    }
+    times[0].tv_sec = (bits & ATTR_ATIME) ? sb->st_atime : current.st_atime;
+    times[1].tv_sec = (bits & ATTR_MTIME) ? sb->st_mtime : current.st_mtime;
+#if HAVE_STAT_TIMESPEC
+    times[0].tv_usec = ((bits & ATTR_ATIME) 
+                        ? sb->st_atimespec.tv_nsec
+                        : current.st_atimespec.tv_nsec) / 1000;
+    times[1].tv_usec = ((bits & ATTR_MTIME)
+                        ? sb->st_mtimespec.tv_nsec
+                        : current.st_mtimespec.tv_nsec) / 1000;
+#endif
+    D(("...utimes atime %lu.%06lu mtime %lu.%06lu",
+       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_usec,
+       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_usec));
+    if(futimes(fd, times) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  return 0;
+}
+
 void sftp_setstat(struct sftpjob *job) {
   char *path;
   struct stat sb;
@@ -506,6 +583,25 @@ void sftp_setstat(struct sftpjob *job) {
   pcheck(protocol->parseattrs(job, &sb, &bits));
   D(("sftp_setstat %s", path));
   if(set_status(job, path, &sb, bits))   /* sends error itself */
+    return;
+  send_ok(job);                         /* but we must send the OK */
+}
+
+void sftp_fsetstat(struct sftpjob *job) {
+  struct handleid id;
+  struct stat sb;
+  unsigned long bits;
+  int fd;
+  uint32_t rc;
+
+  pcheck(parse_handle(job, &id));
+  pcheck(protocol->parseattrs(job, &sb, &bits));
+  D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
+  if((rc = handle_get_fd(&id, &fd, 0))) {
+    protocol->status(job, rc, "invalid file handle");
+    return;
+  }
+  if(set_fstatus(job, fd, &sb, bits))   /* sends error itself */
     return;
   send_ok(job);                         /* but we must send the OK */
 }
@@ -542,16 +638,152 @@ void sftp_mkdir(struct sftpjob *job) {
   send_ok(job);
 }
 
+void sftp_v3_open(struct sftpjob *job) {
+  char *path;
+  uint32_t pflags;
+  struct stat sb;
+  unsigned long bits;
+  int open_flags, fd;
+  struct handleid id;
+
+  pcheck(parse_path(job, &path));
+  pcheck(parse_uint32(job, &pflags));
+  pcheck(protocol->parseattrs(job, &sb, &bits));
+  D(("sftp_open %s %#"PRIx32, path, pflags));
+  /* Translate pflags to open(2) format */
+  switch(pflags & (SSH_FXF_READ|SSH_FXF_WRITE)) {
+  case SSH_FXF_READ:
+    open_flags = O_RDONLY;
+    break;
+  case SSH_FXF_WRITE:
+    open_flags = O_WRONLY;
+    break;
+  case SSH_FXF_READ|SSH_FXF_WRITE:
+    open_flags = O_RDWR;
+    break;
+  default:
+    protocol->status(job, SSH_FX_BAD_MESSAGE,
+                     "need SSH_FXF_READ or SSH_FXF_WRITE");
+    return;
+  }
+  /* Append only makes sense for writable files */
+  if(pflags & SSH_FXF_WRITE)
+    if(pflags & SSH_FXF_APPEND)
+      open_flags |= O_APPEND;
+  if(pflags & SSH_FXF_CREAT) {
+    open_flags |= O_CREAT;
+    /* Truncate and no-overwrite only make sense if creating */
+    if(pflags & SSH_FXF_TRUNC) open_flags |= O_TRUNC;
+    if(pflags & SSH_FXF_EXCL) open_flags |= O_EXCL;
+  }
+  if((bits & ATTR_PERMISSIONS)) {
+    /* If we're given initial permissions, use them and don't reset them  */
+    if((fd = open(path, open_flags, sb.st_mode & 0777)) < 0) {
+      send_errno_status(job);
+      return;
+    }
+    bits &= ~ATTR_PERMISSIONS;
+  } else {
+    /* Otherwise follow the current umask */
+    if((fd = open(path, open_flags, 0777)) < 0) {
+      send_errno_status(job);
+      return;
+    }
+  }
+  if(set_fstatus(job, fd, &sb, bits)) {
+    /* If we can't have the desired permissions, don't have the directory at
+     * all */
+    close(fd);
+    unlink(path);
+    return;                             /* already sent error */
+  }
+  handle_new_file(&id, fd, path);
+  D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
+  send_begin(job);
+  send_uint8(job, SSH_FXP_HANDLE);
+  send_uint32(job, job->id);
+  send_handle(job, &id);
+  send_end(job);
+}
+
+void sftp_read(struct sftpjob *job) {
+  struct handleid id;
+  uint64_t offset;
+  uint32_t len, rc;
+  char *buffer;
+  ssize_t n;
+  int fd;
+
+  pcheck(parse_handle(job, &id));
+  pcheck(parse_uint64(job, &offset));
+  pcheck(parse_uint32(job, &len));
+  D(("sftp_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
+     id.id, id.tag, len, offset));
+  if(len > MAXREAD) len = MAXREAD;
+  if((rc = handle_get_fd(&id, &fd, 0))) {
+    protocol->status(job, rc, "invalid file handle");
+    return;
+  }
+  buffer = alloc(job->a, len);
+  n = pread(fd, buffer, len, offset);
+  /* Short reads are allowed so we don't try to read more */
+  if(n > 0) {
+    send_begin(job);
+    send_uint8(job, SSH_FXP_DATA);
+    send_uint32(job, job->id);
+    send_bytes(job, buffer, n);
+    send_end(job);
+  } else if(n == 0)
+    protocol->status(job, SSH_FX_EOF, 0);
+  else
+    send_errno_status(job);
+}
+
+void sftp_write(struct sftpjob *job) {
+  struct handleid id;
+  uint64_t offset;
+  uint32_t len, rc;
+  ssize_t n;
+  int fd;
+
+  pcheck(parse_handle(job, &id));
+  pcheck(parse_uint64(job, &offset));
+  pcheck(parse_uint32(job, &len));
+  if(len > job->left) {
+    protocol->status(job, SSH_FX_BAD_MESSAGE, "truncated SSH_FXP_WRITE");
+    return;
+  }
+  D(("sftp_write %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
+     id.id, id.tag, len, offset));
+  if((rc = handle_get_fd(&id, &fd, 0))) {
+    protocol->status(job, rc, "invalid file handle");
+    return;
+  }
+  while(len > 0) {
+    /* Short writes aren't allowed so we loop around writing more */
+    n = pwrite(fd, job->ptr, len, offset);
+    if(n < 0) {
+      send_errno_status(job);
+      return;
+    }
+    job->ptr += n;
+    job->left += n;
+    len -= n;
+    offset -= n;
+  }
+  send_ok(job);
+}
+
 static const struct sftpcmd sftpv3tab[] = {
   { SSH_FXP_INIT, sftp_already_init },
-  //{ SSH_FXP_OPEN, sftp_v3_open },
+  { SSH_FXP_OPEN, sftp_v3_open },
   { SSH_FXP_CLOSE, sftp_close },
-  //{ SSH_FXP_READ, sftp_read },
-  //{ SSH_FXP_WRITE, sftp_write },
+  { SSH_FXP_READ, sftp_read },
+  { SSH_FXP_WRITE, sftp_write },
   { SSH_FXP_LSTAT, sftp_v3_lstat },
-  //{ SSH_FXP_FSTAT, sftp_v3_fstat },
+  { SSH_FXP_FSTAT, sftp_v3_fstat },
   { SSH_FXP_SETSTAT, sftp_setstat },
-  //{ SSH_FXP_FSETSTAT, sftp_fsetstat },
+  { SSH_FXP_FSETSTAT, sftp_fsetstat },
   { SSH_FXP_OPENDIR, sftp_opendir },
   { SSH_FXP_READDIR, sftp_readdir },
   { SSH_FXP_REMOVE, sftp_remove },

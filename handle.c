@@ -30,7 +30,7 @@ static void find_free_handle(struct handleid *id, int type) {
 
   for(n = 0; n < nhandles && handles[n].tag; ++n)
     ;
-  if(n == nhandles) {
+  if(n == nhandles && nhandles < MAXHANDLES) {
     /* need more space */
     nhandles = (nhandles ? 2 * nhandles : 16);
     assert(nhandles != 0);

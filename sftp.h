@@ -150,6 +150,13 @@
 #define SSH_FXP_REALPATH_STAT_IF     0x00000002
 #define SSH_FXP_REALPATH_STAT_ALWAYS 0x00000003
 
+#define SSH_FXF_READ            0x00000001
+#define SSH_FXF_WRITE           0x00000002
+#define SSH_FXF_APPEND          0x00000004
+#define SSH_FXF_CREAT           0x00000008
+#define SSH_FXF_TRUNC           0x00000010
+#define SSH_FXF_EXCL            0x00000020
+
 #define SSH_FX_OK                            0
 #define SSH_FX_EOF                           1
 #define SSH_FX_NO_SUCH_FILE                  2

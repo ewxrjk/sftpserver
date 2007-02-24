@@ -37,10 +37,12 @@ void *alloc(struct allocator *a, size_t n) {
   /* See if there's enough room */
   if(!(c = a->chunks) || c->left < m) {
     /* Make sure we allocate enough space */
-    const size_t cs = m > NBLOCKS ? m : NBLOCKS;
+    const size_t cs = m >= NBLOCKS ? m + 1 : NBLOCKS;
     /* xcalloc -> calloc which 0-fills */
-    union block *const nb = xcalloc(cs, sizeof (union block));
+    union block *nb;
 
+    if(!cs) fatal("out of memory");
+    nb = xcalloc(cs, sizeof (union block));
     c = &nb->c;
     c->next = a->chunks;
     c->ptr = nb + 1;
