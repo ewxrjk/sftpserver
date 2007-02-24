@@ -1,0 +1,29 @@
+#! /bin/bash
+
+set -e
+set -x
+srcdir=$(dirname $0)
+here=$(pwd)
+cd $srcdir
+if [ ! -e COPYING ]; then
+  rm -f COPYING
+  for f in /usr/share/common-licenses/GPL-2 $HOME/doc/GPL-2; do
+    if test -e "$f"; then
+      ln -s "$f" COPYING
+      break
+    fi
+  done
+fi
+if test -d $HOME/share/aclocal; then
+  aclocal --acdir=$HOME/share/aclocal
+else
+  aclocal
+fi
+grep ^AC_PROG_LIBTOOL configure.ac && libtoolize
+mkdir -p config.aux
+autoconf
+autoheader
+automake -a || true		# for INSTALL
+automake --foreign -a
+cd "$here"
+$srcdir/configure -C "$@" --sysconfdir=/etc --localstatedir=/var
