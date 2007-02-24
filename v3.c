@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <inttypes.h>
 
 /* Callbacks */
 
@@ -138,7 +139,7 @@ void v3_sendattrs(struct sftpjob *job,
                 SSH_FILEXFER_ATTR_SIZE
                 |SSH_FILEXFER_ATTR_UIDGID
                 |SSH_FILEXFER_ATTR_PERMISSIONS
-                |SSH_FILEXFER_ATTR_ACMODTIME);
+                |SSH_FILEXFER_ACMODTIME);
     send_uint64(job, filestat->st_size);
     send_uint32(job, filestat->st_uid);
     send_uint32(job, filestat->st_gid);
@@ -148,6 +149,50 @@ void v3_sendattrs(struct sftpjob *job,
   } else
     /* Dummy attributes are almost certainly inaccurate, so we avoid lying */
     send_uint32(job, 0);
+}
+
+int v3_parseattrs(struct sftpjob *job, struct stat *filestat,
+                  unsigned long *bits) {
+  uint32_t attrbits, n;
+  uint64_t size;
+
+  *bits = 0;
+  memset(filestat, 0, sizeof filestat);
+  if(parse_uint32(job, &attrbits)) return -1;
+  if(attrbits & SSH_FILEXFER_ATTR_SIZE) {
+    if(parse_uint64(job, &size)) return -1;
+    filestat->st_size = (off_t)size;
+    if((uint64_t)filestat->st_size != size)
+      return -1;
+    *bits |= ATTR_SIZE;
+  }
+  if(attrbits & SSH_FILEXFER_ATTR_UIDGID) {
+    if(parse_uint32(job, &n)) return -1;
+    filestat->st_uid = n;
+    if(parse_uint32(job, &n)) return -1;
+    filestat->st_gid = n;
+    *bits |= ATTR_UID|ATTR_GID;
+  }
+  if(attrbits & SSH_FILEXFER_ATTR_PERMISSIONS) {
+    if(parse_uint32(job, &n)) return -1;
+    filestat->st_mode = n;
+    *bits |= ATTR_PERMISSIONS;
+  }
+  if(attrbits & SSH_FILEXFER_ACMODTIME) {
+    if(parse_uint32(job, &n)) return -1;
+    filestat->st_atime = n;
+    if(parse_uint32(job, &n)) return -1;
+    filestat->st_mtime = n;
+    *bits |= ATTR_MTIME|ATTR_ATIME;
+  }
+  if(attrbits & SSH_FILEXFER_ATTR_EXTENDED) {
+    if(parse_uint32(job, &n)) return -1;
+    while(n-- > 0) {
+      parse_string(job, 0, 0);
+      parse_string(job, 0, 0);
+    }
+  }
+  return 0;
 }
 
 /* Command implementations */
@@ -161,6 +206,7 @@ void sftp_remove(struct sftpjob *job) {
   char *path;
   
   pcheck(parse_path(job, &path));
+  D(("sftp_remove %s", path));
   if(unlink(path) < 0) send_errno_status(job);
   else send_ok(job);
 }
@@ -169,6 +215,7 @@ void sftp_rmdir(struct sftpjob *job) {
   char *path;
   
   pcheck(parse_path(job, &path));
+  D(("sftp_rmdir %s", path));
   if(rmdir(path) < 0) send_errno_status(job);
   else send_ok(job);
 }
@@ -178,6 +225,7 @@ void sftp_v3_rename(struct sftpjob *job) {
 
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
+  D(("sftp_v3_rename %s %s", oldpath, newpath));
   /* newpath is not allowed to exist.  We enforce this atomically by attempting
      to link() from oldpath to newpath and unlinking oldpath if it succeeds. */
   if(link(oldpath, newpath) < 0) {
@@ -212,6 +260,7 @@ void sftp_symlink(struct sftpjob *job) {
 
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
+  D(("sftp_symlink %s %s", oldpath, newpath));
   if(symlink(oldpath, newpath) < 0) send_errno_status(job);
   else send_ok(job);
   /* v3-v5 don't specify what happens if the target exists.  We take whatever
@@ -226,6 +275,7 @@ void sftp_readlink(struct sftpjob *job) {
   struct namedata nd;
 
   pcheck(parse_path(job, &path));
+  D(("sftp_readlink %s", path));
   /* readlink(2) has a rather stupid interface */
   nresult = 256;
   while(nresult > 0 && nresult <= 65536) {
@@ -260,11 +310,13 @@ void sftp_opendir(struct sftpjob *job) {
   struct handleid id;
 
   pcheck(parse_path(job, &path));
+  D(("sftp_opendir %s", path));
   if(!(dp = opendir(path))) {
     send_errno_status(job);
     return;
   }
   handle_new_dir(&id, dp, path);
+  D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
   send_begin(job);
   send_uint8(job, SSH_FXP_HANDLE);
   send_uint32(job, job->id);
@@ -283,6 +335,7 @@ void sftp_readdir(struct sftpjob *job) {
   char *fullpath;
   
   pcheck(parse_handle(job, &id));
+  D(("sftp_readdir %"PRIu32" %"PRIu32, id.id, id.tag));
   if((rc = handle_get_dir(&id, &dp, &path)))
     protocol->status(job, rc, "invalid directory handle");
   memset(d, 0, sizeof d);
@@ -326,6 +379,7 @@ void sftp_close(struct sftpjob *job) {
   struct handleid id;
   
   pcheck(parse_handle(job, &id));
+  D(("sftp_close %"PRIu32" %"PRIu32, id.id, id.tag));
   protocol->status(job, handle_close(&id), "closing handle");
 }
 
@@ -334,6 +388,7 @@ void sftp_v3_realpath(struct sftpjob *job) {
   struct namedata nd;
 
   pcheck(parse_path(job, &path));
+  D(("sftp_realpath %s", path));
   memset(&nd, 0, sizeof nd);
   /* realpath() demands a buffer of PATH_MAX bytes.  PATH_MAX isn't actually
    * guaranteed to be a constant so we must allocate in dynamically.  We add a
@@ -341,6 +396,7 @@ void sftp_v3_realpath(struct sftpjob *job) {
   nd.path = alloc(job->a, PATH_MAX + 64);
   nd.dummy = 1;
   if(realpath(path, nd.path)) {
+    D(("...real path is %s", nd.path));
     send_begin(job);
     send_uint8(job, SSH_FXP_NAME);
     send_uint32(job, job->id);
@@ -369,6 +425,7 @@ void sftp_v3_lstat(struct sftpjob *job) {
   struct stat sb;
 
   pcheck(parse_path(job, &path));
+  D(("sftp_lstat %s", path));
   sftp_v3_stat_core(job, lstat(path, &sb), &sb);
 }
 
@@ -377,7 +434,112 @@ void sftp_v3_stat(struct sftpjob *job) {
   struct stat sb;
 
   pcheck(parse_path(job, &path));
+  D(("sftp_stat %s", path));
   sftp_v3_stat_core(job, stat(path, &sb), &sb);
+}
+ 
+static int set_status(struct sftpjob *job,
+                      const char *path,
+                      const struct stat *sb,
+                      unsigned long bits) {
+  uid_t uid;
+  gid_t gid;
+  struct timeval times[2];
+  struct stat current;
+
+  if(bits & ATTR_SIZE) {
+    D(("...truncate %s to %ju", path, (uintmax_t)sb->st_size));
+    if(truncate(path, sb->st_size) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  uid = (bits & ATTR_UID) ? sb->st_uid : (uid_t)-1;
+  gid = (bits & ATTR_GID) ? sb->st_gid : (gid_t)-1;
+  if(uid != (uid_t)-1 || gid != (gid_t)-1) {
+    D(("...lchown %s to %jd/%jd", path, (intmax_t)uid, (intmax_t)gid));
+    if(lchown(path, uid, gid) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  if(bits & ATTR_PERMISSIONS) {
+    D(("...chmod %s to %#o", path, (unsigned)sb->st_mode & 0777));
+    if(chmod(path, sb->st_mode & 0777) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  if(bits & (ATTR_MTIME|ATTR_ATIME)) {
+    if(lstat(path, &current) < 0) {
+      D(("cannot lstat %s", path));
+      send_errno_status(job);
+      return -1;
+    }
+    times[0].tv_sec = (bits & ATTR_ATIME) ? sb->st_atime : current.st_atime;
+    times[1].tv_sec = (bits & ATTR_MTIME) ? sb->st_mtime : current.st_mtime;
+#if HAVE_STAT_TIMESPEC
+    times[0].tv_usec = ((bits & ATTR_ATIME) 
+                        ? sb->st_atimespec.tv_nsec
+                        : current.st_atimespec.tv_nsec) / 1000;
+    times[1].tv_usec = ((bits & ATTR_MTIME)
+                        ? sb->st_mtimespec.tv_nsec
+                        : current.st_mtimespec.tv_nsec) / 1000;
+#endif
+    D(("...utimes %s to atime %lu.%06lu mtime %lu.%06lu", path,
+       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_usec,
+       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_usec));
+    if(utimes(path, times) < 0) {
+      send_errno_status(job);
+      return -1;
+    }
+  }
+  return 0;
+}
+
+void sftp_setstat(struct sftpjob *job) {
+  char *path;
+  struct stat sb;
+  unsigned long bits;
+
+  pcheck(parse_path(job, &path));
+  pcheck(protocol->parseattrs(job, &sb, &bits));
+  D(("sftp_setstat %s", path));
+  if(set_status(job, path, &sb, bits))   /* sends error itself */
+    return;
+  send_ok(job);                         /* but we must send the OK */
+}
+
+void sftp_mkdir(struct sftpjob *job) {
+  char *path;
+  struct stat sb;
+  unsigned long bits;
+
+  pcheck(parse_path(job, &path));
+  pcheck(protocol->parseattrs(job, &sb, &bits));
+  D(("sftp_mkdir %s", path));
+  bits &= ~ATTR_SIZE;                   /* makes no sense */
+  if((bits & ATTR_PERMISSIONS)) {
+    /* If we're given initial permissions, use them and don't reset them  */
+    if(mkdir(path, sb.st_mode & 0777) < 0) {
+      send_errno_status(job);
+      return;
+    }
+    bits &= ~ATTR_PERMISSIONS;
+  } else {
+    /* Otherwise follow the current umask */
+    if(mkdir(path, 0777) < 0) {
+      send_errno_status(job);
+      return;
+    }
+  }
+  if(set_status(job, path, &sb, bits)) {
+    /* If we can't have the desired permissions, don't have the directory at
+     * all */
+    rmdir(path);
+    return;
+  }
+  send_ok(job);
 }
 
 static const struct sftpcmd sftpv3tab[] = {
@@ -388,18 +550,18 @@ static const struct sftpcmd sftpv3tab[] = {
   //{ SSH_FXP_WRITE, sftp_write },
   { SSH_FXP_LSTAT, sftp_v3_lstat },
   //{ SSH_FXP_FSTAT, sftp_v3_fstat },
-  //{ SSH_FXP_SETSTAT, sftp_setstat },
+  { SSH_FXP_SETSTAT, sftp_setstat },
   //{ SSH_FXP_FSETSTAT, sftp_fsetstat },
   { SSH_FXP_OPENDIR, sftp_opendir },
   { SSH_FXP_READDIR, sftp_readdir },
   { SSH_FXP_REMOVE, sftp_remove },
-  //{ SSH_FXP_MKDIR, sftp_mkdir },
-  //{ SSH_FXP_RMDIR, sftp_rmdir },
+  { SSH_FXP_MKDIR, sftp_mkdir },
+  { SSH_FXP_RMDIR, sftp_rmdir },
   { SSH_FXP_REALPATH, sftp_v3_realpath },
   { SSH_FXP_STAT, sftp_v3_stat },
   { SSH_FXP_RENAME, sftp_v3_rename },
   { SSH_FXP_READLINK, sftp_readlink },
-  //{ SSH_FXP_SYMLINK, sftp_symlink },
+  { SSH_FXP_SYMLINK, sftp_symlink },
   //{ SSH_FXP_EXTENDED, sftp_extended },
 };
 
@@ -409,6 +571,7 @@ const struct sftpprotocol sftpv3 = {
   v3_status,
   v3_sendnames,
   v3_sendattrs,
+  v3_parseattrs,
   v3_encode,
   v3_decode
 };

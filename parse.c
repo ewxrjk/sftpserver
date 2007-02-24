@@ -8,10 +8,31 @@
 #include <string.h>
 
 int parse_uint32(struct sftpjob *job, uint32_t *ur) {
-  uint32_t u;
-
   if(job->left < 4) return -1;
+#if UNALIGNED_WRITES
+  *ur = ntohl(*(uint32_t *)job->ptr);
+  job->ptr += 4;
+#else
+  {
+    uint32_t u = *job->ptr++;
+    u = (u << 8) + *job->ptr++;
+    u = (u << 8) + *job->ptr++;
+    u = (u << 8) + *job->ptr++;
+    *ur = u;
+  }
+#endif
+  return 0;
+}
+
+int parse_uint64(struct sftpjob *job, uint64_t *ur) {
+  uint64_t u;
+
+  if(job->left < 8) return -1;
   u = *job->ptr++;
+  u = (u << 8) + *job->ptr++;
+  u = (u << 8) + *job->ptr++;
+  u = (u << 8) + *job->ptr++;
+  u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
@@ -25,11 +46,13 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
 
   if(parse_uint32(job, &len)) return -1;
   if(!(len + 1)) return -1;             /* overflow */
-  str = alloc(job->a, len + 1);         /* 0-fills */
-  memcpy(str, job->ptr, len);
-  job->ptr += len;
-  if(strp) *strp = str;
   if(lenp) *lenp = len;
+  if(strp) {
+    str = alloc(job->a, len + 1);         /* 0-fills */
+    memcpy(str, job->ptr, len);
+    *strp = str;
+  }
+  job->ptr += len;
   return 0;
 }
 

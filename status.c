@@ -13,8 +13,8 @@ void generic_status(struct sftpjob *job,
 		    const char *msg) {
   if(!msg) {
     switch(original_status) {
-    case SSH_FX_OK: msg = "OK";
-    case SSH_FX_EOF: msg = "end of file";
+    case SSH_FX_OK: msg = "OK"; break;
+    case SSH_FX_EOF: msg = "end of file"; break;
     case SSH_FX_NO_SUCH_FILE: msg = "file does not exist"; break;
     case SSH_FX_PERMISSION_DENIED: msg = "permission denied"; break;
     case SSH_FX_FAILURE: msg = "operation failed"; break;
@@ -22,7 +22,7 @@ void generic_status(struct sftpjob *job,
     case SSH_FX_NO_CONNECTION: assert(!"cannot happen");
     case SSH_FX_CONNECTION_LOST: assert(!"cannot happen");
     case SSH_FX_OP_UNSUPPORTED: msg = "operation not supported"; break;
-    case SSH_FX_INVALID_HANDLE: msg = "invalid handle";
+    case SSH_FX_INVALID_HANDLE: msg = "invalid handle"; break;
     case SSH_FX_NO_SUCH_PATH: msg = "path does not exist or is invalid"; break;
     case SSH_FX_FILE_ALREADY_EXISTS: msg = "file already exists"; break;
     case SSH_FX_WRITE_PROTECT: msg = "file is on read-only medium"; break;

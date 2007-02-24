@@ -42,6 +42,8 @@ struct sftpprotocol {
                     int nnames, const struct namedata *names);
   void (*sendattrs)(struct sftpjob *job, const struct stat *filestat,
                     int dummy);
+  int (*parseattrs)(struct sftpjob *job, struct stat *filestat,
+		    unsigned long *bits);
   void (*encode)(struct sftpjob *job,
                  char **path);          /* Convert from local to wire */
   int (*decode)(struct sftpjob *job,
@@ -49,6 +51,15 @@ struct sftpprotocol {
   
 };
 /* An SFTP protocol version */
+
+/* Bits set in a parseattrs result */
+#define ATTR_SIZE		0x00000001
+#define ATTR_UID		0x00000002
+#define ATTR_GID		0x00000004
+#define ATTR_PERMISSIONS	0x00000008
+#define ATTR_MTIME		0x00000010
+#define ATTR_ATIME		0x00000020
+#define ATTR_CTIME		0x00000040
 
 #endif /* TYPES_H */
 

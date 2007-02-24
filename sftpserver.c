@@ -110,6 +110,7 @@ const struct sftpprotocol sftppreinit = {
   v3_status,
   v3_sendnames,
   v3_sendattrs,
+  v3_parseattrs,
   v3_encode,
   v3_decode
 };

@@ -2,6 +2,7 @@
 #define PARSE_H
 
 int parse_uint32(struct sftpjob *job, uint32_t *ur);
+int parse_uint64(struct sftpjob *job, uint64_t *ur);
 int parse_string(struct sftpjob *job, char **strp, size_t *lenp);
 int parse_path(struct sftpjob *job, char **strp);
 int parse_handle(struct sftpjob *job, struct handleid *id);

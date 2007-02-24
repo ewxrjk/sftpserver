@@ -64,6 +64,15 @@ AC_DEFUN([RJK_UNALIGNED_WRITES],[
   fi
 ])
 
+AC_DEFUN([RJK_STAT_TIMESPEC],[
+  AC_CHECK_MEMBER([struct stat.st_atimespec],
+		  [AC_DEFINE([HAVE_STAT_TIMESPEC],[1],
+		             [define if struct stat uses struct timespec])],
+		  [rjk_cv_stat_timespec=no],
+		  [#include <sys/stat.h>])
+  ])
+])
+
 AC_DEFUN([RJK_GCC_ATTRS],[
   AH_BOTTOM([#ifdef __GNUC__
 # define attribute(x) __attribute__(x)
@@ -72,3 +81,7 @@ AC_DEFUN([RJK_GCC_ATTRS],[
 #endif])
   ])
 ])
+
+dnl Local Variables:
+dnl mode:autoconf
+dnl End:

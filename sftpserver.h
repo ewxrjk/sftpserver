@@ -44,6 +44,8 @@ void v3_sendnames(struct sftpjob *job,
                   int nnames, const struct namedata *names);
 void v3_sendattrs(struct sftpjob *job, const struct stat *filestat,
                   int dummy);
+int v3_parseattrs(struct sftpjob *job, struct stat *filestat,
+                  unsigned long *bits);
 void v3_encode(struct sftpjob *job, char **path);
 int v3_decode(struct sftpjob *job, char **path);
 void sftp_v3_rename(struct sftpjob *job);
