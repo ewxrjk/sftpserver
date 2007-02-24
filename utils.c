@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdarg.h>
+#include <unistd.h>
 
 void *xmalloc(size_t n) {
   void *ptr;
@@ -57,6 +58,8 @@ char *xstrdup(const char *s) {
   return strcpy(xmalloc(strlen(s) + 1), s);
 }
 
+static void (*exitfn)(int) attribute((noreturn)) = exit;
+
 void fatal(const char *msg, ...) {
   va_list ap;
 
@@ -65,7 +68,17 @@ void fatal(const char *msg, ...) {
   vfprintf(stderr, msg, ap);
   va_end(ap);
   fputc('\n', stderr);
-  exit(-1);
+  exitfn(-1);
+}
+
+pid_t xfork(void) {
+  pid_t pid;
+
+  if((pid = fork()) < 0)
+    fatal("fork: %s", strerror(errno));
+  if(!pid)
+    exitfn = _exit;
+  return pid;
 }
 
 /*
