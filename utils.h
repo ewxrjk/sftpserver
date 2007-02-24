@@ -9,7 +9,9 @@ char *xstrdup(const char *s);
 /* Error-checking workalikes for malloc() etc.  recalloc() does not
  * 0-fill expansion. */
 
-void fatal(const char *msg, ...);
+void fatal(const char *msg, ...)
+  attribute((noreturn))
+  attribute((format(printf,1,2)));
 
 #endif /* UTILS_H */
 

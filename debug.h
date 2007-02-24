@@ -7,7 +7,7 @@
 #define DEBUG 1
 void debug_init(void);
 void hexdump(const void *ptr, size_t n);
-void debug_printf(const char *fmt, ...);
+void debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
 #define D(x) do {                               \
   debug_printf x;				\
 } while(0)
