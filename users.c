@@ -1,13 +1,16 @@
 #include "sftpserver.h"
 #include "users.h"
 #include "alloc.h"
+#include "thread.h"
+#include "utils.h"
 #include <pwd.h>
 #include <grp.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-#if HAVE_PTHREAD_H
 /* We don't rely on the C library doing the right thing */
 static pthread_mutex_t user_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 const char *uid2name(struct allocator *a, uid_t uid) {
   char *s;

@@ -1,6 +1,11 @@
 #include "sftpserver.h"
 #include "alloc.h"
 #include "debug.h"
+#include "handle.h"
+#include "parse.h"
+#include "types.h"
+#include "globals.h"
+#include <string.h>
 
 int parse_uint32(struct sftpjob *job, uint32_t *ur) {
   uint32_t u;

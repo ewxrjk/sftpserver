@@ -1,5 +1,7 @@
 #include "sftpserver.h"
 #include "alloc.h"
+#include "utils.h"
+#include <stdlib.h>
 
 union block;
 

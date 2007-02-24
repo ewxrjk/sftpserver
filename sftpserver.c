@@ -2,6 +2,18 @@
 #include "queue.h"
 #include "alloc.h"
 #include "debug.h"
+#include "utils.h"
+#include "sftp.h"
+#include "send.h"
+#include "parse.h"
+#include "types.h"
+#include "globals.h"
+#include <assert.h>
+#include <arpa/inet.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <errno.h>
 
 /* Forward declarations */
 
@@ -22,6 +34,15 @@ static const struct queuedetails workqueue_details = {
 #endif
 
 const struct sftpprotocol *protocol = &sftppreinit;
+
+/* Error-checking workalike for fread().  Returns 0 on success, non-0 at
+ * EOF. */
+static int do_fread(void *buffer, size_t size, size_t count, FILE *fp) {
+  const size_t n = fread(buffer, size, count, fp);
+  if(ferror(fp))
+    fatal("read error: %s", strerror(errno));
+  return n == count;
+}
 
 /* Initialization */
 
@@ -180,23 +201,17 @@ int main(void) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
-#ifdef DEBUGPATH
-  debugfp = fopen(DEBUGPATH, "w");
-#endif
   while(do_fread(&len, sizeof len, 1, stdin)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
     job->data = xmalloc(len);
-    if(!do_fread(job->data, 1, job->len, stdin)) {
+    if(!do_fread(job->data, 1, job->len, stdin))
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
-      fprintf(stderr, "read error: unexpected eof\n");
-      exit(-1);
-    }
-    if(debugfp) {
-      fprintf(debugfp, "request:\n");
-      hexdump(debugfp, job->data, job->len);
-      fputc('\n', debugfp);
+      fatal("read error: unexpected eof");
+    if(DEBUG) {
+      D(("request:"));
+      hexdump(job->data, job->len);
     }
     /* For threaded systems we process the job in a background thread, except
      * that the background threads don't exist until SSH_FXP_INIT has

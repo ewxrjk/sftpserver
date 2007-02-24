@@ -1,4 +1,11 @@
 #include "sftpserver.h"
+#include "sftp.h"
+#include "send.h"
+#include "types.h"
+#include "globals.h"
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
 
 void generic_status(struct sftpjob *job, 
 		    uint32_t status,

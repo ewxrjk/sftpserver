@@ -2,6 +2,20 @@
 #include "alloc.h"
 #include "users.h"
 #include "debug.h"
+#include "sftp.h"
+#include "handle.h"
+#include "send.h"
+#include "parse.h"
+#include "types.h"
+#include "globals.h"
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+#include <limits.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/stat.h>
 
 /* Callbacks */
 

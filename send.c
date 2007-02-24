@@ -1,9 +1,19 @@
 #include "sftpserver.h"
 #include "debug.h"
+#include "utils.h"
+#include "handle.h"
+#include "send.h"
+#include "thread.h"
+#include "types.h"
+#include "globals.h"
+#include <assert.h>
+#include <errno.h>
+#include <string.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-#if HAVE_PTHREAD_H
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 #if UNALIGNED_WRITES
 # define send_raw32(u) do {                             \
@@ -42,10 +52,7 @@ static void send_need(struct worker *w, size_t n) {
     size_t newsize = w->bufsize ? w->bufsize : 64;
     while(newsize && newsize < w->bufsize + n)
       newsize <<= 1;
-    if(!newsize) {
-      fprintf(stderr, "out of memory\n");
-      exit(-1);
-    }
+    if(!newsize) fatal("out of memory");
     w->buffer = xrealloc(w->buffer, w->bufsize = newsize);
   }
 }
@@ -67,16 +74,13 @@ void send_end(struct sftpjob *job) {
   /* Write the complete output, protecting stdout with a lock to avoid
    * interleaving different responses. */
   ferrcheck(pthread_mutex_lock(&output_lock));
-  if(debugfp) {
-    fprintf(debugfp, "response:\n");
-    hexdump(debugfp, w->buffer + 4, w->bufused - 4);
-    fputc('\n', debugfp);
+  if(DEBUG) {
+    D(("response:"));
+    hexdump(w->buffer + 4, w->bufused - 4);
   }
   if(fwrite(w->buffer, 1, w->bufused, stdout) != w->bufused
-     || fflush(stdout) < 0) {
-    fprintf(stderr, "error sending response: %s\n", strerror(errno));
-    exit(-1);
-  }
+     || fflush(stdout) < 0)
+    fatal("error sending response: %s", strerror(errno));
   ferrcheck(pthread_mutex_unlock(&output_lock));
   w->bufused = 0x80000000;
 }

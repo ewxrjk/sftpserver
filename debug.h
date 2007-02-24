@@ -4,16 +4,15 @@
 /* Debug support */
 
 #ifdef DEBUGPATH
-extern FILE *debugfp;
-
-void hexdump(FILE *fp, const void *ptr, size_t n);
+#define DEBUG 1
+void debug_init(void);
+void hexdump(const void *ptr, size_t n);
 void debug_printf(const char *fmt, ...);
 #define D(x) do {                               \
-  if(debugfp)                                   \
-    debug_printf x;                             \
+  debug_printf x;				\
 } while(0)
 #else
-#define debugfp 0
+#define DEBUG 0
 #define D(x) /* nothing */
 #endif
 

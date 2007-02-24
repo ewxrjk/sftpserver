@@ -1,9 +1,14 @@
 #include "sftpserver.h"
+
+#if HAVE_PTHREAD_H
+
 #include "queue.h"
 #include "alloc.h"
 #include "debug.h"
-
-#if HAVE_PTHREAD_H
+#include "utils.h"
+#include "thread.h"
+#include <stdlib.h>
+#include <string.h>
 
 struct queuejob {
   struct queuejob *next;

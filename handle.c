@@ -1,5 +1,13 @@
 #include "sftpserver.h"
 #include "debug.h"
+#include "utils.h"
+#include "sftp.h"
+#include "handle.h"
+#include "thread.h"
+#include <assert.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 struct handle {
   int type;                             /* SSH_FXP_OPEN/OPENDIR */
