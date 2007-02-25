@@ -1,7 +1,9 @@
 #include "sftpserver.h"
 #include "alloc.h"
 #include "utils.h"
+#include "debug.h"
 #include <stdlib.h>
+#include <assert.h>
 
 union block;
 
@@ -47,9 +49,10 @@ void *alloc(struct allocator *a, size_t n) {
     c = &nb->c;
     c->next = a->chunks;
     c->ptr = nb + 1;
-    c->left = cs;
+    c->left = cs - 1;
     a->chunks = c;
   }
+  assert(m <= c->left);
   c->left -= m;
   c->ptr += m;
   return c->ptr - m;

@@ -28,14 +28,12 @@ struct sftpattr {
   char *mime_type;
   uint32_t link_count;
   char *untranslated_name;
+  /* We stuff these in here too so we can conveniently use sftpattrs for
+   * name lists */
+  char *name;
+  char *longname;
 };
 /* SFTP-style file attributes */
-
-struct namedata {
-  char *path;
-  struct sftpattr attrs;
-};
-/* data about a filename */
 
 struct worker {
   size_t bufsize, bufused;
@@ -66,7 +64,7 @@ struct sftpprotocol {
                  uint32_t status,
                  const char *msg);      /* Send an SSH_FXP_STATUS */
   void (*sendnames)(struct sftpjob *job, 
-                    int nnames, const struct namedata *names);
+                    int nnames, const struct sftpattr *names);
   void (*sendattrs)(struct sftpjob *job, const struct sftpattr *filestat);
   int (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
   void (*encode)(struct sftpjob *job,

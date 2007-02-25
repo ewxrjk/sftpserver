@@ -26,6 +26,11 @@ struct command {
   const char *help;
 };
 
+struct handle {
+  size_t len;
+  char *data;
+};
+
 static int sftpin;
 static struct allocator allocator;
 static struct sftpjob fakejob;
@@ -101,6 +106,29 @@ static void version(void) {
   exit(0);
 }
 
+static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
+  va_list ap;
+
+  fprintf(stderr, "%s:%d ", inputpath, inputline);
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  fputc('\n',  stderr);
+}
+
+static int status(void) {
+  uint32_t status;
+  char *msg;
+  
+  cpcheck(parse_uint32(&fakejob, &status));
+  cpcheck(parse_string(&fakejob, &msg, 0));
+  if(status) {
+    error("%s (%s)", msg, status_to_string(status));
+    return -1;
+  } else
+    return 0;
+}
+
 /* Get a response.  Picks out the type and ID. */
 static uint8_t getresponse(int expected, uint32_t expected_id) {
   uint32_t len;
@@ -120,8 +148,12 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
   fakejob.left = fakejob.len;
   fakejob.ptr = fakejob.data;
   cpcheck(parse_uint8(&fakejob, &type));
-  if(expected > 0 && type != expected)
-    fatal("expected response %d got %d", expected, type);
+  if(expected > 0 && type != expected) {
+    if(type == SSH_FXP_STATUS)
+      status();
+    else
+      fatal("expected response %d got %d", expected, type);
+  }
   if(type != SSH_FXP_VERSION) {
     cpcheck(parse_uint32(&fakejob, &fakejob.id));
     if(expected_id && fakejob.id != expected_id)
@@ -129,16 +161,6 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
             expected_id, fakejob.id);
   }
   return type;
-}
-
-static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
-  va_list ap;
-
-  fprintf(stderr, "%s:%d ", inputpath, inputline);
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  va_end(ap);
-  fputc('\n',  stderr);
 }
 
 /* Split a command line */
@@ -176,15 +198,6 @@ static int split(char *line, char **av) {
   return ac;
 }
 
-static void status(void) {
-  uint32_t status;
-  char *msg;
-  
-  cpcheck(parse_uint32(&fakejob, &status));
-  cpcheck(parse_string(&fakejob, &msg, 0));
-  error("%s (%s)", msg, status_to_string(status));
-}
-
 static uint32_t newid(void) {
   static uint32_t latestid;
 
@@ -203,18 +216,12 @@ static char *sftp_realpath(const char *path) {
   send_uint32(&fakejob, id = newid());
   send_path(&fakejob, path);
   send_end(&fakejob);
-  switch(getresponse(-1, id)) {
-  case SSH_FXP_NAME:
-    cpcheck(parse_uint32(&fakejob, &u32));
-    if(u32 != 1) fatal("wrong count in REALPATH reply");
-    cpcheck(parse_path(&fakejob, &resolved));
-    return resolved;
-  case SSH_FXP_STATUS:
-    status();
+  if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
     return 0;
-  default:
-    fatal("bogus response to SSH_FXP_REALPATH");
-  }
+  cpcheck(parse_uint32(&fakejob, &u32));
+  if(u32 != 1) fatal("wrong count in SSH_FXP_REALPATH reply");
+  cpcheck(parse_path(&fakejob, &resolved));
+  return resolved;
 }
 
 static int sftp_stat(const char *path, struct sftpattr *attrs,
@@ -226,16 +233,81 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   send_uint32(&fakejob, id = newid());
   send_path(&fakejob, path);
   send_end(&fakejob);
+  if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
+    return -1;
+  cpcheck(protocol->parseattrs(&fakejob, attrs));
+  return 0;
+}
+
+static int sftp_opendir(const char *path, struct handle *hp) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_OPENDIR);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  send_end(&fakejob);
+  if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
+    return -1;
+  cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
+  return 0;
+}
+
+static int sftp_readdir(const struct handle *hp,
+                        struct sftpattr **attrsp,
+                        size_t *nattrsp) {
+  uint32_t id, n;
+  struct sftpattr *attrs;
+  char *name, *longname;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_READDIR);
+  send_uint32(&fakejob, id = newid());
+  send_bytes(&fakejob, hp->data, hp->len);
+  send_end(&fakejob);
   switch(getresponse(-1, id)) {
-  case SSH_FXP_ATTRS:
-    cpcheck(protocol->parseattrs(&fakejob, attrs));
+  case SSH_FXP_NAME:
+    cpcheck(parse_uint32(&fakejob, &n));
+    if(n > SIZE_MAX / sizeof(struct sftpattr))
+      fatal("too many attributes in SSH_FXP_READDIR response");
+    attrs = alloc(fakejob.a, n * sizeof(struct sftpattr));
+    *nattrsp = n;
+    *attrsp = attrs;
+    while(n-- > 0) {
+      cpcheck(parse_path(&fakejob, &name));
+      cpcheck(parse_path(&fakejob, &longname));
+      cpcheck(protocol->parseattrs(&fakejob, attrs));
+      attrs->name = name;
+      attrs->longname = longname;
+      ++attrs;
+    }
     return 0;
   case SSH_FXP_STATUS:
+    cpcheck(parse_uint32(&fakejob, &n));
+    if(n == SSH_FX_EOF) {
+      *nattrsp = 0;
+      *attrsp = 0;
+      return 0;
+    }
+    fakejob.ptr -= 4;
+    fakejob.left += 4;
     status();
     return -1;
   default:
-    fatal("bogus response to stat operation");
+    fatal("bogus response to SSH_FXP_READDIR");
   }
+}
+
+static int sftp_close(const struct handle *hp) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_CLOSE);
+  send_uint32(&fakejob, id = newid());
+  send_bytes(&fakejob, hp->data, hp->len);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
 }
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -310,11 +382,134 @@ static int cmd_lpwd(int attribute((unused)) ac,
 }
 
 static int cmd_lcd(int attribute((unused)) ac,
-                  char **av) {
+                   char **av) {
   if(chdir(av[0]) < 0) {
     error("error calling chdir: %s", strerror(errno));
     return -1;
   }
+  return 0;
+}
+
+static int sort_by_name(const void *av, const void *bv) {
+  const struct sftpattr *const a = av, *const b = bv;
+
+  return strcmp(a->name, b->name);
+}
+
+static int sort_by_size(const void *av, const void *bv) {
+  const struct sftpattr *const a = av, *const b = bv;
+
+  if(a->valid & b->valid & SSH_FILEXFER_ATTR_SIZE) {
+    if(a->size < b->size) return -1;
+    else if(a->size > b->size) return 1;
+  }
+  return sort_by_name(av, bv);
+}
+
+static int sort_by_mtime(const void *av, const void *bv) {
+  const struct sftpattr *const a = av, *const b = bv;
+
+  if(a->valid & b->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
+    if(a->mtime.seconds < b->mtime.seconds) return -1;
+    else if(a->mtime.seconds > b->mtime.seconds) return 1;
+    if(a->valid & b->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
+      if(a->mtime.nanoseconds < b->mtime.nanoseconds) return -1;
+      else if(a->mtime.nanoseconds > b->mtime.nanoseconds) return 1;
+    }
+  }
+  return sort_by_name(av, bv);
+}
+
+/* Reverse an array in place */
+static void reverse(void *array, size_t count, size_t size) {
+  void *tmp = xmalloc(size);
+  char *const base = array;
+  size_t n;
+  
+  /* If size is even then size/2 is the first half of the array and that's fine.
+   * If size is odd then size/2 goes up to but excludes the middle member
+   * which is also fine. */
+  for(n = 0; n < size / 2; ++n) {
+    memcpy(tmp, base + n * size, size);
+    memcpy(base + n * size, base + (count - n - 1) * size, size);
+    memcpy(base + (count - n - 1) * size, tmp, size);
+  }
+  free(tmp);
+}
+
+static int cmd_ls(int ac,
+                  char **av) {
+  const char *options;
+  struct sftpattr *attrs, *allattrs = 0;
+  size_t nattrs, nallattrs = 0, n, maxnamelen = 0;
+  struct handle h;
+
+  if(ac > 0 && av[0][0] == '-') {
+    options = *av++;
+    --ac;
+  } else
+    options = "";
+  if(sftp_opendir(ac > 0 ? av[0] : cwd, &h)) return -1;
+  for(;;) {
+    if(sftp_readdir(&h, &attrs, &nattrs)) {
+      sftp_close(&h);
+      free(allattrs);
+      return -1;
+    }
+    if(!nattrs) break;                  /* eof */
+    allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
+    if(strchr(options, 'a')) {
+      /* Include dotfiles */
+      for(n = 0; n < nattrs; ++n) {
+        if(strlen(attrs[n].name) > maxnamelen)
+          maxnamelen = strlen(attrs[n].name);
+        allattrs[nallattrs++] = attrs[n];
+      }
+    } else {
+      /* Exclude dotfiles */
+      for(n = 0; n < nattrs; ++n) {
+        if(attrs[n].name[0] == '.')
+          continue;
+        if(strlen(attrs[n].name) > maxnamelen)
+          maxnamelen = strlen(attrs[n].name);
+        allattrs[nallattrs++] = attrs[n];
+      }
+    }
+  }
+  sftp_close(&h);
+  if(!strchr(options, 'f')) {
+    int (*sorter)(const void *, const void *);
+
+    if(strchr(options, 'S'))
+      sorter = sort_by_size;
+    else if(strchr(options, 't'))
+      sorter = sort_by_mtime;
+    else
+      sorter = sort_by_name;
+    qsort(allattrs, nallattrs, sizeof *allattrs, sorter);
+    if(strchr(options, 'r'))
+      reverse(allattrs, nallattrs, sizeof *allattrs);
+  }
+  if(strchr(options, 'l') || strchr(options, 'n')) {
+    /* long listing */
+    if(sftpversion == 3 && !strchr(options, 'n')) {
+      for(n = 0; n < nallattrs; ++n)
+        xprintf("%s\n", allattrs[n].longname);
+    } else {
+      abort();                          /* TODO non-longname ls */
+    }
+  } else if(strchr(options, '1')) {
+    /* single-column listing */
+    for(n = 0; n < nallattrs; ++n)
+      xprintf("%s\n", allattrs[n].name);
+  } else {
+    /* multi-column listing */
+    /* This isn't really a production client, we just issue a single-column
+     * listing for now */
+    for(n = 0; n < nallattrs; ++n)
+      xprintf("%s\n", allattrs[n].name);
+  }
+  free(allattrs);
   return 0;
 }
 
@@ -348,6 +543,11 @@ static const struct command commands[] = {
     "lpwd", 0, 0, cmd_lpwd,
     "DIR",
     "display current local directory"
+  },
+  {
+    "ls", 0, 2, cmd_ls,
+    "[OPTIONS] [PATH]",
+    "list remote directory"
   },
   {
     "pwd", 0, 0, cmd_pwd,

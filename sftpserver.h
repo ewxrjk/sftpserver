@@ -50,7 +50,7 @@ void v3_status(struct sftpjob *job,
                uint32_t status,
                const char *msg);
 void v3_sendnames(struct sftpjob *job, 
-                  int nnames, const struct namedata *names);
+                  int nnames, const struct sftpattr *names);
 void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs);
 int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
 void v3_encode(struct sftpjob *job, char **path);
