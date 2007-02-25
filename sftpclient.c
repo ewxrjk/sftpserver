@@ -138,7 +138,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
     fatal("unexpected EOF from server while reading length");
   free(fakejob.data);                   /* free last job */
   fakejob.len = ntohl(len);
-  fakejob.data = xmalloc(len);
+  fakejob.data = xmalloc(fakejob.len);
   if(do_read(sftpin, fakejob.data, fakejob.len))
     fatal("unexpected EOF from server while reading data");
   if(DEBUG) {
