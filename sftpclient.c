@@ -57,6 +57,7 @@ static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
 static int sftpversion = 3;
+static int quirk_openssh;
 
 static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
@@ -67,6 +68,7 @@ static const struct option options[] = {
   { "requests", required_argument, 0, 'R' },
   { "subsystem", required_argument, 0, 's' },
   { "sftp-version", required_argument, 0, 'S' },
+  { "quirk-openssh", no_argument, 0, 256 },
   { "1", no_argument, 0, '1' },
   { "2", no_argument, 0, '2' },
   { "C", no_argument, 0, 'C' },
@@ -92,6 +94,7 @@ static void help(void) {
 	 "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
 	 "  -s, --subsystem NAME     Remote subsystem name\n"
 	 "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
+         "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n"
 	 "Options passed to SSH:\n"
 	 "  -1, -2                   Select protocol version\n"
 	 "  -C                       Enable compression\n"
@@ -330,6 +333,63 @@ static int sftp_setstat(const char *path,
   send_uint32(&fakejob, id = newid());
   send_path(&fakejob, resolvepath(path));
   protocol->sendattrs(&fakejob, attrs);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
+static int sftp_rmdir(const char *path) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_RMDIR);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
+static int sftp_remove(const char *path) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_REMOVE);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
+static int sftp_rename(const char *oldpath, const char *newpath) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_RENAME);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, oldpath);
+  send_path(&fakejob, newpath);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
+static int sftp_symlink(const char *targetpath, const char *linkpath) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_SYMLINK);
+  send_uint32(&fakejob, id = newid());
+  if(quirk_openssh) {
+    /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
+     * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
+    send_path(&fakejob, targetpath);
+    send_path(&fakejob, linkpath);
+  } else {
+    send_path(&fakejob, linkpath);
+    send_path(&fakejob, targetpath);
+  }
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -639,6 +699,26 @@ static int cmd_chmod(int attribute((unused)) ac,
   return sftp_setstat(av[1], &attrs);
 }
 
+static int cmd_rm(int attribute((unused)) ac,
+                     char **av) {
+  return sftp_remove(av[0]);
+}
+
+static int cmd_rmdir(int attribute((unused)) ac,
+                     char **av) {
+  return sftp_rmdir(av[0]);
+}
+
+static int cmd_mv(int attribute((unused)) ac,
+                     char **av) {
+  return sftp_rename(av[0], av[1]);
+}
+
+static int cmd_symlink(int attribute((unused)) ac,
+                       char **av) {
+  return sftp_symlink(av[0], av[1]);
+}
+
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -706,14 +786,34 @@ static const struct command commands[] = {
     "get or set local umask"
   },
   {
+    "mv", 2, 2, cmd_mv,
+    "OLDPATH NEWPATH",
+    "rename a remote file"
+  },
+  {
     "pwd", 0, 0, cmd_pwd,
     0,
     "display current remote directory" 
   },
   {
-    "quit",  0, 0, cmd_quit,
+    "quit", 0, 0, cmd_quit,
     0,
     "quit"
+  },
+  {
+    "rm", 1, 1, cmd_rm,
+    "PATH",
+    "remove remote file"
+  },
+  {
+    "rmdir", 1, 1, cmd_rmdir,
+    "PATH",
+    "remove remote directory"
+  },
+  {
+    "symlink", 2, 2, cmd_symlink,
+    "TARGET NEWPATH",
+    "create a remote symlink"
   },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -790,6 +890,7 @@ int main(int argc, char **argv) {
     case 'F': sshconf = optarg; break;
     case 'o': sshoptions[nsshoptions++] = optarg; break;
     case 'v': sshverbose++; break;
+    case 256: quirk_openssh = 1; break;
     default: exit(1);
     }
   }
