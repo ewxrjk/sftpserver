@@ -17,6 +17,14 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 
+struct command {
+  const char *name;
+  int minargs, maxargs;
+  int (*handler)(int ac, char **av);
+  const char *args;
+  const char *help;
+};
+
 static int sftpin;
 static struct allocator allocator;
 static struct sftpjob fakejob;
@@ -24,6 +32,7 @@ static struct worker fakeworker;
 static char *cwd;
 static const char *inputpath;
 static int inputline;
+static const struct command commands[];
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -252,14 +261,68 @@ static int cmd_cd(int attribute((unused)) ac,
   return 0;
 }
 
-static const struct {
-  const char *name;
-  int minargs, maxargs;
-  int (*handler)(int ac, char **av);
-} commands[] = {
-  { "cd", 1, 1, cmd_cd },
-  { "pwd", 0, 0, cmd_pwd },
-  { 0, 0, 0, 0 }
+static int cmd_quit(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  exit(0);
+}
+
+
+static int cmd_help(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  int n;
+  size_t max = 0, len = 0;
+
+  for(n = 0; commands[n].name; ++n) {
+    len = strlen(commands[n].name);
+    if(commands[n].args)
+      len += strlen(commands[n].args) + 1;
+    if(len > max) 
+      max = len;
+  }
+  for(n = 0; commands[n].name; ++n) {
+    len = strlen(commands[n].name);
+    xprintf("%s", commands[n].name);
+    if(commands[n].args) {
+      len += strlen(commands[n].args) + 1;
+      xprintf(" %s", commands[n].args);
+    }
+    xprintf("%*s  %s\n", (int)(max - len), "", commands[n].help);
+  }
+  return 0;
+}
+
+static const struct command commands[] = {
+  {
+    "bye", 0, 0, cmd_quit,
+    0,
+    "quit"
+  },
+  {
+    "cd", 1, 1, cmd_cd,
+    "DIR",
+    "change directory"
+  },
+  {
+    "exit", 0, 0, cmd_quit,
+    0,
+    "quit"
+  },
+  {
+    "help", 0, 0, cmd_help,
+    0,
+    "display help"
+  },
+  {
+    "pwd", 0, 0, cmd_pwd,
+    0,
+    "display current directory" 
+  },
+  {
+    "quit",  0, 0, cmd_quit,
+    0,
+    "quit"
+  },
+  { 0, 0, 0, 0, 0, 0 }
 };
 
 static void process(const char *prompt, FILE *fp) {
@@ -273,6 +336,13 @@ static void process(const char *prompt, FILE *fp) {
   }
   while(fgets(buffer, sizeof buffer, fp)) {
     ++inputline;
+    if(buffer[0] == '!') {
+      if(buffer[1] != '\n')
+        system(buffer + 1);
+      else
+        system(getenv("SHELL"));
+      goto next;
+    }
     if((ac = split(buffer, av = avbuf)) < 0 && !prompt)
       exit(1);
     if(!ac) goto next;
