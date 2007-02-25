@@ -225,7 +225,6 @@ static int sftp_stat(const char *path, struct stat *sb, unsigned long *bits) {
   default:
     fatal("bogus response to SSH_FXP_STAT");
   }
-  
 }
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -465,16 +464,8 @@ int main(int argc, char **argv) {
           u32);
   /* TODO parse extensions */
 
-  /* Send SSH_FXP_REALPATH . to find path to current directory */
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_REALPATH);
-  send_uint32(&fakejob, 1);
-  send_path(&fakejob, ".");
-  send_end(&fakejob);
-  getresponse(SSH_FXP_NAME, 1);
-  cpcheck(parse_uint32(&fakejob, &u32));
-  if(u32 != 1) fatal("wrong count in REALPATH reply");
-  cpcheck(parse_path(&fakejob, &cwd));
+  /* Find path to current directory */
+  if(!(cwd = sftp_realpath("."))) exit(1);
   cwd = xstrdup(cwd);
 
   if(batchfile) {
