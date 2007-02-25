@@ -11,9 +11,11 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <unistd.h>
 
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
+
+int sftpout = 1;                        /* default is stdout */
 
 #if UNALIGNED_WRITES
 # define send_raw32(u) do {                             \
@@ -66,6 +68,7 @@ void send_begin(struct sftpjob *job) {
 
 void send_end(struct sftpjob *job) {
   struct worker *const w = job->worker;
+  ssize_t n, written;
 
   assert(w->bufused < 0x80000000);
   /* Fill in length word.  The malloc'd area is assumed to be aligned
@@ -78,8 +81,11 @@ void send_end(struct sftpjob *job) {
     D(("response:"));
     hexdump(w->buffer + 4, w->bufused - 4);
   }
-  if(fwrite(w->buffer, 1, w->bufused, stdout) != w->bufused
-     || fflush(stdout) < 0)
+  /* Write the whole buffer, coping with short writes */
+  written = 0;
+  while((n = write(sftpout, w->buffer + written, w->bufused - written)) > 0)
+    written += n;
+  if(n < 0)
     fatal("error sending response: %s", strerror(errno));
   ferrcheck(pthread_mutex_unlock(&output_lock));
   w->bufused = 0x80000000;

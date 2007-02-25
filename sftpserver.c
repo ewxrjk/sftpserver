@@ -12,7 +12,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <stdlib.h>
-#include <stdio.h>
+#include <unistd.h>
 #include <errno.h>
 #include <signal.h>
 
@@ -36,13 +36,23 @@ static const struct queuedetails workqueue_details = {
 
 const struct sftpprotocol *protocol = &sftppreinit;
 
-/* Error-checking workalike for fread().  Returns 0 on success, non-0 at
+/* Error-checking workalike for read().  Returns 0 on success, non-0 at
  * EOF. */
-static int do_fread(void *buffer, size_t size, size_t count, FILE *fp) {
-  const size_t n = fread(buffer, size, count, fp);
-  if(ferror(fp))
-    fatal("read error: %s", strerror(errno));
-  return n == count;
+static int do_read(int fd, void *buffer, size_t size) {
+  size_t sofar = 0;
+  ssize_t n;
+  char *ptr = buffer;
+
+  while(sofar < size) {
+    n = read(fd, ptr + sofar, size - sofar);
+    if(n > 0)
+      sofar += n;
+    else if(n == 0)
+      return -1;                        /* eof */
+    else
+      fatal("read error: %s", strerror(errno));
+  }
+  return 0;                             /* ok */
 }
 
 /* Initialization */
@@ -203,11 +213,11 @@ int main(void) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
-  while(do_fread(&len, sizeof len, 1, stdin)) {
+  while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
     job->data = xmalloc(len);
-    if(!do_fread(job->data, 1, job->len, stdin))
+    if(do_read(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
       fatal("read error: unexpected eof");

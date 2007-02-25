@@ -14,6 +14,8 @@ void send_handle(struct sftpjob *job, const struct handleid *id);
 } while(0)
 void send_path(struct sftpjob *job, const char *path);
 
+extern int sftpout;                     /* fd to write to */
+
 #endif /* SEND_H */
 
 /*
