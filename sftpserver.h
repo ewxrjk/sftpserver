@@ -30,6 +30,7 @@ struct allocator;
 struct handleid;
 struct sftpjob;
 struct namedata;
+struct worker;
 struct stat;
 
 void generic_status(struct sftpjob *job,

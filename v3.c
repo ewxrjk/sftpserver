@@ -710,7 +710,6 @@ void sftp_read(struct sftpjob *job) {
   struct handleid id;
   uint64_t offset;
   uint32_t len, rc;
-  char *buffer;
   ssize_t n;
   int fd;
 
@@ -724,16 +723,23 @@ void sftp_read(struct sftpjob *job) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
-  buffer = alloc(job->a, len);
-  n = pread(fd, buffer, len, offset);
+  /* We read straight into our own output buffer to save a copy. */
+  send_begin(job);
+  send_uint8(job, SSH_FXP_DATA);
+  send_uint32(job, job->id);
+  send_need(job->worker, len + 4);
+  n = pread(fd, job->worker->buffer + job->worker->bufused + 4, len, offset);
   /* Short reads are allowed so we don't try to read more */
   if(n > 0) {
-    send_begin(job);
-    send_uint8(job, SSH_FXP_DATA);
-    send_uint32(job, job->id);
-    send_bytes(job, buffer, n);
+    /* Fix up the buffer */
+    send_uint32(job, n);
+    job->worker->bufused += n;
     send_end(job);
-  } else if(n == 0)
+    return;
+  }
+  /* The error-sending code calls send_begin(), so we don't get half a
+   * SSH_FXP_DATA response first */
+  if(n == 0)
     protocol->status(job, SSH_FX_EOF, 0);
   else
     send_errno_status(job);

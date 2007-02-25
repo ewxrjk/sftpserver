@@ -1,6 +1,9 @@
 #ifndef SEND_H
 #define SEND_H
 
+void send_need(struct worker *w, size_t n);
+/* Make sure there are N bytes available in the buffer */
+
 void send_begin(struct sftpjob *job);
 void send_end(struct sftpjob *job);
 void send_uint8(struct sftpjob *job, int n);
