@@ -6,6 +6,7 @@
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
+#include <unistd.h>
 
 static size_t buffersize = 32768;
 static int nrequests = 8;

@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <sys/types.h>
+#include <inttypes.h>
 
 /* Maximum numbers in a response to SSH_FXP_READDIR */
 #ifndef MAXNAMES

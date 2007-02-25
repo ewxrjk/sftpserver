@@ -14,6 +14,7 @@ void debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
 #else
 #define DEBUG 0
 #define D(x) /* nothing */
+#define hexdump(PTR,N) /* nothing */
 #endif
 
 #endif /* DEBUG_H */

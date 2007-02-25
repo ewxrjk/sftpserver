@@ -17,7 +17,7 @@
 #include <fcntl.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <inttypes.h>
+#include <sys/time.h>
 
 /* Callbacks */
 

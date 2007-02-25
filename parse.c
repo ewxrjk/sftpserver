@@ -6,6 +6,7 @@
 #include "types.h"
 #include "globals.h"
 #include <string.h>
+#include <arpa/inet.h>
 
 int parse_uint32(struct sftpjob *job, uint32_t *ur) {
   if(job->left < 4) return -1;

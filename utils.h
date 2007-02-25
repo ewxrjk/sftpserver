@@ -16,7 +16,6 @@ pid_t xfork(void);
 
 #endif /* UTILS_H */
 
-
 /*
 Local Variables:
 c-basic-offset:2
