@@ -51,10 +51,8 @@ void v3_status(struct sftpjob *job,
                const char *msg);
 void v3_sendnames(struct sftpjob *job, 
                   int nnames, const struct namedata *names);
-void v3_sendattrs(struct sftpjob *job, const struct stat *filestat,
-                  int dummy);
-int v3_parseattrs(struct sftpjob *job, struct stat *filestat,
-                  unsigned long *bits);
+void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs);
+int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
 void v3_encode(struct sftpjob *job, char **path);
 int v3_decode(struct sftpjob *job, char **path);
 void sftp_v3_rename(struct sftpjob *job);
@@ -69,6 +67,9 @@ void send_errno_status(struct sftpjob *job);
 
 void send_ok(struct sftpjob *job);
 /* Send an OK */
+
+void stat_to_attrs(struct allocator *a,
+		   const struct stat *sb, struct sftpattr *attrs);
 
 #endif /* SFTPSERVER_H */
 

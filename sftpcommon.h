@@ -8,6 +8,7 @@ struct queue;
 struct allocator;
 struct handleid;
 struct sftpjob;
+struct sftpattr;
 struct namedata;
 struct worker;
 struct stat;

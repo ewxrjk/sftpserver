@@ -3,10 +3,37 @@
 
 #include <sys/stat.h>
 
+struct sftptime {
+  int64_t seconds;
+  uint32_t nanoseconds;
+};
+
+struct sftpattr {
+  uint32_t valid;                       /* flags per v6 */
+  uint8_t type;
+  uint64_t size;
+  uint64_t allocation_size;             /* v6+ */
+  uid_t uid, gid;                       /* v3 */ 
+  const char *owner, *group;            /* v4+ */
+  uint32_t permissions;
+  struct sftptime atime;
+  struct sftptime createtime;           /* v4+ */
+  struct sftptime mtime;
+  struct sftptime ctime;                /* v6+ */
+  char *acl;                            /* v5+ */
+  uint32_t attrib_bits;                 /* v5+ */
+  /* all v6+: */
+  uint32_t attrib_bits_valid;
+  uint8_t text_hint;
+  char *mime_type;
+  uint32_t link_count;
+  char *untranslated_name;
+};
+/* SFTP-style file attributes */
+
 struct namedata {
   char *path;
-  struct stat filestat;
-  int dummy;                            /* true for dummy attributes */
+  struct sftpattr attrs;
 };
 /* data about a filename */
 
@@ -40,10 +67,8 @@ struct sftpprotocol {
                  const char *msg);      /* Send an SSH_FXP_STATUS */
   void (*sendnames)(struct sftpjob *job, 
                     int nnames, const struct namedata *names);
-  void (*sendattrs)(struct sftpjob *job, const struct stat *filestat,
-                    int dummy);
-  int (*parseattrs)(struct sftpjob *job, struct stat *filestat,
-		    unsigned long *bits);
+  void (*sendattrs)(struct sftpjob *job, const struct sftpattr *filestat);
+  int (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
   void (*encode)(struct sftpjob *job,
                  char **path);          /* Convert from local to wire */
   int (*decode)(struct sftpjob *job,
@@ -51,15 +76,6 @@ struct sftpprotocol {
   
 };
 /* An SFTP protocol version */
-
-/* Bits set in a parseattrs result */
-#define ATTR_SIZE		0x00000001
-#define ATTR_UID		0x00000002
-#define ATTR_GID		0x00000004
-#define ATTR_PERMISSIONS	0x00000008
-#define ATTR_MTIME		0x00000010
-#define ATTR_ATIME		0x00000020
-#define ATTR_CTIME		0x00000040
 
 #endif /* TYPES_H */
 

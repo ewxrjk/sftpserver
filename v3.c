@@ -8,6 +8,7 @@
 #include "parse.h"
 #include "types.h"
 #include "globals.h"
+#include "utils.h"
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -51,9 +52,9 @@ void v3_sendnames(struct sftpjob *job,
                   int nnames, const struct namedata *names) {
   char perms[64], linkcount[64], size[64], *p, date[64];
   char *longname;
-  const char *user, *group;
-  time_t now;
+  time_t now, m;
   struct tm mtime, nowtime;
+  static const char typedetails[] = "?-dl??scbp";
 
   /* We'd like to know what year we're in for dates in longname */
   time(&now);
@@ -61,7 +62,7 @@ void v3_sendnames(struct sftpjob *job,
   send_uint32(job, nnames);
   while(nnames > 0) {
     send_path(job, names->path);
-    if(!names->dummy) {
+    if(names->attrs.valid) {
       /* v3 has a 'longname' field containing a textual represenation of the
        * file details.  Subsequent versions don't have it, considering that it
        * is the responsibility of the client to format this stuff in some
@@ -69,48 +70,40 @@ void v3_sendnames(struct sftpjob *job,
        *
        * We write the details out longhand, there not being quite enough
        * commonality to justify tables.
+       *
+       * We only construct this with attributes generated internally.
        */
       p = perms;
-      switch(names->filestat.st_mode & S_IFMT) {
-      case S_IFIFO: *p++ = 'p'; break;
-      case S_IFCHR: *p++ = 'c'; break;
-      case S_IFDIR: *p++ = 'd'; break;
-      case S_IFBLK: *p++ = 'b'; break;
-      case S_IFREG: *p++ = '-'; break;
-      case S_IFLNK: *p++ = 'l'; break;
-      case S_IFSOCK: *p++ = 's'; break;
-      default: *p++ = '?'; break;
-      }
-      *p++ = (names->filestat.st_mode & 00400) ? 'r' : '-';
-      *p++ = (names->filestat.st_mode & 00200) ? 'w' : '-';
-      switch(names->filestat.st_mode & 04100) {
+      *p++ = typedetails[names->attrs.type];
+      *p++ = (names->attrs.permissions & 00400) ? 'r' : '-';
+      *p++ = (names->attrs.permissions & 00200) ? 'w' : '-';
+      switch(names->attrs.permissions & 04100) {
       case 00000: *p++ = '-'; break;
       case 00100: *p++ = 'x'; break;
       case 04000: *p++ = 'S'; break;
       case 04100: *p++ = 's'; break;
       }
-      *p++ = (names->filestat.st_mode & 00040) ? 'r' : '-';
-      *p++ = (names->filestat.st_mode & 00020) ? 'w' : '-';
-      switch(names->filestat.st_mode & 02010) {
+      *p++ = (names->attrs.permissions & 00040) ? 'r' : '-';
+      *p++ = (names->attrs.permissions & 00020) ? 'w' : '-';
+      switch(names->attrs.permissions & 02010) {
       case 00000: *p++ = '-'; break;
       case 00010: *p++ = 'x'; break;
       case 02000: *p++ = 'S'; break;
       case 02010: *p++ = 's'; break;
       }
-      *p++ = (names->filestat.st_mode & 00004) ? 'r' : '-';
-      *p++ = (names->filestat.st_mode & 00002) ? 'w' : '-';
-      switch(names->filestat.st_mode & 02001) {
+      *p++ = (names->attrs.permissions & 00004) ? 'r' : '-';
+      *p++ = (names->attrs.permissions & 00002) ? 'w' : '-';
+      switch(names->attrs.permissions & 02001) {
       case 00000: *p++ = '-'; break;
       case 00001: *p++ = 'x'; break;
       case 01000: *p++ = 'T'; break;
       case 01001: *p++ = 't'; break;
       }
       *p = 0;
-      sprintf(linkcount, "%ju", (uintmax_t)names->filestat.st_nlink);
-      sprintf(size, "%ju", (uintmax_t)names->filestat.st_size);
-      user = uid2name(job->a, names->filestat.st_uid);
-      group = gid2name(job->a, names->filestat.st_gid);
-      gmtime_r(&names->filestat.st_mtime, &mtime);
+      sprintf(linkcount, "%"PRIu32, names->attrs.link_count);
+      sprintf(size, "%"PRIu64, names->attrs.size);
+      m = names->attrs.mtime.seconds;
+      gmtime_r(&m, &mtime);
       /* Timestamps in the current year we give down to seconds.  For
        * timestamps in other years we give the year. */
       if(mtime.tm_year == nowtime.tm_year)
@@ -120,73 +113,104 @@ void v3_sendnames(struct sftpjob *job,
       longname = alloc(job->a, 80 + strlen(names->path));
       /* The draft is pretty specific about field widths */
       sprintf(longname, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s",
-              perms, linkcount, user, group, size, date, names->path);
+              perms, linkcount, names->attrs.owner, names->attrs.group,
+              size, date, names->path);
       send_string(job, longname);
     } else
       /* If we're sending dummy attributes then there's no point in a
        * longname */
       send_string(job, "");
-    protocol->sendattrs(job, &names->filestat, names->dummy);
+    protocol->sendattrs(job, &names->attrs);
     ++names;
     --nnames;
   }
 }
 
 void v3_sendattrs(struct sftpjob *job,
-                  const struct stat *filestat,
-                  int dummy) {
-  if(!dummy) {
-    send_uint32(job,
-                SSH_FILEXFER_ATTR_SIZE
-                |SSH_FILEXFER_ATTR_UIDGID
-                |SSH_FILEXFER_ATTR_PERMISSIONS
-                |SSH_FILEXFER_ACMODTIME);
-    send_uint64(job, filestat->st_size);
-    send_uint32(job, filestat->st_uid);
-    send_uint32(job, filestat->st_gid);
-    send_uint32(job, filestat->st_mode);
-    send_uint32(job, filestat->st_atime);
-    send_uint32(job, filestat->st_mtime);
-  } else
-    /* Dummy attributes are almost certainly inaccurate, so we avoid lying */
-    send_uint32(job, 0);
+                  const struct sftpattr *attrs) {
+  uint32_t v3bits, m, a;
+
+  /* The timestamp flags change between v3 and v4.  In the structure we always
+   * use the v4+ bits, so we must translate. */
+  if((attrs->valid & (SSH_FILEXFER_ATTR_ACCESSTIME
+                      |SSH_FILEXFER_ATTR_MODIFYTIME))
+     == (SSH_FILEXFER_ATTR_ACCESSTIME
+         |SSH_FILEXFER_ATTR_MODIFYTIME))
+    v3bits = ((attrs->valid & (SSH_FILEXFER_ATTR_SIZE
+                               |SSH_FILEXFER_ATTR_UIDGID
+                               |SSH_FILEXFER_ATTR_PERMISSIONS))
+              |SSH_FILEXFER_ACMODTIME);
+  else
+    v3bits = (attrs->valid & (SSH_FILEXFER_ATTR_SIZE
+                              |SSH_FILEXFER_ATTR_UIDGID
+                              |SSH_FILEXFER_ATTR_PERMISSIONS));
+  send_uint32(job, v3bits);
+  if(v3bits & SSH_FILEXFER_ATTR_SIZE)
+    send_uint64(job, attrs->size);
+  if(v3bits & SSH_FILEXFER_ATTR_UIDGID) {
+    send_uint32(job, attrs->uid);
+    send_uint32(job, attrs->gid);
+  }
+  if(v3bits & SSH_FILEXFER_ATTR_PERMISSIONS)
+    send_uint32(job, attrs->permissions);
+  if(v3bits & SSH_FILEXFER_ACMODTIME) {
+    m = attrs->mtime.seconds;
+    a = attrs->atime.seconds;
+    /* Check that the conversion was sound.  SFTP v3 becomes unsound in 2038CE.
+     * If you're looking at this code then, I suggest using a later protocol
+     * version.  If that's not acceptable, and you either don't care about
+     * bogus timestamps or have some other workaround, then delete the
+     * checks. */
+    if(m != attrs->mtime.seconds)
+      fatal("sending out-of-range mtime");
+    if(a != attrs->atime.seconds)
+      fatal("sending out-of-range mtime");
+    send_uint32(job, m);
+    send_uint32(job, a);
+  }
+  /* Note that we just discard unknown bits rather than reporting errors. */
 }
 
-int v3_parseattrs(struct sftpjob *job, struct stat *filestat,
-                  unsigned long *bits) {
-  uint32_t attrbits, n;
-  uint64_t size;
+int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
+  uint32_t n;
 
-  *bits = 0;
-  memset(filestat, 0, sizeof filestat);
-  if(parse_uint32(job, &attrbits)) return -1;
-  if(attrbits & SSH_FILEXFER_ATTR_SIZE) {
-    if(parse_uint64(job, &size)) return -1;
-    filestat->st_size = (off_t)size;
-    if((uint64_t)filestat->st_size != size)
-      return -1;
-    *bits |= ATTR_SIZE;
+  memset(attrs, 0, sizeof *attrs);
+  if(parse_uint32(job, &attrs->valid)) return -1;
+  /* Translate v3 bits t v4+ bits */
+  if(attrs->valid & SSH_FILEXFER_ACMODTIME)
+    attrs->valid |= (SSH_FILEXFER_ATTR_ACCESSTIME
+                     |SSH_FILEXFER_ATTR_MODIFYTIME);
+  /* Read the v3 fields */
+  if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
+    if(parse_uint64(job, &attrs->size)) return -1;
+  if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {
+    if(parse_uint32(job, &attrs->uid)) return -1;
+    if(parse_uint32(job, &attrs->gid)) return -1;
   }
-  if(attrbits & SSH_FILEXFER_ATTR_UIDGID) {
+  if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
+    if(parse_uint32(job, &attrs->permissions)) return -1;
+    /* Fake up type field */
+    switch(attrs->permissions & S_IFMT) {
+    case S_IFIFO: attrs->type = SSH_FILEXFER_TYPE_FIFO; break;
+    case S_IFCHR: attrs->type = SSH_FILEXFER_TYPE_CHAR_DEVICE; break;
+    case S_IFDIR: attrs->type = SSH_FILEXFER_TYPE_DIRECTORY; break;
+    case S_IFBLK: attrs->type = SSH_FILEXFER_TYPE_BLOCK_DEVICE; break;
+    case S_IFREG: attrs->type = SSH_FILEXFER_TYPE_REGULAR; break;
+    case S_IFLNK: attrs->type = SSH_FILEXFER_TYPE_SYMLINK; break;
+    case S_IFSOCK: attrs->type = SSH_FILEXFER_TYPE_SOCKET; break;
+    default: attrs->type = SSH_FILEXFER_TYPE_UNKNOWN; break;
+    }
+  } else
+    attrs->type = SSH_FILEXFER_TYPE_UNKNOWN;
+  if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
     if(parse_uint32(job, &n)) return -1;
-    filestat->st_uid = n;
-    if(parse_uint32(job, &n)) return -1;
-    filestat->st_gid = n;
-    *bits |= ATTR_UID|ATTR_GID;
+    attrs->atime.seconds = n;
   }
-  if(attrbits & SSH_FILEXFER_ATTR_PERMISSIONS) {
+  if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
     if(parse_uint32(job, &n)) return -1;
-    filestat->st_mode = n;
-    *bits |= ATTR_PERMISSIONS;
+    attrs->mtime.seconds = n;
   }
-  if(attrbits & SSH_FILEXFER_ACMODTIME) {
-    if(parse_uint32(job, &n)) return -1;
-    filestat->st_atime = n;
-    if(parse_uint32(job, &n)) return -1;
-    filestat->st_mtime = n;
-    *bits |= ATTR_MTIME|ATTR_ATIME;
-  }
-  if(attrbits & SSH_FILEXFER_ATTR_EXTENDED) {
+  if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
     if(parse_uint32(job, &n)) return -1;
     while(n-- > 0) {
       parse_string(job, 0, 0);
@@ -291,7 +315,6 @@ void sftp_readlink(struct sftpjob *job) {
       path[n] = 0;
       memset(&nd, 0, sizeof nd);
       nd.path = path;
-      nd.dummy = 1;
       send_begin(job);
       send_uint8(job, SSH_FXP_NAME);
       send_uint32(job, job->id);
@@ -334,6 +357,7 @@ void sftp_readdir(struct sftpjob *job) {
   struct dirent *de;
   const char *path;
   char *fullpath;
+  struct stat sb;
   
   pcheck(parse_handle(job, &id));
   D(("sftp_readdir %"PRIu32" %"PRIu32, id.id, id.tag));
@@ -357,10 +381,11 @@ void sftp_readdir(struct sftpjob *job) {
     strcpy(fullpath, path);
     strcat(fullpath, "/");
     strcat(fullpath, d[n].path);
-    if(lstat(fullpath, &d[n].filestat)) {
+    if(lstat(fullpath, &sb)) {
       send_errno_status(job);
       return;
     }
+    stat_to_attrs(job->a, &sb, &d[n].attrs);
     ++n;
   }
   
@@ -397,7 +422,6 @@ void sftp_v3_realpath(struct sftpjob *job) {
    * guaranteed to be a constant so we must allocate in dynamically.  We add a
    * bit of extra space as a guard against broken C libraries. */
   nd.path = alloc(job->a, PATH_MAX + 64);
-  nd.dummy = 1;
   if(realpath(path, nd.path)) {
     D(("...real path is %s", nd.path));
     send_begin(job);
@@ -413,11 +437,14 @@ void sftp_v3_realpath(struct sftpjob *job) {
  * from *stat() and SB is the buffer. */
 static void sftp_v3_stat_core(struct sftpjob *job, int rc, 
                               const struct stat *sb) {
+  struct sftpattr attrs;
+
   if(!rc) {
+    stat_to_attrs(job->a, sb, &attrs);
     send_begin(job);
     send_uint8(job, SSH_FXP_ATTRS);
     send_uint32(job, job->id);
-    protocol->sendattrs(job, sb, 0);
+    protocol->sendattrs(job, &attrs);
     send_end(job);
   } else
     send_errno_status(job);
@@ -456,172 +483,130 @@ void sftp_v3_fstat(struct sftpjob *job) {
   sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
 
+/* Horrendous ugliness for SETSTAT/FSETSTAT */
+#if HAVE_STAT_TIMESPEC
+#define SET_STATUS_NANOSEC do {                                         \
+    times[0].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)   \
+                        ? (long)attrs->atime.nanoseconds                \
+                        : current.st_atimespec.tv_nsec) / 1000;         \
+    times[1].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)   \
+                        ? (long)attrs->mtime.nanoseconds                \
+                        : current.st_mtimespec.tv_nsec) / 1000;         \
+} while(0)
+#else
+#define SET_STATUS_NANOSEC ((void)0)
+#endif
+
+#define SET_STATUS(WHAT, TRUNCATE, CHOWN, CHMOD, STAT, UTIMES) do {     \
+  struct timeval times[2];                                              \
+  struct stat current;                                                  \
+                                                                        \
+  if(attrs->valid & SSH_FILEXFER_ATTR_SIZE) {                           \
+    D(("...truncate to %"PRIu64, attrs->size));                         \
+    if(TRUNCATE(WHAT, attrs->size) < 0) {                               \
+      send_errno_status(job);                                           \
+      return -1;                                                        \
+    }                                                                   \
+  }                                                                     \
+  if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {                         \
+    D(("...chown to %"PRId32"/%"PRId32, attrs->uid, attrs->gid));       \
+    if(CHOWN(WHAT, attrs->uid, attrs->gid) < 0) {                       \
+      send_errno_status(job);                                           \
+      return -1;                                                        \
+    }                                                                   \
+  }                                                                     \
+  if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {                    \
+    const mode_t mode = attrs->permissions & 0777;                      \
+    D(("...chmod to %#o", (unsigned)mode));                             \
+    if(CHMOD(WHAT, mode) < 0) {                                         \
+      send_errno_status(job);                                           \
+      return -1;                                                        \
+    }                                                                   \
+  }                                                                     \
+  if(attrs->valid & (SSH_FILEXFER_ATTR_ACCESSTIME                       \
+                     |SSH_FILEXFER_ATTR_MODIFYTIME)) {                  \
+    if(STAT(WHAT, &current) < 0) {                                      \
+      D(("cannot stat"));                                               \
+      send_errno_status(job);                                           \
+      return -1;                                                        \
+    }                                                                   \
+    times[0].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)    \
+                       ? (time_t)attrs->atime.seconds                   \
+                       : current.st_atime);                             \
+    times[1].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)    \
+                       ? (time_t)attrs->mtime.seconds                   \
+                       : current.st_mtime);                             \
+    SET_STATUS_NANOSEC;							\
+    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",                  \
+       (unsigned long)times[0].tv_sec,                                  \
+       (unsigned long)times[0].tv_usec,                                 \
+       (unsigned long)times[1].tv_sec,                                  \
+       (unsigned long)times[1].tv_usec));                               \
+    if(UTIMES(WHAT, times) < 0) {                                       \
+      send_errno_status(job);                                           \
+      return -1;                                                        \
+    }                                                                   \
+  }                                                                     \
+  return 0;                                                             \
+} while(0)
+
 static int set_status(struct sftpjob *job,
                       const char *path,
-                      const struct stat *sb,
-                      unsigned long bits) {
-  uid_t uid;
-  gid_t gid;
-  struct timeval times[2];
-  struct stat current;
-
-  if(bits & ATTR_SIZE) {
-    D(("...truncate %s to %ju", path, (uintmax_t)sb->st_size));
-    if(truncate(path, sb->st_size) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  uid = (bits & ATTR_UID) ? sb->st_uid : (uid_t)-1;
-  gid = (bits & ATTR_GID) ? sb->st_gid : (gid_t)-1;
-  if(uid != (uid_t)-1 || gid != (gid_t)-1) {
-    D(("...lchown %s to %jd/%jd", path, (intmax_t)uid, (intmax_t)gid));
-    if(lchown(path, uid, gid) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  if(bits & ATTR_PERMISSIONS) {
-    D(("...chmod %s to %#o", path, (unsigned)sb->st_mode & 0777));
-    if(chmod(path, sb->st_mode & 0777) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  if(bits & (ATTR_MTIME|ATTR_ATIME)) {
-    if(lstat(path, &current) < 0) {
-      D(("cannot lstat %s", path));
-      send_errno_status(job);
-      return -1;
-    }
-    times[0].tv_sec = (bits & ATTR_ATIME) ? sb->st_atime : current.st_atime;
-    times[1].tv_sec = (bits & ATTR_MTIME) ? sb->st_mtime : current.st_mtime;
-#if HAVE_STAT_TIMESPEC
-    times[0].tv_usec = ((bits & ATTR_ATIME) 
-                        ? sb->st_atimespec.tv_nsec
-                        : current.st_atimespec.tv_nsec) / 1000;
-    times[1].tv_usec = ((bits & ATTR_MTIME)
-                        ? sb->st_mtimespec.tv_nsec
-                        : current.st_mtimespec.tv_nsec) / 1000;
-#endif
-    D(("...utimes %s to atime %lu.%06lu mtime %lu.%06lu", path,
-       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_usec,
-       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_usec));
-    if(utimes(path, times) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  return 0;
+                      const struct sftpattr *attrs) {
+  SET_STATUS(path, truncate, lchown, chmod, lstat, utimes);
 }
 
 static int set_fstatus(struct sftpjob *job,
                        int fd,
-                       const struct stat *sb,
-                       unsigned long bits) {
-  uid_t uid;
-  gid_t gid;
-  struct timeval times[2];
-  struct stat current;
-
-  if(bits & ATTR_SIZE) {
-    D(("...truncate %ju", (uintmax_t)sb->st_size));
-    if(ftruncate(fd, sb->st_size) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  uid = (bits & ATTR_UID) ? sb->st_uid : (uid_t)-1;
-  gid = (bits & ATTR_GID) ? sb->st_gid : (gid_t)-1;
-  if(uid != (uid_t)-1 || gid != (gid_t)-1) {
-    D(("...fchown %jd/%jd", (intmax_t)uid, (intmax_t)gid));
-    if(fchown(fd, uid, gid) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  if(bits & ATTR_PERMISSIONS) {
-    D(("...fchmod %#o", (unsigned)sb->st_mode & 0777));
-    if(fchmod(fd, sb->st_mode & 0777) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  if(bits & (ATTR_MTIME|ATTR_ATIME)) {
-    if(fstat(fd, &current) < 0) {
-      D(("cannot fstat"));
-      send_errno_status(job);
-      return -1;
-    }
-    times[0].tv_sec = (bits & ATTR_ATIME) ? sb->st_atime : current.st_atime;
-    times[1].tv_sec = (bits & ATTR_MTIME) ? sb->st_mtime : current.st_mtime;
-#if HAVE_STAT_TIMESPEC
-    times[0].tv_usec = ((bits & ATTR_ATIME) 
-                        ? sb->st_atimespec.tv_nsec
-                        : current.st_atimespec.tv_nsec) / 1000;
-    times[1].tv_usec = ((bits & ATTR_MTIME)
-                        ? sb->st_mtimespec.tv_nsec
-                        : current.st_mtimespec.tv_nsec) / 1000;
-#endif
-    D(("...utimes atime %lu.%06lu mtime %lu.%06lu",
-       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_usec,
-       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_usec));
-    if(futimes(fd, times) < 0) {
-      send_errno_status(job);
-      return -1;
-    }
-  }
-  return 0;
+                       const struct sftpattr *attrs) {
+  SET_STATUS(fd, ftruncate, fchown, fchmod, fstat, futimes);
 }
 
 void sftp_setstat(struct sftpjob *job) {
   char *path;
-  struct stat sb;
-  unsigned long bits;
+  struct sftpattr attrs;
 
   pcheck(parse_path(job, &path));
-  pcheck(protocol->parseattrs(job, &sb, &bits));
+  pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
-  if(set_status(job, path, &sb, bits))   /* sends error itself */
+  if(set_status(job, path, &attrs))     /* sends error itself */
     return;
   send_ok(job);                         /* but we must send the OK */
 }
 
 void sftp_fsetstat(struct sftpjob *job) {
   struct handleid id;
-  struct stat sb;
-  unsigned long bits;
+  struct sftpattr attrs;
   int fd;
   uint32_t rc;
 
   pcheck(parse_handle(job, &id));
-  pcheck(protocol->parseattrs(job, &sb, &bits));
+  pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
   if((rc = handle_get_fd(&id, &fd, 0))) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
-  if(set_fstatus(job, fd, &sb, bits))   /* sends error itself */
+  if(set_fstatus(job, fd, &attrs))      /* sends error itself */
     return;
   send_ok(job);                         /* but we must send the OK */
 }
 
 void sftp_mkdir(struct sftpjob *job) {
   char *path;
-  struct stat sb;
-  unsigned long bits;
+  struct sftpattr attrs;
 
   pcheck(parse_path(job, &path));
-  pcheck(protocol->parseattrs(job, &sb, &bits));
+  pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_mkdir %s", path));
-  bits &= ~ATTR_SIZE;                   /* makes no sense */
-  if((bits & ATTR_PERMISSIONS)) {
+  attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* makes no sense */
+  if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
     /* If we're given initial permissions, use them and don't reset them  */
-    if(mkdir(path, sb.st_mode & 0777) < 0) {
+    if(mkdir(path, attrs.permissions & 0777) < 0) {
       send_errno_status(job);
       return;
     }
-    bits &= ~ATTR_PERMISSIONS;
+    attrs.valid &= ~SSH_FILEXFER_ATTR_PERMISSIONS;
   } else {
     /* Otherwise follow the current umask */
     if(mkdir(path, 0777) < 0) {
@@ -629,7 +614,7 @@ void sftp_mkdir(struct sftpjob *job) {
       return;
     }
   }
-  if(set_status(job, path, &sb, bits)) {
+  if(set_status(job, path, &attrs)) {
     /* If we can't have the desired permissions, don't have the directory at
      * all */
     rmdir(path);
@@ -641,14 +626,13 @@ void sftp_mkdir(struct sftpjob *job) {
 void sftp_v3_open(struct sftpjob *job) {
   char *path;
   uint32_t pflags;
-  struct stat sb;
-  unsigned long bits;
+  struct sftpattr attrs;
   int open_flags, fd;
   struct handleid id;
 
   pcheck(parse_path(job, &path));
   pcheck(parse_uint32(job, &pflags));
-  pcheck(protocol->parseattrs(job, &sb, &bits));
+  pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_open %s %#"PRIx32, path, pflags));
   /* Translate pflags to open(2) format */
   switch(pflags & (SSH_FXF_READ|SSH_FXF_WRITE)) {
@@ -676,13 +660,13 @@ void sftp_v3_open(struct sftpjob *job) {
     if(pflags & SSH_FXF_TRUNC) open_flags |= O_TRUNC;
     if(pflags & SSH_FXF_EXCL) open_flags |= O_EXCL;
   }
-  if((bits & ATTR_PERMISSIONS)) {
+  if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
     /* If we're given initial permissions, use them and don't reset them  */
-    if((fd = open(path, open_flags, sb.st_mode & 0777)) < 0) {
+    if((fd = open(path, open_flags, attrs.permissions & 0777)) < 0) {
       send_errno_status(job);
       return;
     }
-    bits &= ~ATTR_PERMISSIONS;
+    attrs.valid &= ~SSH_FILEXFER_ATTR_PERMISSIONS;
   } else {
     /* Otherwise follow the current umask */
     if((fd = open(path, open_flags, 0777)) < 0) {
@@ -690,7 +674,7 @@ void sftp_v3_open(struct sftpjob *job) {
       return;
     }
   }
-  if(set_fstatus(job, fd, &sb, bits)) {
+  if(set_fstatus(job, fd, &attrs)) {
     /* If we can't have the desired permissions, don't have the directory at
      * all */
     close(fd);

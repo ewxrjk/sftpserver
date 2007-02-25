@@ -207,7 +207,7 @@ static char *sftp_realpath(const char *path) {
   }
 }
 
-static int sftp_stat(const char *path, struct stat *sb, unsigned long *bits) {
+static int sftp_stat(const char *path, struct sftpattr *attrs) {
   uint32_t id;
 
   send_begin(&fakejob);
@@ -217,7 +217,7 @@ static int sftp_stat(const char *path, struct stat *sb, unsigned long *bits) {
   send_end(&fakejob);
   switch(getresponse(-1, id)) {
   case SSH_FXP_ATTRS:
-    cpcheck(protocol->parseattrs(&fakejob, sb, bits));
+    cpcheck(protocol->parseattrs(&fakejob, attrs));
     return 0;
   case SSH_FXP_STATUS:
     status();
@@ -236,8 +236,7 @@ static int cmd_pwd(int attribute((unused)) ac,
 static int cmd_cd(int attribute((unused)) ac,
                   char **av) {
   char *newcwd;
-  struct stat sb;
-  unsigned long bits;
+  struct sftpattr attrs;
 
   if(av[0][0] == '/')
     newcwd = sftp_realpath(av[0]);
@@ -248,9 +247,8 @@ static int cmd_cd(int attribute((unused)) ac,
   }
   if(!newcwd) return -1;
   /* Check it's really a directory */
-  if(sftp_stat(newcwd, &sb, &bits)) return -1;
-  if(!((bits & ATTR_PERMISSIONS)
-       && S_ISDIR(sb.st_mode))) {
+  if(sftp_stat(newcwd, &attrs)) return -1;
+  if(attrs.type != SSH_FILEXFER_TYPE_DIRECTORY) {
     fprintf(stderr, "%s:%d: %s is not a directory\n", inputpath, inputline,
             av[0]);
     return -1;

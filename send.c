@@ -108,7 +108,7 @@ void send_uint32(struct sftpjob *job, uint32_t u) {
 void send_uint64(struct sftpjob *job, uint64_t u) {
   struct worker *const w = job->worker;
   
-  send_need(w, 4);
+  send_need(w, 8);
   send_raw64(u);
 }
 
