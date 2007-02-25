@@ -207,11 +207,12 @@ static char *sftp_realpath(const char *path) {
   }
 }
 
-static int sftp_stat(const char *path, struct sftpattr *attrs) {
+static int sftp_stat(const char *path, struct sftpattr *attrs,
+                     uint8_t type) {
   uint32_t id;
 
   send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_STAT);
+  send_uint8(&fakejob, type);
   send_uint32(&fakejob, id = newid());
   send_path(&fakejob, path);
   send_end(&fakejob);
@@ -223,7 +224,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs) {
     status();
     return -1;
   default:
-    fatal("bogus response to SSH_FXP_STAT");
+    fatal("bogus response to stat operation");
   }
 }
 
@@ -247,7 +248,7 @@ static int cmd_cd(int attribute((unused)) ac,
   }
   if(!newcwd) return -1;
   /* Check it's really a directory */
-  if(sftp_stat(newcwd, &attrs)) return -1;
+  if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT)) return -1;
   if(attrs.type != SSH_FILEXFER_TYPE_DIRECTORY) {
     fprintf(stderr, "%s:%d: %s is not a directory\n", inputpath, inputline,
             av[0]);
