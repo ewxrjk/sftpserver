@@ -149,17 +149,17 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
   fakejob.left = fakejob.len;
   fakejob.ptr = fakejob.data;
   cpcheck(parse_uint8(&fakejob, &type));
-  if(expected > 0 && type != expected) {
-    if(type == SSH_FXP_STATUS)
-      status();
-    else
-      fatal("expected response %d got %d", expected, type);
-  }
   if(type != SSH_FXP_VERSION) {
     cpcheck(parse_uint32(&fakejob, &fakejob.id));
     if(expected_id && fakejob.id != expected_id)
       fatal("wrong ID in response (want %"PRIu32" got %"PRIu32,
             expected_id, fakejob.id);
+  }
+  if(expected > 0 && type != expected) {
+    if(type == SSH_FXP_STATUS)
+      status();
+    else
+      fatal("expected response %d got %d", expected, type);
   }
   return type;
 }
@@ -208,6 +208,15 @@ static uint32_t newid(void) {
   return latestid;
 }
 
+static const char *resolvepath(const char *name) {
+  char *resolved;
+
+  if(name[0] == '/') return name;
+  resolved = alloc(fakejob.a, strlen(cwd) + strlen(name) + 2);
+  sprintf(resolved, "%s/%s", cwd, name);
+  return resolved;
+}
+
 static char *sftp_realpath(const char *path) {
   char *resolved;
   uint32_t u32, id;
@@ -232,11 +241,12 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   send_begin(&fakejob);
   send_uint8(&fakejob, type);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
+  send_path(&fakejob, resolvepath(path));
   send_end(&fakejob);
   if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
+  attrs->name = path;
   return 0;
 }
 
@@ -246,7 +256,7 @@ static int sftp_opendir(const char *path, struct handle *hp) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_OPENDIR);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
+  send_path(&fakejob, resolvepath(path));
   send_end(&fakejob);
   if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
     return -1;
@@ -318,7 +328,7 @@ static int sftp_setstat(const char *path,
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_SETSTAT);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
+  send_path(&fakejob, resolvepath(path));
   protocol->sendattrs(&fakejob, attrs);
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
@@ -333,16 +343,10 @@ static int cmd_pwd(int attribute((unused)) ac,
 
 static int cmd_cd(int attribute((unused)) ac,
                   char **av) {
-  char *newcwd;
+  const char *newcwd;
   struct sftpattr attrs;
 
-  if(av[0][0] == '/')
-    newcwd = sftp_realpath(av[0]);
-  else {
-    newcwd = alloc(fakejob.a, strlen(cwd) + strlen(av[0]) + 2);
-    sprintf(newcwd, "%s/%s", cwd, av[0]);
-    newcwd = sftp_realpath(newcwd);
-  }
+  newcwd = sftp_realpath(resolvepath(av[0]));
   if(!newcwd) return -1;
   /* Check it's really a directory */
   if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT)) return -1;
@@ -454,8 +458,8 @@ static void reverse(void *array, size_t count, size_t size) {
 
 static int cmd_ls(int ac,
                   char **av) {
-  const char *options;
-  struct sftpattr *attrs, *allattrs = 0;
+  const char *options, *path;
+  struct sftpattr *attrs, *allattrs = 0, fileattrs;
   size_t nattrs, nallattrs = 0, n, maxnamelen = 0;
   struct handle h;
 
@@ -464,34 +468,45 @@ static int cmd_ls(int ac,
     --ac;
   } else
     options = "";
-  if(sftp_opendir(ac > 0 ? av[0] : cwd, &h)) return -1;
-  for(;;) {
-    if(sftp_readdir(&h, &attrs, &nattrs)) {
-      sftp_close(&h);
-      free(allattrs);
-      return -1;
-    }
-    if(!nattrs) break;                  /* eof */
-    allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
-    if(strchr(options, 'a')) {
-      /* Include dotfiles */
-      for(n = 0; n < nattrs; ++n) {
-        if(strlen(attrs[n].name) > maxnamelen)
-          maxnamelen = strlen(attrs[n].name);
-        allattrs[nallattrs++] = attrs[n];
+  path = ac > 0 ? av[0] : cwd;
+  /* See what type the file is */
+  if(sftp_stat(path, &fileattrs, SSH_FXP_STAT)) return -1;
+  if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY
+     || strchr(options, 'd')) {
+    /* The file is not a directory, or we used -d */
+    allattrs = &fileattrs;
+    nallattrs = 1;
+  } else {
+    /* The file is a directory and we did not use -d */
+    if(sftp_opendir(path, &h)) return -1;
+    for(;;) {
+      if(sftp_readdir(&h, &attrs, &nattrs)) {
+        sftp_close(&h);
+        free(allattrs);
+        return -1;
       }
-    } else {
-      /* Exclude dotfiles */
-      for(n = 0; n < nattrs; ++n) {
-        if(attrs[n].name[0] == '.')
-          continue;
-        if(strlen(attrs[n].name) > maxnamelen)
-          maxnamelen = strlen(attrs[n].name);
-        allattrs[nallattrs++] = attrs[n];
+      if(!nattrs) break;                  /* eof */
+      allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
+      if(strchr(options, 'a')) {
+        /* Include dotfiles */
+        for(n = 0; n < nattrs; ++n) {
+          if(strlen(attrs[n].name) > maxnamelen)
+            maxnamelen = strlen(attrs[n].name);
+          allattrs[nallattrs++] = attrs[n];
+        }
+      } else {
+        /* Exclude dotfiles */
+        for(n = 0; n < nattrs; ++n) {
+          if(attrs[n].name[0] == '.')
+            continue;
+          if(strlen(attrs[n].name) > maxnamelen)
+            maxnamelen = strlen(attrs[n].name);
+          allattrs[nallattrs++] = attrs[n];
+        }
       }
     }
+    sftp_close(&h);
   }
-  sftp_close(&h);
   if(!strchr(options, 'f')) {
     int (*sorter)(const void *, const void *);
 
@@ -507,12 +522,18 @@ static int cmd_ls(int ac,
   }
   if(strchr(options, 'l') || strchr(options, 'n')) {
     /* long listing */
-    if(sftpversion == 3 && !strchr(options, 'n')) {
-      for(n = 0; n < nallattrs; ++n)
-        xprintf("%s\n", allattrs[n].longname);
-    } else {
-      abort();                          /* TODO non-longname ls */
-    }
+    time_t now;
+    struct tm nowtime;
+    const unsigned long flags = (strchr(options, 'n')
+                                 ? FORMAT_PREFER_NUMERIC_UID
+                                 : 0);
+    
+    /* We'd like to know what year we're in for dates in longname */
+    time(&now);
+    gmtime_r(&now, &nowtime);
+    for(n = 0; n < nallattrs; ++n)
+      xprintf("%s\n", format_attr(fakejob.a, &allattrs[n], nowtime.tm_year,
+                                  flags));
   } else if(strchr(options, '1')) {
     /* single-column listing */
     for(n = 0; n < nallattrs; ++n)
@@ -524,7 +545,8 @@ static int cmd_ls(int ac,
     for(n = 0; n < nallattrs; ++n)
       xprintf("%s\n", allattrs[n].name);
   }
-  free(allattrs);
+  if(allattrs != &fileattrs)
+    free(allattrs);
   return 0;
 }
 

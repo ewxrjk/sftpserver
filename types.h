@@ -30,8 +30,8 @@ struct sftpattr {
   char *untranslated_name;
   /* We stuff these in here too so we can conveniently use sftpattrs for
    * name lists */
-  char *name;
-  char *longname;
+  const char *name;
+  const char *longname;
 };
 /* SFTP-style file attributes */
 
