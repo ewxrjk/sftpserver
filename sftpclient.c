@@ -528,8 +528,37 @@ static int cmd_lls(int ac,
     execvp(args[0], (void *)args);
     fatal("executing ls: %s", strerror(errno));
   }
-  if(waitpid(pid, &n, 0) < 0)
+  if(waitpid(pid, &n, 0) < 0) {
     fatal("error calling waitpid: %s", strerror(errno));
+    if(n) {
+      error("ls returned status %#x", n);
+      return -1;
+    }
+  }
+  return 0;
+}
+
+static int cmd_lumask(int ac,
+                      char **av) {
+  mode_t n;
+
+  if(ac) {
+    errno = 0;
+    n = strtol(av[0], 0, 8);
+    if(errno) {
+      error("invalid umask: %s", strerror(errno));
+      return -1;
+    }
+    if(n != (n & 0777)) {
+      error("umask out of range");
+      return -1;
+    }
+    umask(n);
+  } else {
+    n = umask(0);
+    umask(n);
+    xprintf("%03o\n", (unsigned)n);
+  }
   return 0;
 }
 
@@ -573,6 +602,11 @@ static const struct command commands[] = {
     "ls", 0, 2, cmd_ls,
     "[OPTIONS] [PATH]",
     "list remote directory"
+  },
+  {
+    "lumask", 0, 1, cmd_lumask,
+    "MASK",
+    "get or set local umask"
   },
   {
     "pwd", 0, 0, cmd_pwd,
