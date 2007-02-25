@@ -513,6 +513,25 @@ static int cmd_ls(int ac,
   return 0;
 }
 
+static int cmd_lls(int ac,
+                   char **av) {
+  const char **args = alloc(fakejob.a, (ac + 2) * sizeof (char *));
+  int n = 0;
+  pid_t pid;
+
+  args[n++] = "ls";
+  while(ac--)
+    args[n++] = *av++;
+  args[n] = 0;
+  if(!(pid = xfork())) {
+    execvp(args[0], (void *)args);
+    fatal("executing ls: %s", strerror(errno));
+  }
+  if(waitpid(pid, &n, 0) < 0)
+    fatal("error calling waitpid: %s", strerror(errno));
+  return 0;
+}
+
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -543,6 +562,11 @@ static const struct command commands[] = {
     "lpwd", 0, 0, cmd_lpwd,
     "DIR",
     "display current local directory"
+  },
+  {
+    "lls", 0, INT_MAX, cmd_lls,
+    "[OPTIONS] [PATH]",
+    "list local directory"
   },
   {
     "ls", 0, 2, cmd_ls,
