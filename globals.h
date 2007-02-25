@@ -8,6 +8,7 @@ extern struct queue *workqueue;
 
 extern const struct sftpprotocol sftpv3, sftppreinit;
 extern const struct sftpprotocol *protocol;
+extern const char sendtype[];
 
 #endif /* GLOBALS_H */
 

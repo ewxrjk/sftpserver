@@ -1,6 +1,10 @@
 #ifndef UTILS_H
 #define UTILS_H
 
+int do_read(int fd, void *buffer, size_t size);
+/* Error-checking workalike for read().  Returns 0 on success, non-0 at
+ * EOF. */
+
 void *xmalloc(size_t n);
 void *xcalloc(size_t n, size_t size);
 void *xrealloc(void *ptr, size_t n);

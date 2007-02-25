@@ -7,7 +7,7 @@ struct allocator {
   struct chunk *chunks;
 };
 
-void alloc_init(struct allocator *a);
+struct allocator *alloc_init(struct allocator *a);
 /* Initialize allocator A */
 
 void *alloc(struct allocator *a, size_t n);

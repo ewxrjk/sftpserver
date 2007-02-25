@@ -1,12 +1,10 @@
 #ifndef XFNS_H
 #define XFNS_H
 
-#include <stdio.h>
-
 void xclose(int fd);
 void xdup2(int fd, int newfd);
 void xpipe(int *pfd);
-FILE *xfdopen(int fd, const char *mode);
+int xprintf(const char *fmt, ...) attribute((format(printf,1,2)));
 
 #endif /* XFNS_H */
 

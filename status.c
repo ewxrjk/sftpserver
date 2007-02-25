@@ -7,6 +7,44 @@
 #include <errno.h>
 #include <string.h>
 
+const char *status_to_string(uint32_t status) {
+  switch(status) {
+  case SSH_FX_OK: return "OK";
+  case SSH_FX_EOF: return "end of file";
+  case SSH_FX_NO_SUCH_FILE: return "file does not exist";
+  case SSH_FX_PERMISSION_DENIED: return "permission denied";
+  case SSH_FX_FAILURE: return "operation failed";
+  case SSH_FX_BAD_MESSAGE: return "badly encoded SFTP packet";
+  case SSH_FX_NO_CONNECTION: return "no connection";
+  case SSH_FX_CONNECTION_LOST: return "connection lost";
+  case SSH_FX_OP_UNSUPPORTED: return "operation not supported";
+  case SSH_FX_INVALID_HANDLE: return "invalid handle";
+  case SSH_FX_NO_SUCH_PATH: return "path does not exist or is invalid";
+  case SSH_FX_FILE_ALREADY_EXISTS: return "file already exists";
+  case SSH_FX_WRITE_PROTECT: return "file is on read-only medium";
+  case SSH_FX_NO_MEDIA: return "no medium in drive";
+  case SSH_FX_NO_SPACE_ON_FILESYSTEM: return "no space on filesystem";
+  case SSH_FX_QUOTA_EXCEEDED: return "quota exceeded";
+  case SSH_FX_UNKNOWN_PRINCIPAL: return "unknown principal";
+  case SSH_FX_LOCK_CONFLICT: return "file is locked";
+  case SSH_FX_DIR_NOT_EMPTY: return "directory is not empty";
+  case SSH_FX_NOT_A_DIRECTORY: return "file is not a directory";
+  case SSH_FX_INVALID_FILENAME: return "invalid filename";
+  case SSH_FX_LINK_LOOP: return "too many symbolic links";
+  case SSH_FX_CANNOT_DELETE: return "file cannot be deleted";
+  case SSH_FX_INVALID_PARAMETER: return "invalid parameter";
+  case SSH_FX_FILE_IS_A_DIRECTORY: return "file is a directory";
+  case SSH_FX_BYTE_RANGE_LOCK_CONFLICT: return "byte range is locked";
+  case SSH_FX_BYTE_RANGE_LOCK_REFUSED: return "cannot lock byte range";
+  case SSH_FX_DELETE_PENDING: return "file deletion pending";
+  case SSH_FX_FILE_CORRUPT: return "file is corrupt";
+  case SSH_FX_OWNER_INVALID: return "invalid owner";
+  case SSH_FX_GROUP_INVALID: return "invalid group";
+  case SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK: return "no such lock";
+  default: return "unknown status";
+  }
+}
+
 void generic_status(struct sftpjob *job, 
 		    uint32_t status,
 		    uint32_t original_status,
@@ -19,43 +57,8 @@ void generic_status(struct sftpjob *job,
     send_errno_status(job);
     return;
   }
-  if(!msg) {
-    switch(original_status) {
-    case SSH_FX_OK: msg = "OK"; break;
-    case SSH_FX_EOF: msg = "end of file"; break;
-    case SSH_FX_NO_SUCH_FILE: msg = "file does not exist"; break;
-    case SSH_FX_PERMISSION_DENIED: msg = "permission denied"; break;
-    case SSH_FX_FAILURE: msg = "operation failed"; break;
-    case SSH_FX_BAD_MESSAGE: msg = "badly encoded SFTP packet"; break;
-    case SSH_FX_NO_CONNECTION: assert(!"cannot happen");
-    case SSH_FX_CONNECTION_LOST: assert(!"cannot happen");
-    case SSH_FX_OP_UNSUPPORTED: msg = "operation not supported"; break;
-    case SSH_FX_INVALID_HANDLE: msg = "invalid handle"; break;
-    case SSH_FX_NO_SUCH_PATH: msg = "path does not exist or is invalid"; break;
-    case SSH_FX_FILE_ALREADY_EXISTS: msg = "file already exists"; break;
-    case SSH_FX_WRITE_PROTECT: msg = "file is on read-only medium"; break;
-    case SSH_FX_NO_MEDIA: msg = "no medium in drive"; break;
-    case SSH_FX_NO_SPACE_ON_FILESYSTEM: msg = "no space on filesystem"; break;
-    case SSH_FX_QUOTA_EXCEEDED: msg = "quota exceeded"; break;
-    case SSH_FX_UNKNOWN_PRINCIPAL: assert(!"cannot happen"); /* needs ESD */
-    case SSH_FX_LOCK_CONFLICT: msg = "file is locked"; break;
-    case SSH_FX_DIR_NOT_EMPTY: msg = "directory is not empty"; break;
-    case SSH_FX_NOT_A_DIRECTORY: msg = "file is not a directory"; break;
-    case SSH_FX_INVALID_FILENAME: msg = "invalid filename"; break;
-    case SSH_FX_LINK_LOOP: msg = "too many symbolic links"; break;
-    case SSH_FX_CANNOT_DELETE: msg = "file cannot be deleted"; break;
-    case SSH_FX_INVALID_PARAMETER: msg = "invalid parameter"; break;
-    case SSH_FX_FILE_IS_A_DIRECTORY: msg = "file is a directory"; break;
-    case SSH_FX_BYTE_RANGE_LOCK_CONFLICT: msg = "byte range is locked"; break;
-    case SSH_FX_BYTE_RANGE_LOCK_REFUSED: msg = "cannot lock byte range"; break;
-    case SSH_FX_DELETE_PENDING: msg = "file deletion pending"; break;
-    case SSH_FX_FILE_CORRUPT: msg = "file is corrupt"; break;
-    case SSH_FX_OWNER_INVALID: msg = "invalid owner"; break;
-    case SSH_FX_GROUP_INVALID: msg = "invalid group"; break;
-    case SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK: msg = "no such lock"; break;
-    default: msg = "unknown status"; break;
-    }
-  }
+  if(!msg)
+    msg = status_to_string(original_status);
   send_begin(job);
   send_uint8(job, SSH_FXP_STATUS);
   send_uint32(job, job->id);

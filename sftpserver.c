@@ -35,25 +35,7 @@ static const struct queuedetails workqueue_details = {
 #endif
 
 const struct sftpprotocol *protocol = &sftppreinit;
-
-/* Error-checking workalike for read().  Returns 0 on success, non-0 at
- * EOF. */
-static int do_read(int fd, void *buffer, size_t size) {
-  size_t sofar = 0;
-  ssize_t n;
-  char *ptr = buffer;
-
-  while(sofar < size) {
-    n = read(fd, ptr + sofar, size - sofar);
-    if(n > 0)
-      sofar += n;
-    else if(n == 0)
-      return -1;                        /* eof */
-    else
-      fatal("read error: %s", strerror(errno));
-  }
-  return 0;                             /* ok */
-}
+const char sendtype[] = "response";
 
 /* Initialization */
 

@@ -7,6 +7,23 @@
 #include <stdarg.h>
 #include <unistd.h>
 
+int do_read(int fd, void *buffer, size_t size) {
+  size_t sofar = 0;
+  ssize_t n;
+  char *ptr = buffer;
+
+  while(sofar < size) {
+    n = read(fd, ptr + sofar, size - sofar);
+    if(n > 0)
+      sofar += n;
+    else if(n == 0)
+      return -1;                        /* eof */
+    else
+      fatal("read error: %s", strerror(errno));
+  }
+  return 0;                             /* ok */
+}
+
 void *xmalloc(size_t n) {
   void *ptr;
 

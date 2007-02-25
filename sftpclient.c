@@ -1,13 +1,30 @@
 #include "sftpclient.h"
 #include "utils.h"
 #include "xfns.h"
+#include "send.h"
+#include "globals.h"
+#include "types.h"
+#include "alloc.h"
+#include "parse.h"
+#include "sftp.h"
+#include "debug.h"
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <ctype.h>
 #include <unistd.h>
+#include <stdio.h>
 
+static int sftpin;
+static struct allocator allocator;
+static struct sftpjob fakejob;
+static struct worker fakeworker;
+static char *cwd;
+const struct sftpprotocol *protocol = &sftpv3;
+const char sendtype[] = "request";
+
+/* Command line */
 static size_t buffersize = 32768;
 static int nrequests = 8;
 static const char *subsystem = "sftp";
@@ -20,8 +37,6 @@ static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
 static int sftpversion = 3;
-
-static FILE *input, *output;
 
 static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
@@ -43,7 +58,7 @@ static const struct option options[] = {
 
 /* display usage message and terminate */
 static void help(void) {
-  printf("Usage:\n"
+  xprintf("Usage:\n"
 	 "  sftpclient [OPTIONS] [USER@]HOST\n"
 	 "\n"
 	 "Quick and dirty SFTP client\n"
@@ -68,10 +83,41 @@ static void help(void) {
 
 /* display version number and terminate */
 static void version(void) {
-  printf("sftp client version %s\n", VERSION);
+  xprintf("sftp client version %s\n", VERSION);
   exit(0);
 }
 
+/* Get a response.  Picks out the type and ID. */
+static uint8_t getresponse(int expected, uint32_t expected_id) {
+  uint32_t len;
+  uint8_t type;
+
+  if(do_read(sftpin, &len, sizeof len))
+    fatal("unexpected EOF from server while reading length");
+  free(fakejob.data);                   /* free last job */
+  fakejob.len = ntohl(len);
+  fakejob.data = xmalloc(len);
+  if(do_read(sftpin, fakejob.data, fakejob.len))
+    fatal("unexpected EOF from server while reading data");
+  if(DEBUG) {
+    D(("response:"));
+    hexdump(fakejob.data, fakejob.len);
+  }
+  fakejob.left = fakejob.len;
+  fakejob.ptr = fakejob.data;
+  cpcheck(parse_uint8(&fakejob, &type));
+  if(expected > 0 && type != expected)
+    fatal("expected response %d got %d", expected, type);
+  if(type != SSH_FXP_VERSION) {
+    cpcheck(parse_uint32(&fakejob, &fakejob.id));
+    if(expected_id && fakejob.id != expected_id)
+      fatal("wrong ID in response (want %"PRIu32" got %"PRIu32,
+            expected_id, fakejob.id);
+  }
+  return type;
+}
+
+/* Split a command line */
 static int split(const char *path, int lineno, char *line, char **av) {
   char *arg;
   int ac = 0;
@@ -106,11 +152,60 @@ static int split(const char *path, int lineno, char *line, char **av) {
   return ac;
 }
 
+static void status(const char *path,
+                   int lineno) {
+  uint32_t status;
+  char *msg;
+  
+  cpcheck(parse_uint32(&fakejob, &status));
+  cpcheck(parse_string(&fakejob, &msg, 0));
+  fprintf(stderr, "%s:%d: %s (%s)\n", path, lineno,
+          msg, status_to_string(status));
+}
+
+static int cmd_pwd(const char attribute((unused)) *path,
+                   int attribute((unused)) lineno, 
+                   int attribute((unused)) ac,
+                   char attribute((unused)) **av) {
+  xprintf("%s\n", cwd);
+  return 0;
+}
+
+static int cmd_cd(const char attribute((unused)) *path,
+                   int attribute((unused)) lineno, 
+                   int attribute((unused)) ac,
+                   char **av) {
+  char *newcwd;
+  uint32_t u32;
+
+  /* Send SSH_FXP_REALPATH . to find path to current directory */
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_REALPATH);
+  send_uint32(&fakejob, 1);
+  send_path(&fakejob, av[0]);
+  send_end(&fakejob);
+  switch(getresponse(-1, 1)) {
+  case SSH_FXP_NAME:
+    cpcheck(parse_uint32(&fakejob, &u32));
+    if(u32 != 1) fatal("wrong count in REALPATH reply");
+    cpcheck(parse_path(&fakejob, &newcwd));
+    free(cwd);
+    cwd = xstrdup(newcwd);
+    break;
+  case SSH_FXP_STATUS:
+    status(path, lineno);
+    return -1;
+    break;
+  }
+  return 0;
+}
 static const struct {
   const char *name;
   int minargs, maxargs;
   int (*handler)(const char *path, int lineno, int ac, char **av);
 } commands[] = {
+  { "cd", 1, 1, cmd_cd },
+  { "pwd", 0, 0, cmd_pwd },
   { 0, 0, 0, 0 }
 };
 
@@ -146,6 +241,7 @@ static void process(const char *prompt, const char *path, FILE *fp) {
     if(commands[n].handler(path, lineno, ac, av) && !prompt)
       exit(1);
 next:
+    alloc_destroy(fakejob.a);
     if(prompt) {
       fputs(prompt, stdout);
       fflush(stdout);
@@ -160,6 +256,7 @@ int main(int argc, char **argv) {
   int n, ncmdline;
   int ip[2], op[2];
   pid_t pid;
+  uint32_t u32;
   
   while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:v",
 			 options, 0)) >= 0) {
@@ -181,6 +278,9 @@ int main(int argc, char **argv) {
     default: exit(1);
     }
   }
+
+  if(sftpversion != 3)
+    fatal("unknown SFTP version %d", sftpversion);
   
   ncmdline = 0;
   if(program) {
@@ -222,9 +322,37 @@ int main(int argc, char **argv) {
   }
   xclose(ip[1]);
   xclose(op[0]);
-  input = xfdopen(ip[0], "rb");
-  output = xfdopen(op[1], "wb");
+  sftpin = ip[0];
+  sftpout = op[1];
+  fakejob.a = alloc_init(&allocator);
+  fakejob.worker = &fakeworker;
+
+  /* Send SSH_FXP_INIT */
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_INIT);
+  send_uint32(&fakejob, sftpversion);
+  send_end(&fakejob);
   
+  /* Parse the version reponse */
+  getresponse(SSH_FXP_VERSION, 0);
+  cpcheck(parse_uint32(&fakejob, &u32));
+  if(u32 != 3)
+    fatal("we only know protocol version 3 but server wanted version %"PRIu32,
+          u32);
+  /* TODO parse extensions */
+
+  /* Send SSH_FXP_REALPATH . to find path to current directory */
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_REALPATH);
+  send_uint32(&fakejob, 1);
+  send_path(&fakejob, ".");
+  send_end(&fakejob);
+  getresponse(SSH_FXP_NAME, 1);
+  cpcheck(parse_uint32(&fakejob, &u32));
+  if(u32 != 1) fatal("wrong count in REALPATH reply");
+  cpcheck(parse_path(&fakejob, &cwd));
+  cwd = xstrdup(cwd);
+
   if(batchfile) {
     FILE *fp;
 

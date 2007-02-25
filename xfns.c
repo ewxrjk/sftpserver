@@ -4,6 +4,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <stdarg.h>
+#include <stdio.h>
 
 void xclose(int fd) {
   if(close(fd) < 0) fatal("error calling close: %s", strerror(errno));
@@ -17,12 +19,15 @@ void xpipe(int *pfd) {
   if(pipe(pfd) < 0) fatal("error calling pipe: %s", strerror(errno));
 }
 
-FILE *xfdopen(int fd, const char *mode) {
-  FILE *fp;
+int xprintf(const char *fmt, ...) {
+  va_list ap;
+  int rc;
 
-  if(!(fp = fdopen(fd, mode)))
-    fatal("error calling fdopen: %s", strerror(errno));
-  return fp;
+  va_start(ap, fmt);
+  rc = vfprintf(stdout, fmt, ap);
+  va_end(ap);
+  if(rc < 0) fatal("error writing to stdout: %s", strerror(errno));
+  return rc;
 }
 
 /*

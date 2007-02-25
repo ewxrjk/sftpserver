@@ -1,7 +1,10 @@
 #ifndef SFTPCLIENT_H
 #define SFTPCLIENT_H
 
-#include <config.h>
+#define CLIENT 1
+
+#include "sftpcommon.h"
+
 #include <sys/types.h>
 
 #endif /* SFTPCLIENT_H */

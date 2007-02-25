@@ -1,9 +1,9 @@
 #ifndef SFTPSERVER_H
 #define SFTPSERVER_H
 
-#include <config.h>
+#include "sftpcommon.h"
+
 #include <sys/types.h>
-#include <inttypes.h>
 
 /* Maximum numbers in a response to SSH_FXP_READDIR */
 #ifndef MAXNAMES
@@ -24,14 +24,6 @@
 #ifndef MAXREQUEST
 # define MAXREQUEST 1048576
 #endif
-
-struct queue;
-struct allocator;
-struct handleid;
-struct sftpjob;
-struct namedata;
-struct worker;
-struct stat;
 
 void generic_status(struct sftpjob *job,
                     uint32_t status,

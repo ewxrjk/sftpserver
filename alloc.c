@@ -24,8 +24,9 @@ union block {
 
 #define NBLOCKS 512
 
-void alloc_init(struct allocator *a) {
+struct allocator *alloc_init(struct allocator *a) {
   a->chunks = 0;
+  return a;
 }
 
 void *alloc(struct allocator *a, size_t n) {

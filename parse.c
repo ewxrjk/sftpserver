@@ -8,6 +8,13 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+int parse_uint8(struct sftpjob *job, uint8_t *ur) {
+  if(job->left < 1) return -1;
+  *ur = *job->ptr++;
+  --job->len;
+  return 0;
+}
+
 int parse_uint32(struct sftpjob *job, uint32_t *ur) {
   if(job->left < 4) return -1;
 #if UNALIGNED_WRITES
