@@ -18,6 +18,7 @@
 #include <arpa/inet.h>
 #include <stdarg.h>
 #include <sys/wait.h>
+#include <time.h>
 
 struct command {
   const char *name;
