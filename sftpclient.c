@@ -22,6 +22,9 @@ static struct allocator allocator;
 static struct sftpjob fakejob;
 static struct worker fakeworker;
 static char *cwd;
+static const char *inputpath;
+static int inputline;
+
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
 
@@ -119,7 +122,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
 }
 
 /* Split a command line */
-static int split(const char *path, int lineno, char *line, char **av) {
+static int split(char *line, char **av) {
   char *arg;
   int ac = 0;
 
@@ -136,7 +139,7 @@ static int split(const char *path, int lineno, char *line, char **av) {
 	*arg++ = *line++;
       }
       if(!*line) {
-	fprintf(stderr, "%s:%d: unterminated string\n", path, lineno);
+	fprintf(stderr, "%s:%d: unterminated string\n", inputpath, inputline);
 	return -1;
       }
       *arg++ = 0;
@@ -153,65 +156,113 @@ static int split(const char *path, int lineno, char *line, char **av) {
   return ac;
 }
 
-static void status(const char *path,
-                   int lineno) {
+static void status(void) {
   uint32_t status;
   char *msg;
   
   cpcheck(parse_uint32(&fakejob, &status));
   cpcheck(parse_string(&fakejob, &msg, 0));
-  fprintf(stderr, "%s:%d: %s (%s)\n", path, lineno,
+  fprintf(stderr, "%s:%d: %s (%s)\n", inputpath, inputline,
           msg, status_to_string(status));
 }
 
-static int cmd_pwd(const char attribute((unused)) *path,
-                   int attribute((unused)) lineno, 
-                   int attribute((unused)) ac,
+static uint32_t newid(void) {
+  static uint32_t latestid;
+
+  do {
+    ++latestid;
+  } while(!latestid);
+  return latestid;
+}
+
+static char *sftp_realpath(const char *path) {
+  char *resolved;
+  uint32_t u32, id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_REALPATH);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  send_end(&fakejob);
+  switch(getresponse(-1, id)) {
+  case SSH_FXP_NAME:
+    cpcheck(parse_uint32(&fakejob, &u32));
+    if(u32 != 1) fatal("wrong count in REALPATH reply");
+    cpcheck(parse_path(&fakejob, &resolved));
+    return resolved;
+  case SSH_FXP_STATUS:
+    status();
+    return 0;
+  default:
+    fatal("bogus response to SSH_FXP_REALPATH");
+  }
+}
+
+static int sftp_stat(const char *path, struct stat *sb, unsigned long *bits) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_STAT);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  send_end(&fakejob);
+  switch(getresponse(-1, id)) {
+  case SSH_FXP_ATTRS:
+    cpcheck(protocol->parseattrs(&fakejob, sb, bits));
+    return 0;
+  case SSH_FXP_STATUS:
+    status();
+    return -1;
+  default:
+    fatal("bogus response to SSH_FXP_STAT");
+  }
+  
+}
+
+static int cmd_pwd(int attribute((unused)) ac,
                    char attribute((unused)) **av) {
   xprintf("%s\n", cwd);
   return 0;
 }
 
-static int cmd_cd(const char attribute((unused)) *path,
-                   int attribute((unused)) lineno, 
-                   int attribute((unused)) ac,
-                   char **av) {
+static int cmd_cd(int attribute((unused)) ac,
+                  char **av) {
   char *newcwd;
-  uint32_t u32;
+  struct stat sb;
+  unsigned long bits;
 
-  /* Send SSH_FXP_REALPATH . to find path to current directory */
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_REALPATH);
-  send_uint32(&fakejob, 1);
-  send_path(&fakejob, av[0]);
-  send_end(&fakejob);
-  switch(getresponse(-1, 1)) {
-  case SSH_FXP_NAME:
-    cpcheck(parse_uint32(&fakejob, &u32));
-    if(u32 != 1) fatal("wrong count in REALPATH reply");
-    cpcheck(parse_path(&fakejob, &newcwd));
-    free(cwd);
-    cwd = xstrdup(newcwd);
-    break;
-  case SSH_FXP_STATUS:
-    status(path, lineno);
-    return -1;
-    break;
+  if(av[0][0] == '/')
+    newcwd = sftp_realpath(av[0]);
+  else {
+    newcwd = alloc(fakejob.a, strlen(cwd) + strlen(av[0]) + 2);
+    sprintf(newcwd, "%s/%s", cwd, av[0]);
+    newcwd = sftp_realpath(newcwd);
   }
+  if(!newcwd) return -1;
+  /* Check it's really a directory */
+  if(sftp_stat(newcwd, &sb, &bits)) return -1;
+  if(!((bits & ATTR_PERMISSIONS)
+       && S_ISDIR(sb.st_mode))) {
+    fprintf(stderr, "%s:%d: %s is not a directory\n", inputpath, inputline,
+            av[0]);
+    return -1;
+  }
+  free(cwd);
+  cwd = xstrdup(newcwd);
   return 0;
 }
+
 static const struct {
   const char *name;
   int minargs, maxargs;
-  int (*handler)(const char *path, int lineno, int ac, char **av);
+  int (*handler)(int ac, char **av);
 } commands[] = {
   { "cd", 1, 1, cmd_cd },
   { "pwd", 0, 0, cmd_pwd },
   { 0, 0, 0, 0 }
 };
 
-static void process(const char *prompt, const char *path, FILE *fp) {
-  int lineno = 0;
+static void process(const char *prompt, FILE *fp) {
   char buffer[4096];
   int ac, n;
   char *avbuf[256], **av;
@@ -221,25 +272,27 @@ static void process(const char *prompt, const char *path, FILE *fp) {
     fflush(stdout);
   }
   while(fgets(buffer, sizeof buffer, fp)) {
-    ++lineno;
-    if((ac = split(path, lineno, buffer, av = avbuf)) < 0 && !prompt)
+    ++inputline;
+    if((ac = split(buffer, av = avbuf)) < 0 && !prompt)
       exit(1);
     if(!ac) goto next;
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
       ;
     if(!commands[n].name) {
-      fprintf(stderr, "%s: %d: unknown command: '%s'\n", path, lineno, av[0]);
+      fprintf(stderr, "%s: %d: unknown command: '%s'\n", 
+              inputpath, inputline, av[0]);
       if(!prompt) exit(1);
       goto next;
     }
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
-      fprintf(stderr, "%s:%d: wrong number of arguments\n", path, lineno);
+      fprintf(stderr, "%s:%d: wrong number of arguments\n",
+              inputpath, inputline);
       if(!prompt) exit(1);
       goto next;
     }
-    if(commands[n].handler(path, lineno, ac, av) && !prompt)
+    if(commands[n].handler(ac, av) && !prompt)
       exit(1);
 next:
     alloc_destroy(fakejob.a);
@@ -249,7 +302,7 @@ next:
     }
   }
   if(ferror(fp))
-    fatal("error reading %s: %s", path, strerror(errno));
+    fatal("error reading %s: %s", inputpath, strerror(errno));
 }
 
 int main(int argc, char **argv) {
@@ -357,11 +410,14 @@ int main(int argc, char **argv) {
   if(batchfile) {
     FILE *fp;
 
+    inputpath = batchfile;
     if(!(fp = fopen(batchfile, "r")))
       fatal("error opening %s: %s", batchfile, strerror(errno));
-    process(0, batchfile, fp);
-  } else
-    process("sftp> ", "stdin", stdin);
+    process(0, fp);
+  } else {
+    inputpath = "stdin";
+    process("sftp> ", stdin);
+  }
   /* We let the OS reap the SSH process */
   return 0;
 }
