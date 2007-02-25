@@ -15,6 +15,7 @@
 #include <ctype.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <arpa/inet.h>
 
 static int sftpin;
 static struct allocator allocator;
