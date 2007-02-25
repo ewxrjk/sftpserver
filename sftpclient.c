@@ -311,6 +311,20 @@ static int sftp_close(const struct handle *hp) {
   return status();
 }
 
+static int sftp_setstat(const char *path,
+                        const struct sftpattr *attrs) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_SETSTAT);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, path);
+  protocol->sendattrs(&fakejob, attrs);
+  send_end(&fakejob);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
 static int cmd_pwd(int attribute((unused)) ac,
                    char attribute((unused)) **av) {
   xprintf("%s\n", cwd);
@@ -571,6 +585,38 @@ static int cmd_lmkdir(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_chown(int attribute((unused)) ac,
+                     char **av) {
+  struct sftpattr attrs;
+  
+  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
+  attrs.valid = SSH_FILEXFER_ATTR_UIDGID;
+  attrs.uid = atoi(av[0]);
+  return sftp_setstat(av[1], &attrs);
+}
+
+static int cmd_chgrp(int attribute((unused)) ac,
+                     char **av) {
+  struct sftpattr attrs;
+  
+  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
+  attrs.valid = SSH_FILEXFER_ATTR_UIDGID;
+  attrs.gid = atoi(av[0]);
+  return sftp_setstat(av[1], &attrs);
+}
+
+static int cmd_chmod(int attribute((unused)) ac,
+                     char **av) {
+  struct sftpattr attrs;
+  
+  attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
+  errno = 0;
+  attrs.permissions = strtol(av[0], 0, 8);
+  if(errno || attrs.permissions != (attrs.permissions & 0777))
+    error("invalid permissions: %s", strerror(errno));
+  return sftp_setstat(av[1], &attrs);
+}
+
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -581,6 +627,21 @@ static const struct command commands[] = {
     "cd", 1, 1, cmd_cd,
     "DIR",
     "change remote directory"
+  },
+  {
+    "chgrp", 2, 2, cmd_chgrp,
+    "GID PATH",
+    "change remote file group"
+  },
+  {
+    "chmod", 2, 2, cmd_chmod,
+    "OCTAL PATH",
+    "change remote file permissions"
+  },
+  {
+    "chown", 2, 2, cmd_chown,
+    "UID PATH",
+    "change remote file ownership"
   },
   {
     "exit", 0, 0, cmd_quit,
