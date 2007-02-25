@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <stdarg.h>
 
 struct command {
   const char *name;
@@ -130,6 +131,16 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
   return type;
 }
 
+static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
+  va_list ap;
+
+  fprintf(stderr, "%s:%d ", inputpath, inputline);
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+  fputc('\n',  stderr);
+}
+
 /* Split a command line */
 static int split(char *line, char **av) {
   char *arg;
@@ -148,7 +159,7 @@ static int split(char *line, char **av) {
 	*arg++ = *line++;
       }
       if(!*line) {
-	fprintf(stderr, "%s:%d: unterminated string\n", inputpath, inputline);
+	error("unterminated string");
 	return -1;
       }
       *arg++ = 0;
@@ -171,8 +182,7 @@ static void status(void) {
   
   cpcheck(parse_uint32(&fakejob, &status));
   cpcheck(parse_string(&fakejob, &msg, 0));
-  fprintf(stderr, "%s:%d: %s (%s)\n", inputpath, inputline,
-          msg, status_to_string(status));
+  error("%s (%s)", msg, status_to_string(status));
 }
 
 static uint32_t newid(void) {
@@ -250,8 +260,7 @@ static int cmd_cd(int attribute((unused)) ac,
   /* Check it's really a directory */
   if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT)) return -1;
   if(attrs.type != SSH_FILEXFER_TYPE_DIRECTORY) {
-    fprintf(stderr, "%s:%d: %s is not a directory\n", inputpath, inputline,
-            av[0]);
+    error("%s is not a directory", av[0]);
     return -1;
   }
   free(cwd);
@@ -289,6 +298,26 @@ static int cmd_help(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_lpwd(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  char *buffer = alloc(fakejob.a, PATH_MAX + 1);
+  if(!(getcwd(buffer, PATH_MAX + 1))) {
+    error("error calling getcwd: %s", strerror(errno));
+    return -1;
+  }
+  xprintf("%s\n", buffer);
+  return 0;
+}
+
+static int cmd_lcd(int attribute((unused)) ac,
+                  char **av) {
+  if(chdir(av[0]) < 0) {
+    error("error calling chdir: %s", strerror(errno));
+    return -1;
+  }
+  return 0;
+}
+
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -298,7 +327,7 @@ static const struct command commands[] = {
   {
     "cd", 1, 1, cmd_cd,
     "DIR",
-    "change directory"
+    "change remote directory"
   },
   {
     "exit", 0, 0, cmd_quit,
@@ -311,9 +340,19 @@ static const struct command commands[] = {
     "display help"
   },
   {
+    "lcd", 1, 1, cmd_lcd,
+    "DIR",
+    "change local directory"
+  },
+  {
+    "lpwd", 0, 0, cmd_lpwd,
+    "DIR",
+    "display current local directory"
+  },
+  {
     "pwd", 0, 0, cmd_pwd,
     0,
-    "display current directory" 
+    "display current remote directory" 
   },
   {
     "quit",  0, 0, cmd_quit,
@@ -347,16 +386,14 @@ static void process(const char *prompt, FILE *fp) {
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
       ;
     if(!commands[n].name) {
-      fprintf(stderr, "%s: %d: unknown command: '%s'\n", 
-              inputpath, inputline, av[0]);
+      error("unknown command: '%s'", av[0]);
       if(!prompt) exit(1);
       goto next;
     }
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
-      fprintf(stderr, "%s:%d: wrong number of arguments\n",
-              inputpath, inputline);
+      error("wrong number of arguments");
       if(!prompt) exit(1);
       goto next;
     }
