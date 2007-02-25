@@ -562,6 +562,15 @@ static int cmd_lumask(int ac,
   return 0;
 }
 
+static int cmd_lmkdir(int attribute((unused)) ac,
+                      char **av) {
+  if(mkdir(av[0], 0777) < 0) {
+    error("creating directory %s: %s", av[0], strerror(errno));
+    return -1;
+  }
+  return 0;
+}
+
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -599,13 +608,18 @@ static const struct command commands[] = {
     "list local directory"
   },
   {
+    "lmkdir", 1, 1, cmd_lmkdir,
+    "PATH",
+    "create local directory"
+  },
+  {
     "ls", 0, 2, cmd_ls,
     "[OPTIONS] [PATH]",
     "list remote directory"
   },
   {
     "lumask", 0, 1, cmd_lumask,
-    "MASK",
+    "OCTAL",
     "get or set local umask"
   },
   {
