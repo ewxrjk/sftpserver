@@ -1,7 +1,5 @@
 #include "sftpserver.h"
 
-#if HAVE_PTHREAD_H
-
 #include "queue.h"
 #include "alloc.h"
 #include "debug.h"
@@ -105,8 +103,6 @@ void queue_destroy(struct queue *q) {
     free(q);
   }
 }
-
-#endif
 
 /*
 Local Variables:

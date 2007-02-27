@@ -8,6 +8,8 @@
 #include "parse.h"
 #include "sftp.h"
 #include "debug.h"
+#include "thread.h"
+#include "stat.h"
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +21,9 @@
 #include <stdarg.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <fcntl.h>
+#include <libgen.h>
+#include <assert.h>
 
 struct command {
   const char *name;
@@ -46,7 +51,7 @@ const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
 
 /* Command line */
-static size_t buffersize = 32768;
+static size_t buffersize = 8192;
 static int nrequests = 8;
 static const char *subsystem = "sftp";
 static const char *program;
@@ -111,6 +116,8 @@ static void version(void) {
   exit(0);
 }
 
+/* Utilities */
+
 static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
   va_list ap;
 
@@ -125,6 +132,9 @@ static int status(void) {
   uint32_t status;
   char *msg;
   
+  /* Cope with half-parsed responses */
+  fakejob.ptr = fakejob.data + 5;
+  fakejob.left = fakejob.len - 5;
   cpcheck(parse_uint32(&fakejob, &status));
   cpcheck(parse_string(&fakejob, &msg, 0));
   if(status) {
@@ -148,7 +158,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
     fatal("unexpected EOF from server while reading data");
   if(DEBUG) {
     D(("response:"));
-    hexdump(fakejob.data, fakejob.len);
+    hexdump(fakejob.data, fakejob.len > 32 ? 32 : fakejob.len);
   }
   fakejob.left = fakejob.len;
   fakejob.ptr = fakejob.data;
@@ -221,6 +231,18 @@ static const char *resolvepath(const char *name) {
   return resolved;
 }
 
+static void progress(const char *path, uint64_t sofar, uint64_t total) {
+  if(!total)
+    printf("\r                                                                                \r");
+  else if(total == (uint64_t)-1)
+    printf("\r%.60s: %12"PRIu64"b", path, sofar);
+  else
+    printf("\r%.60s: %12"PRIu64"b %3d%%", path, sofar, (int)(100 * sofar / total));
+  fflush(stdout);
+}
+
+/* SFTP operation stubs */
+
 static char *sftp_realpath(const char *path) {
   char *resolved;
   uint32_t u32, id;
@@ -251,6 +273,20 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
   attrs->name = path;
+  return 0;
+}
+
+static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_FSTAT);
+  send_uint32(&fakejob, id = newid());
+  send_bytes(&fakejob, hp->data, hp->len);
+  send_end(&fakejob);
+  if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
+    return -1;
+  cpcheck(protocol->parseattrs(&fakejob, attrs));
   return 0;
 }
 
@@ -304,8 +340,6 @@ static int sftp_readdir(const struct handle *hp,
       *attrsp = 0;
       return 0;
     }
-    fakejob.ptr -= 4;
-    fakejob.left += 4;
     status();
     return -1;
   default:
@@ -345,7 +379,7 @@ static int sftp_rmdir(const char *path) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_RMDIR);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
+  send_path(&fakejob, resolvepath(path));
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -357,7 +391,7 @@ static int sftp_remove(const char *path) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_REMOVE);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
+  send_path(&fakejob, resolvepath(path));
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -369,8 +403,8 @@ static int sftp_rename(const char *oldpath, const char *newpath) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_RENAME);
   send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, oldpath);
-  send_path(&fakejob, newpath);
+  send_path(&fakejob, resolvepath(oldpath));
+  send_path(&fakejob, resolvepath(newpath));
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -382,19 +416,41 @@ static int sftp_symlink(const char *targetpath, const char *linkpath) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_SYMLINK);
   send_uint32(&fakejob, id = newid());
-  if(quirk_openssh) {
+  if(quirk_openssh && sftpversion == 3) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
-    send_path(&fakejob, targetpath);
-    send_path(&fakejob, linkpath);
+    send_path(&fakejob, resolvepath(targetpath));
+    send_path(&fakejob, resolvepath(linkpath));
   } else {
-    send_path(&fakejob, linkpath);
-    send_path(&fakejob, targetpath);
+    send_path(&fakejob, resolvepath(linkpath));
+    send_path(&fakejob, resolvepath(targetpath));
   }
   send_end(&fakejob);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
+
+static int sftp_open(const char *path, uint32_t flags, 
+                     const struct sftpattr *attrs,
+                     struct handle *hp) {
+  uint32_t id;
+
+  send_begin(&fakejob);
+  send_uint8(&fakejob, SSH_FXP_OPEN);
+  send_uint32(&fakejob, id = newid());
+  send_path(&fakejob, resolvepath(path));
+  /* For the time being we just send the v3 values.  We'll have to do somethnig
+   * cleverer when we support later protocol version. */
+  send_uint32(&fakejob, flags);
+  protocol->sendattrs(&fakejob, attrs);
+  send_end(&fakejob);
+  if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
+    return -1;
+  cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
+  return 0;
+}
+
+/* Command line operations */
 
 static int cmd_pwd(int attribute((unused)) ac,
                    char attribute((unused)) **av) {
@@ -701,7 +757,7 @@ static int cmd_chmod(int attribute((unused)) ac,
 }
 
 static int cmd_rm(int attribute((unused)) ac,
-                     char **av) {
+                  char **av) {
   return sftp_remove(av[0]);
 }
 
@@ -720,6 +776,223 @@ static int cmd_symlink(int attribute((unused)) ac,
   return sftp_symlink(av[0], av[1]);
 }
 
+/* cmd_get uses a background thread to send requests */
+struct outstanding_request {
+  uint32_t id;                          /* 0 or a request ID */
+  off_t offset;                         /* offset in source file */
+};
+
+struct reader_data {
+  pthread_mutex_t m;                    /* protects everything here */
+  pthread_cond_t c1;                    /* signaled when a response received */
+  pthread_cond_t c2;                    /* signaled when a request sent */
+  struct handle h;                      /* target handle */
+  struct outstanding_request *reqs;     /* in-flight requests */
+  uint64_t next_offset;                 /* next offset */
+  int outstanding, eof, failed;
+  uint64_t size;                        /* file size */
+};
+
+static void *reader_thread(void *arg) {
+  struct reader_data *const r = arg;
+  int n;
+  uint32_t id, len;
+  
+  ferrcheck(pthread_mutex_lock(&r->m));
+  while(!r->eof && !r->failed) {
+    /* Send as many jobs as we can */
+    while(r->outstanding < nrequests && !r->eof) {
+      /* Find a spare slot */
+      for(n = 0; n < nrequests && r->reqs[n].id; ++n)
+        ;
+      assert(n < nrequests);
+      id = newid();
+      send_begin(&fakejob);
+      send_uint8(&fakejob, SSH_FXP_READ);
+      send_uint32(&fakejob, id);
+      send_bytes(&fakejob, r->h.data, r->h.len);
+      send_uint64(&fakejob, r->next_offset);
+      if(r->size - r->next_offset > buffersize)
+        len = buffersize;
+      else {
+        len = (uint32_t)(r->size - r->next_offset);
+        r->eof = 1;
+      }
+      send_uint32(&fakejob, len);
+      /* Don't hold the lock while doing the send itself */
+      ferrcheck(pthread_mutex_unlock(&r->m));
+      send_end(&fakejob);
+      ferrcheck(pthread_mutex_lock(&r->m));
+      /* Only fill in the outstanding_request once we've sent it */
+      r->reqs[n].id = id;
+      r->reqs[n].offset = r->next_offset;
+      ++r->outstanding;
+      r->next_offset += buffersize;
+      /* Notify the main threader that we set off a request */
+      ferrcheck(pthread_cond_signal(&r->c2));
+    }
+    /* Wait for a job to be reaped */
+    ferrcheck(pthread_cond_wait(&r->c1, &r->m));
+  }
+  ferrcheck(pthread_mutex_unlock(&r->m));
+  return 0;
+}
+
+static int cmd_get(int ac,
+                   char **av) {
+  int preserve = 0;
+  const char *remote, *local, *e;
+  char *tmp = 0;
+  struct reader_data r;
+  struct sftpattr attrs;
+  int fd = -1, n, rc;
+  uint8_t rtype;
+  uint32_t st, len;
+  pthread_t tid;
+  uint64_t written = 0;
+
+  memset(&attrs, 0, sizeof attrs);
+  memset(&r, 0, sizeof r);
+  if(!strcmp(*av, "-P")) {
+    preserve = 1;
+    ++av;
+    --ac;
+  }
+  remote = *av++;
+  --ac;
+  if(ac) {
+    local = *av++;
+    --ac;
+  } else
+    local = basename(remote);
+  /* we'll write to a temporary file */
+  tmp = alloc(fakejob.a, strlen(local) + 5);
+  sprintf(tmp, "%s.new", local);
+  if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0)
+    goto error;
+  /* open the remote file */
+  if(sftp_open(remote, SSH_FXF_READ, &attrs, &r.h))
+    goto error;
+  /* stat the file */
+  if(sftp_fstat(&r.h, &attrs))
+    goto error;
+  if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {
+    /* We know how big the file is.  Check we can fit it! */
+    if((uint64_t)(off_t)attrs.size != attrs.size) {
+      fprintf(stderr, "remote file %s is too large (%"PRIu64" bytes)\n",
+              remote, attrs.size);
+      goto error;
+    }
+    r.size = attrs.size;
+  } else
+    /* We don't know how big the file is.  We'll just keep on reading until we
+     * get an EOF. */
+    r.size = (uint64_t)-1;
+  ferrcheck(pthread_mutex_init(&r.m, 0));
+  ferrcheck(pthread_cond_init(&r.c1, 0));
+  ferrcheck(pthread_cond_init(&r.c2, 0));
+  r.reqs = alloc(fakejob.a, nrequests * sizeof *r.reqs);
+  ferrcheck(pthread_create(&tid, 0, reader_thread, &r));
+  ferrcheck(pthread_mutex_lock(&r.m));
+  /* If there are requests in flight, we must keep going whatever else
+   * is happening in order to process their replies.
+   * If there are no requests in flight then we keep going until
+   * we reach EOF or an error is detected.
+   */
+  while(r.outstanding || (!r.eof && !r.failed)) {
+    /* Wait until there's at least one request in flight */
+    while(!r.outstanding)
+      ferrcheck(pthread_cond_wait(&r.c2, &r.m));
+    /* Don't hold the lock while waiting for a response */
+    ferrcheck(pthread_mutex_unlock(&r.m));
+    rtype = getresponse(-1, 0);
+    ferrcheck(pthread_mutex_lock(&r.m));
+    /* Count down the number of requests in flight */
+    --r.outstanding;
+    /* If we have failed we just have to discard remaining responses */
+    if(r.failed) 
+      continue;
+    switch(rtype) {
+    case SSH_FXP_STATUS:
+      cpcheck(parse_uint32(&fakejob, &st));
+      if(st == SSH_FX_EOF)
+        r.eof = 1;
+      else {
+        status();
+        r.failed = 1;
+      }
+      break;
+    case SSH_FXP_DATA:
+      /* Find the right request */
+      for(n = 0; n < nrequests && fakejob.id != r.reqs[n].id; ++n)
+        ;
+      assert(n < nrequests);
+      /* We don't fully parse the string but instead write it out from the
+       * input buffer it's sitting in. */
+      cpcheck(parse_uint32(&fakejob, &len));
+      /* We don't care what order the responses come in, we just write them to
+       * the right place in the file according to what we asked for.  There's
+       * not much point releasing the lock while doing the write - the
+       * background thread will have done all it wants while we were awaiting
+       * the response. */
+      rc = pwrite(fd, fakejob.ptr, len, r.reqs[n].offset);
+      if(rc < 0) {
+        fprintf(stderr, "error writing to %s: %s\n", tmp, strerror(errno));
+        r.failed = 1;
+      }
+      written += len;
+      progress(local, written, r.size);
+      /* Free up this slot */
+      r.reqs[n].id = 0;
+      break;
+    default:
+      fatal("unexpected response %d to SSH_FXP_READ", rtype);
+    }
+    /* We either set one of r.eof or r.failed, or reaped a response.  So notify
+     * the background thread. */ 
+    ferrcheck(pthread_cond_signal(&r.c1));
+  }
+  ferrcheck(pthread_mutex_unlock(&r.m));
+  /* Wait for the background thread to finish up */
+  ferrcheck(pthread_join(tid, 0));
+  /* Tear all the thread objects down */
+  ferrcheck(pthread_mutex_destroy(&r.m));
+  ferrcheck(pthread_cond_destroy(&r.c1));
+  ferrcheck(pthread_cond_destroy(&r.c2));
+  progress(0, 0, 0);
+  if(r.failed) 
+    goto error;
+  /* Close the handle */
+  sftp_close(&r.h);
+  r.h.len = 0;
+  if(preserve) {
+    /* Set permissions etc */
+    attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* don't truncate */
+    attrs.valid &= ~SSH_FILEXFER_ATTR_UIDGID; /* different mapping! */
+    if((e = set_fstatus(fd, &attrs))) {
+      error("cannot %s %s: %s", e, tmp, strerror(errno));
+      goto error;
+    }
+  }
+  /* TODO download progress */
+  if(close(fd) < 0) {
+    error("error closing %s: %s", tmp, strerror(errno));
+    fd = -1;
+    goto error;
+  }
+  if(rename(tmp, local) < 0) {
+    error("error renaming %s: %s", tmp, strerror(errno));
+    goto error;
+  }
+  return 0;
+error:
+  if(fd >= 0) close(fd);
+  if(tmp) unlink(tmp);
+  if(r.h.len) sftp_close(&r.h);
+  return -1;
+}
+
+/* Table of command line operations */
 static const struct command commands[] = {
   {
     "bye", 0, 0, cmd_quit,
@@ -750,6 +1023,11 @@ static const struct command commands[] = {
     "exit", 0, 0, cmd_quit,
     0,
     "quit"
+  },
+  {
+    "get", 1, 3, cmd_get,
+    "[-P] PATH [LOCAL-PATH]",
+    "retrieve a remote file"
   },
   {
     "help", 0, 0, cmd_help,
@@ -819,6 +1097,7 @@ static const struct command commands[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+/* Input processing loop */
 static void process(const char *prompt, FILE *fp) {
   char buffer[4096];
   int ac, n;
@@ -895,6 +1174,12 @@ int main(int argc, char **argv) {
     default: exit(1);
     }
   }
+
+  /* sanity checking */
+  if(nrequests <= 0) nrequests = 1;
+  if(nrequests > 128) nrequests = 128;
+  if(buffersize < 64) buffersize = 64;
+  if(buffersize > 1048576) buffersize = 1048576;
 
   if(sftpversion != 3)
     fatal("unknown SFTP version %d", sftpversion);

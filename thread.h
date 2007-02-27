@@ -1,16 +1,7 @@
 #ifndef THREAD_H
 #define THREAD_H
 
-#if HAVE_PTHREAD_H
-# include <pthread.h>
-#else
-typedef int pthread_mutex_t;
-# define pthread_mutex_init(M,A) (0)
-# define pthread_mutex_destroy(M) (0)
-# define pthread_mutex_lock(M) (0)
-# define pthread_mutex_unlock(M) (0)
-# define PTHREAD_MUTEX_INITIALIZER (0)
-#endif
+#include <pthread.h>
 
 /* Error-checking for pthreads functions */
 #define ferrcheck(E) do {                                       \

@@ -8,6 +8,7 @@
 #include "parse.h"
 #include "types.h"
 #include "globals.h"
+#include "stat.h"
 #include "utils.h"
 #include <errno.h>
 #include <string.h>
@@ -424,85 +425,6 @@ void sftp_v3_fstat(struct sftpjob *job) {
   sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
 
-/* Horrendous ugliness for SETSTAT/FSETSTAT */
-#if HAVE_STAT_TIMESPEC
-#define SET_STATUS_NANOSEC do {                                         \
-    times[0].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)   \
-                        ? (long)attrs->atime.nanoseconds                \
-                        : current.st_atimespec.tv_nsec) / 1000;         \
-    times[1].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)   \
-                        ? (long)attrs->mtime.nanoseconds                \
-                        : current.st_mtimespec.tv_nsec) / 1000;         \
-} while(0)
-#else
-#define SET_STATUS_NANOSEC ((void)0)
-#endif
-
-#define SET_STATUS(WHAT, TRUNCATE, CHOWN, CHMOD, STAT, UTIMES) do {     \
-  struct timeval times[2];                                              \
-  struct stat current;                                                  \
-                                                                        \
-  if(attrs->valid & SSH_FILEXFER_ATTR_SIZE) {                           \
-    D(("...truncate to %"PRIu64, attrs->size));                         \
-    if(TRUNCATE(WHAT, attrs->size) < 0) {                               \
-      send_errno_status(job);                                           \
-      return -1;                                                        \
-    }                                                                   \
-  }                                                                     \
-  if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {                         \
-    D(("...chown to %"PRId32"/%"PRId32, attrs->uid, attrs->gid));       \
-    if(CHOWN(WHAT, attrs->uid, attrs->gid) < 0) {                       \
-      send_errno_status(job);                                           \
-      return -1;                                                        \
-    }                                                                   \
-  }                                                                     \
-  if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {                    \
-    const mode_t mode = attrs->permissions & 0777;                      \
-    D(("...chmod to %#o", (unsigned)mode));                             \
-    if(CHMOD(WHAT, mode) < 0) {                                         \
-      send_errno_status(job);                                           \
-      return -1;                                                        \
-    }                                                                   \
-  }                                                                     \
-  if(attrs->valid & (SSH_FILEXFER_ATTR_ACCESSTIME                       \
-                     |SSH_FILEXFER_ATTR_MODIFYTIME)) {                  \
-    if(STAT(WHAT, &current) < 0) {                                      \
-      D(("cannot stat"));                                               \
-      send_errno_status(job);                                           \
-      return -1;                                                        \
-    }                                                                   \
-    times[0].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)    \
-                       ? (time_t)attrs->atime.seconds                   \
-                       : current.st_atime);                             \
-    times[1].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)    \
-                       ? (time_t)attrs->mtime.seconds                   \
-                       : current.st_mtime);                             \
-    SET_STATUS_NANOSEC;							\
-    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",                  \
-       (unsigned long)times[0].tv_sec,                                  \
-       (unsigned long)times[0].tv_usec,                                 \
-       (unsigned long)times[1].tv_sec,                                  \
-       (unsigned long)times[1].tv_usec));                               \
-    if(UTIMES(WHAT, times) < 0) {                                       \
-      send_errno_status(job);                                           \
-      return -1;                                                        \
-    }                                                                   \
-  }                                                                     \
-  return 0;                                                             \
-} while(0)
-
-static int set_status(struct sftpjob *job,
-                      const char *path,
-                      const struct sftpattr *attrs) {
-  SET_STATUS(path, truncate, lchown, chmod, lstat, utimes);
-}
-
-static int set_fstatus(struct sftpjob *job,
-                       int fd,
-                       const struct sftpattr *attrs) {
-  SET_STATUS(fd, ftruncate, fchown, fchmod, fstat, futimes);
-}
-
 void sftp_setstat(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
@@ -510,9 +432,10 @@ void sftp_setstat(struct sftpjob *job) {
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
-  if(set_status(job, path, &attrs))     /* sends error itself */
-    return;
-  send_ok(job);                         /* but we must send the OK */
+  if(set_status(path, &attrs))
+    send_errno_status(job);
+  else
+    send_ok(job);
 }
 
 void sftp_fsetstat(struct sftpjob *job) {
@@ -528,9 +451,10 @@ void sftp_fsetstat(struct sftpjob *job) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
-  if(set_fstatus(job, fd, &attrs))      /* sends error itself */
-    return;
-  send_ok(job);                         /* but we must send the OK */
+  if(set_fstatus(fd, &attrs))
+    send_errno_status(job);
+  else
+    send_ok(job);
 }
 
 void sftp_mkdir(struct sftpjob *job) {
@@ -555,7 +479,8 @@ void sftp_mkdir(struct sftpjob *job) {
       return;
     }
   }
-  if(set_status(job, path, &attrs)) {
+  if(set_status(path, &attrs)) {
+    send_errno_status(job);
     /* If we can't have the desired permissions, don't have the directory at
      * all */
     rmdir(path);
@@ -615,9 +540,8 @@ void sftp_v3_open(struct sftpjob *job) {
       return;
     }
   }
-  if(set_fstatus(job, fd, &attrs)) {
-    /* If we can't have the desired permissions, don't have the directory at
-     * all */
+  if(set_fstatus(fd, &attrs)) { 
+    send_errno_status(job);
     close(fd);
     unlink(path);
     return;                             /* already sent error */

@@ -14,11 +14,6 @@ struct stat;
 
 const char *status_to_string(uint32_t status);
 
-const char *format_attr(struct allocator *a,
-			const struct sftpattr *attrs, int thisyear,
-			unsigned flags);
-#define FORMAT_PREFER_NUMERIC_UID 0x00000001
-
 #endif /* SFTPCOMMON_H */
 
 /*

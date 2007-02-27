@@ -3,10 +3,14 @@
 #include "users.h"
 #include "sftp.h"
 #include "alloc.h"
+#include "debug.h"
+#include "stat.h"
 #include <sys/stat.h>
 #include <string.h>
 #include <stdio.h>
 #include <time.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 void stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs) {
@@ -52,7 +56,7 @@ void stat_to_attrs(struct allocator *a,
 
 const char *format_attr(struct allocator *a,
 			const struct sftpattr *attrs, int thisyear,
-			unsigned flags) {
+			unsigned long flags) {
   char perms[64], linkcount[64], size[64], date[64], nowner[64], ngroup[64];
   char *formatted, *p;
   const char *owner, *group;
@@ -142,6 +146,74 @@ const char *format_attr(struct allocator *a,
 	  perms, linkcount, owner, group,
 	  size, date, attrs->name);
   return formatted;
+}
+
+/* Horrendous ugliness for SETSTAT/FSETSTAT */
+#if HAVE_STAT_TIMESPEC
+#define SET_STATUS_NANOSEC do {                                         \
+    times[0].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)   \
+                        ? (long)attrs->atime.nanoseconds                \
+                        : current.st_atimespec.tv_nsec) / 1000;         \
+    times[1].tv_usec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)   \
+                        ? (long)attrs->mtime.nanoseconds                \
+                        : current.st_mtimespec.tv_nsec) / 1000;         \
+} while(0)
+#else
+#define SET_STATUS_NANOSEC ((void)0)
+#endif
+
+#define SET_STATUS(WHAT, TRUNCATE, CHOWN, CHMOD, STAT, UTIMES) do {     \
+  struct timeval times[2];                                              \
+  struct stat current;                                                  \
+                                                                        \
+  if(attrs->valid & SSH_FILEXFER_ATTR_SIZE) {                           \
+    D(("...truncate to %"PRIu64, attrs->size));                         \
+    if(TRUNCATE(WHAT, attrs->size) < 0)                                 \
+      return #TRUNCATE;                                                 \
+  }                                                                     \
+  if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {                         \
+    D(("...chown to %"PRId32"/%"PRId32, attrs->uid, attrs->gid));       \
+    if(CHOWN(WHAT, attrs->uid, attrs->gid) < 0)  			\
+      return #CHOWN;							\
+  }                                                                     \
+  if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {                    \
+    const mode_t mode = attrs->permissions & 0777;                      \
+    D(("...chmod to %#o", (unsigned)mode));                             \
+    if(CHMOD(WHAT, mode) < 0)                                           \
+      return #CHMOD;                                                    \
+  }                                                                     \
+  if(attrs->valid & (SSH_FILEXFER_ATTR_ACCESSTIME                       \
+                     |SSH_FILEXFER_ATTR_MODIFYTIME)) {                  \
+    if(STAT(WHAT, &current) < 0) {                                      \
+      D(("cannot stat"));                                               \
+      return #STAT;                                                     \
+    }                                                                   \
+    times[0].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME)    \
+                       ? (time_t)attrs->atime.seconds                   \
+                       : current.st_atime);                             \
+    times[1].tv_sec = ((attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME)    \
+                       ? (time_t)attrs->mtime.seconds                   \
+                       : current.st_mtime);                             \
+    SET_STATUS_NANOSEC;							\
+    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",                  \
+       (unsigned long)times[0].tv_sec,                                  \
+       (unsigned long)times[0].tv_usec,                                 \
+       (unsigned long)times[1].tv_sec,                                  \
+       (unsigned long)times[1].tv_usec));                               \
+    if(UTIMES(WHAT, times) < 0)                                         \
+      return #UTIMES;                                                   \
+  }                                                                     \
+  return 0;                                                             \
+} while(0)
+
+const char *set_status(const char *path,
+		       const struct sftpattr *attrs) {
+  SET_STATUS(path, truncate, lchown, chmod, lstat, utimes);
+}
+
+const char *set_fstatus(int fd,
+			const struct sftpattr *attrs) {
+  SET_STATUS(fd, ftruncate, fchown, fchmod, fstat, futimes);
 }
 
 /*

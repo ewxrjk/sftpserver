@@ -24,7 +24,6 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a);
 
 /* Globals */
 
-#if HAVE_PTHREAD_H
 struct queue *workqueue;
 
 static const struct queuedetails workqueue_details = {
@@ -32,7 +31,6 @@ static const struct queuedetails workqueue_details = {
   process_sftpjob,
   worker_cleanup
 };
-#endif
 
 const struct sftpprotocol *protocol = &sftppreinit;
 const char sendtype[] = "response";
@@ -86,11 +84,9 @@ static void sftp_init(struct sftpjob *job) {
   /* TODO supported extension */
   /* TODO supported2 extension */
   send_end(job);
-#if HAVE_PTHREAD_H
   /* Now we are initialized we can safely process other jobs in the
    * background. */
   queue_init(&workqueue, &workqueue_details, 4);
-#endif
 }
 
 static const struct sftpcmd sftppreinittab[] = {
@@ -207,25 +203,18 @@ int main(void) {
       D(("request:"));
       hexdump(job->data, job->len);
     }
-    /* For threaded systems we process the job in a background thread, except
-     * that the background threads don't exist until SSH_FXP_INIT has
-     * succeeded.  For nonthreaded systems we must always process the job in
-     * the foreground. */
-#if HAVE_PTHREAD_H
+    /* We process the job in a background thread, except that the background
+     * threads don't exist until SSH_FXP_INIT has succeeded. */
     if(workqueue)
       queue_add(workqueue, job);
-    else
-#endif
-    {
+    else {
       alloc_init(&a);
       process_sftpjob(job, wdv, &a);
       alloc_destroy(&a);
     }
     /* process_sftpjob() frees JOB when it has finished with it */
   }
-#if HAVE_PTHREAD_H
   queue_destroy(workqueue);
-#endif
   worker_cleanup(wdv);
   return 0;
 }

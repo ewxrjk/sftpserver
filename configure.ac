@@ -15,7 +15,6 @@ RJK_BUILDSYS_FINK
 #RJK_GTKFLAGS
 AC_PROG_RANLIB
 
-AC_CHECK_HEADERS([pthread.h])
 AC_CHECK_LIB([pthread],[pthread_create])
 AC_DEFINE(_GNU_SOURCE, 1, [required for e.g. strsignal])
 AC_C_CONST
