@@ -841,8 +841,8 @@ static void *reader_thread(void *arg) {
 static int cmd_get(int ac,
                    char **av) {
   int preserve = 0;
-  const char *remote, *local, *e;
-  char *tmp = 0;
+  const char *local, *e;
+  char *remote, *tmp = 0;
   struct reader_data r;
   struct sftpattr attrs;
   int fd = -1, n, rc;
