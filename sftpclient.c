@@ -1130,6 +1130,11 @@ static const struct command commands[] = {
     "quit"
   },
   {
+    "rename", 2, 2, cmd_mv,
+    "OLDPATH NEWPATH",
+    "rename a remote file"
+  },
+  {
     "rm", 1, 1, cmd_rm,
     "PATH",
     "remove remote file"
