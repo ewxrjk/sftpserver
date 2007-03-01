@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "thread.h"
 #include "stat.h"
+#include "widechar.h"
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,8 @@
 #include <fcntl.h>
 #include <libgen.h>
 #include <assert.h>
+#include <sys/ioctl.h>
+#include <locale.h>
 
 struct command {
   const char *name;
@@ -274,6 +277,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
   attrs->name = path;
+  attrs->wname = convertm2w(attrs->name);
   return 0;
 }
 
@@ -331,6 +335,7 @@ static int sftp_readdir(const struct handle *hp,
       cpcheck(protocol->parseattrs(&fakejob, attrs));
       attrs->name = name;
       attrs->longname = longname;
+      attrs->wname = convertm2w(attrs->name);
       ++attrs;
     }
     return 0;
@@ -578,9 +583,13 @@ static int cmd_ls(int ac,
                   char **av) {
   const char *options, *path;
   struct sftpattr *attrs, *allattrs = 0, fileattrs;
-  size_t nattrs, nallattrs = 0, n, maxnamelen = 0;
+  size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
   struct handle h;
+  struct winsize ws;
+  const char *e;
+  size_t width, cols, rows;
 
+  setlocale(LC_ALL, "");
   if(ac > 0 && av[0][0] == '-') {
     options = *av++;
     --ac;
@@ -595,6 +604,8 @@ static int cmd_ls(int ac,
     allattrs = &fileattrs;
     nallattrs = 1;
   } else {
+    const int include_dotfiles = !!strchr(options, 'a');
+
     /* The file is a directory and we did not use -d */
     if(sftp_opendir(path, &h)) return -1;
     for(;;) {
@@ -605,20 +616,11 @@ static int cmd_ls(int ac,
       }
       if(!nattrs) break;                  /* eof */
       allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
-      if(strchr(options, 'a')) {
-        /* Include dotfiles */
-        for(n = 0; n < nattrs; ++n) {
-          if(strlen(attrs[n].name) > maxnamelen)
-            maxnamelen = strlen(attrs[n].name);
-          allattrs[nallattrs++] = attrs[n];
-        }
-      } else {
-        /* Exclude dotfiles */
-        for(n = 0; n < nattrs; ++n) {
-          if(attrs[n].name[0] == '.')
-            continue;
-          if(strlen(attrs[n].name) > maxnamelen)
-            maxnamelen = strlen(attrs[n].name);
+      for(n = 0; n < nattrs; ++n) {
+        const size_t w = wcswidth(attrs[n].wname, SIZE_MAX);
+        if(include_dotfiles || attrs[n].name[0] != '.') {
+          if(w > maxnamewidth)
+            maxnamewidth = w;
           allattrs[nallattrs++] = attrs[n];
         }
       }
@@ -657,11 +659,58 @@ static int cmd_ls(int ac,
     for(n = 0; n < nallattrs; ++n)
       xprintf("%s\n", allattrs[n].name);
   } else {
-    /* multi-column listing */
-    /* This isn't really a production client, we just issue a single-column
-     * listing for now */
-    for(n = 0; n < nallattrs; ++n)
-      xprintf("%s\n", allattrs[n].name);
+    /* multi-column listing.  First figure out the terminal width. */
+    if((e = getenv("COLUMNS")))
+      width = (size_t)strtoul(e, 0, 10);
+    else if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+      width = ws.ws_col;
+    else
+      width = 80;
+    /* We have C columns of width M, with C-1 single-character blank columns
+     * between them.  So the total width is C * M + (C - 1).  The lot had
+     * better fit into W columns in total.
+     * 
+     * We want to find the maximum C such that:
+     *     C * M + C - 1 <= W
+     * <=> C * (M + 1) <= W + 1
+     * <=> C <= (W + 1) / (M + 1)
+     *
+     * Therefore we calculate C=floor[(W + 1) / (M + 1)].
+     *
+     * For instance W=80 and M=40 gives 81/41 = 1
+     *              W=80 and M=39 gives 81/39 = 2
+     *              W=80 and M=27 gives 81/28 = 2
+     *              W=80 and M=26 gives 81/27 = 3
+     * and so on.
+     *
+     * If we end up with 0 columns we round it up to 1 and put up with the
+     * overflow.
+     */
+    cols = (width + 1) / (maxnamewidth + 1);
+    if(!cols) cols = 1;
+    /* Now we have the number of columns.  The N files are conventionally
+     * listed down the columns, in this sort of order:
+     *
+     *    0  4  8
+     *    1  5  9
+     *    2  6  10
+     *    3  7  11
+     *
+     * Up to the last C-1 columns may be missing their final row.  So there
+     * must be ceil(N / C) rows.  We calculate this slightly indirectly.
+     */
+    rows = (nallattrs + cols - 1) / cols;
+    for(n = 0; n < rows; ++n) {
+      for(m = 0; m < cols && (i = n + m * rows) < nallattrs; ++m) {
+        const size_t w = wcswidth(allattrs[i].wname, SIZE_MAX);
+
+        xprintf("%s%*s",
+                allattrs[i].name,
+                (m + 1 < cols && i + rows < nallattrs
+                 ? (int)(maxnamewidth - w + 1) : 0), "");
+      }
+      printf("\n");
+    }
   }
   if(allattrs != &fileattrs)
     free(allattrs);

@@ -3,6 +3,7 @@
 
 #include <config.h>
 #include <inttypes.h>
+#include <sys/types.h>
 
 struct queue;
 struct allocator;

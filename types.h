@@ -32,6 +32,7 @@ struct sftpattr {
    * name lists */
   const char *name;
   const char *longname;
+  const wchar_t *wname;                 /* name converted to wide chars */
 };
 /* SFTP-style file attributes */
 
