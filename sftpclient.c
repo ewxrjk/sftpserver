@@ -98,7 +98,7 @@ static void help(void) {
 	 "Options:\n"
 	 "  --help, -h               Display usage message\n"
 	 "  --version, -V            Display version number\n"
-	 "  -B, --buffer BYTES       Select buffer size (default 32768)\n"
+	 "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
 	 "  -b, --batch PATH         Read batch file\n"
 	 "  -P, --program PATH       Execute program as SFTP server\n"
 	 "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
@@ -900,6 +900,8 @@ static int cmd_get(int ac,
   uint32_t st, len;
   pthread_t tid;
   uint64_t written = 0;
+  struct timeval started, finished;
+  double elapsed;
 
   memset(&attrs, 0, sizeof attrs);
   memset(&r, 0, sizeof r);
@@ -938,6 +940,7 @@ static int cmd_get(int ac,
     /* We don't know how big the file is.  We'll just keep on reading until we
      * get an EOF. */
     r.size = (uint64_t)-1;
+  gettimeofday(&started,  0);
   ferrcheck(pthread_mutex_init(&r.m, 0));
   ferrcheck(pthread_cond_init(&r.c1, 0));
   ferrcheck(pthread_cond_init(&r.c2, 0));
@@ -1012,6 +1015,12 @@ static int cmd_get(int ac,
   progress(0, 0, 0);
   if(r.failed) 
     goto error;
+  gettimeofday(&finished, 0);
+  elapsed = ((finished.tv_sec - started.tv_sec)
+             + (finished.tv_usec - started.tv_usec) / 1000000.0);
+  xprintf("%"PRIu64" bytes in %.1f seconds", written, elapsed);
+  if(elapsed > 0.1)
+    xprintf(" %.0f bytes/sec\n", written / elapsed);
   /* Close the handle */
   sftp_close(&r.h);
   r.h.len = 0;
