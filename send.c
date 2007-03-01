@@ -77,7 +77,7 @@ void send_end(struct sftpjob *job) {
   /* Write the complete output, protecting stdout with a lock to avoid
    * interleaving different responses. */
   ferrcheck(pthread_mutex_lock(&output_lock));
-  if(DEBUG) {
+  if(debugging) {
     D(("%s:", sendtype));
     hexdump(w->buffer + 4, w->bufused - 4);
   }

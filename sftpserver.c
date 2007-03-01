@@ -191,6 +191,8 @@ int main(void) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
+  if(getenv("SFTPSERVER_DEBUGGING"))
+    debugging = 1;
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
@@ -199,7 +201,7 @@ int main(void) {
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
       fatal("read error: unexpected eof");
-    if(DEBUG) {
+    if(debugging) {
       D(("request:"));
       hexdump(job->data, job->len);
     }

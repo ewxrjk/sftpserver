@@ -75,6 +75,7 @@ static const struct option options[] = {
   { "subsystem", required_argument, 0, 's' },
   { "sftp-version", required_argument, 0, 'S' },
   { "quirk-openssh", no_argument, 0, 256 },
+  { "debug", no_argument, 0, 'd' },
   { "1", no_argument, 0, '1' },
   { "2", no_argument, 0, '2' },
   { "C", no_argument, 0, 'C' },
@@ -156,7 +157,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
   fakejob.data = xmalloc(fakejob.len);
   if(do_read(sftpin, fakejob.data, fakejob.len))
     fatal("unexpected EOF from server while reading data");
-  if(DEBUG) {
+  if(debugging) {
     D(("response:"));
     hexdump(fakejob.data, fakejob.len > 32 ? 32 : fakejob.len);
   }
@@ -1153,7 +1154,7 @@ int main(int argc, char **argv) {
   pid_t pid;
   uint32_t u32;
   
-  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:v",
+  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vd",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
@@ -1170,6 +1171,7 @@ int main(int argc, char **argv) {
     case 'F': sshconf = optarg; break;
     case 'o': sshoptions[nsshoptions++] = optarg; break;
     case 'v': sshverbose++; break;
+    case 'd': debugging = 1; break;
     case 256: quirk_openssh = 1; break;
     default: exit(1);
     }

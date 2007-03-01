@@ -1,20 +1,31 @@
 #include "sftpserver.h"
 
-#ifdef DEBUGPATH
-
 #include "debug.h"
 #include <ctype.h>
 #include <stdarg.h>
 #include <errno.h>
 #include <stdio.h>
+#include <assert.h>
 
 static FILE *debugfp;
+const char *debugpath;
+int debugging;
+
+static void opendebug(void) {
+  assert(debugging);
+  if(!debugfp) {
+    if(debugpath)
+      debugfp = fopen(debugpath, "w");
+    if(!debugfp)
+      debugfp = stderr;
+  }
+}
 
 void hexdump(const void *ptr, size_t n) {
   const unsigned char *p = ptr;
   size_t i, j;
 
-  if(!debugfp) debugfp = fopen(DEBUGPATH, "w");
+  opendebug();
   for(i = 0; i < n; i += 16) {
     fprintf(debugfp, "%4zx ", i);
     for(j = 0; j < 16; ++j)
@@ -34,14 +45,13 @@ void debug_printf(const char *fmt, ...) {
   va_list ap;
   const int save_errno = errno;
 
-  if(!debugfp) debugfp = fopen(DEBUGPATH, "w");
+  opendebug();
   va_start(ap, fmt);
   vfprintf(debugfp, fmt, ap);
   va_end(ap);
   fputc('\n', debugfp);
   errno = save_errno;
 }
-#endif
 
 /*
 Local Variables:
