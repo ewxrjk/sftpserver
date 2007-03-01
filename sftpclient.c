@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <sys/ioctl.h>
 #include <locale.h>
+#include <sys/time.h>
 
 struct command {
   const char *name;
