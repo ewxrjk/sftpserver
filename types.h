@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <sys/stat.h>
+#include <wchar.h>
 
 struct sftptime {
   int64_t seconds;
