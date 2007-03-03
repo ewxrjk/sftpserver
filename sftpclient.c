@@ -1125,8 +1125,8 @@ static void *writer_thread(void *arg) {
 
 static int cmd_put(int ac,
                    char **av) {
-  const char *local;
-  char *remote;
+  char *local;
+  const char *remote;
   struct sftpattr attrs;
   struct stat sb;
   int fd = -1, i, preserve = 0, failed = 0,  eof = 0;
