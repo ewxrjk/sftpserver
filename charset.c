@@ -5,6 +5,8 @@
 #include "debug.h"
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
+#include <stdio.h>
 
 wchar_t *convertm2w(const char *s) {
   wchar_t *ws;
@@ -38,7 +40,7 @@ int iconv_wrapper(struct allocator *a, iconv_t cd, char **sp) {
     inbytesleft = inputsize;
     outbuf = output;
     outbytesleft = outputsize;
-    rc = iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft);
+    rc = iconv(cd, (void *)&inbuf, &inbytesleft, &outbuf, &outbytesleft);
     outputsize *= 2;
   } while(rc == (size_t)-1 && errno == E2BIG);
   if(rc == (size_t)-1)

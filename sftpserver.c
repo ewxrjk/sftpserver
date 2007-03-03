@@ -122,9 +122,11 @@ static void *worker_init(void) {
 
   memset(w, 0, sizeof *w);
   w->buffer = 0;
-  if(!(w->utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8")))
+  if((w->utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8"))
+     == (iconv_t)-1)
     fatal("error calling iconv_open: %s", strerror(errno));
-  if(!(w->local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET))))
+  if((w->local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET)))
+     == (iconv_t)-1)
     fatal("error calling iconv_open: %s", strerror(errno));
   return w;
 }
