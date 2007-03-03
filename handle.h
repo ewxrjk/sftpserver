@@ -9,12 +9,13 @@ struct handleid {
 };
 /* A handle ID */
 
-void handle_new_file(struct handleid *id, int fd, const char *path);
+void handle_new_file(struct handleid *id, int fd, const char *path, int istext);
 void handle_new_dir(struct handleid *id, DIR *dp, const char *path);
 /* Create new file handle */
 
 uint32_t handle_get_fd(const struct handleid *id, 
-                       int *fd, const char **pathp);
+                       int *fd, const char **pathp,
+                       int *istext);
 uint32_t handle_get_dir(const struct handleid *id,
                         DIR **dp, const char **pathp);
 uint32_t handle_close(const struct handleid *id);

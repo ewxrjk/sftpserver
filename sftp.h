@@ -156,6 +156,7 @@
 #define SSH_FXF_CREAT           0x00000008
 #define SSH_FXF_TRUNC           0x00000010
 #define SSH_FXF_EXCL            0x00000020
+#define SSH_FXF_TEXT            0x00000040
 
 #define SSH_FX_OK                            0
 #define SSH_FX_EOF                           1

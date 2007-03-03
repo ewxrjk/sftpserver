@@ -1048,7 +1048,6 @@ static int cmd_get(int ac,
       goto error;
     }
   }
-  /* TODO download progress */
   if(close(fd) < 0) {
     error("error closing %s: %s", tmp, strerror(errno));
     fd = -1;

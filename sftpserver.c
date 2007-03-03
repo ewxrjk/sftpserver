@@ -8,6 +8,7 @@
 #include "parse.h"
 #include "types.h"
 #include "globals.h"
+#include "serialize.h"
 #include <assert.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -75,11 +76,15 @@ static void sftp_init(struct sftpjob *job) {
   send_begin(job);
   send_uint8(job, SSH_FXP_VERSION);
   send_uint32(job, version);
-  if(version >= 6) {                    /* doesn't make much sense yet! */
-    /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
-    send_string(job, "versions");
-    send_string(job, "3");
-  }
+  /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
+   * client always sends \n, freeing us from the burden of translating text
+   * files.  However we still have to deal with the different rules for reads
+   * and writes on text files. */
+  send_string(job, "newline");
+  send_string(job, "\n");
+  /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
+  send_string(job, "versions");
+  send_string(job, "3,4");
   /* TODO filename-charset extension */
   /* TODO supported extension */
   /* TODO supported2 extension */
@@ -165,6 +170,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   /* We did not find a handler */
   protocol->status(job, SSH_FX_OP_UNSUPPORTED, "operation not supported");
 done:
+  serialize_remove_job(job);
   free(job->data);
   free(job);
   return;
@@ -204,6 +210,21 @@ int main(void) {
     if(debugging) {
       D(("request:"));
       hexdump(job->data, job->len);
+    }
+    /* Overlapping or text-mode reads and writes on the same handle must be
+     * processed in the order in which they arrived.  Therefore we must pick
+     * out reads and writes and add them to a queue to allow this rule to be
+     * implemented.  See handle.c for fuller commentary and notes on
+     * interpretation. */
+    if(job->len) {
+      switch(*job->data) {
+      case SSH_FXP_READ:
+      case SSH_FXP_WRITE:
+      case SSH_FXP_FSETSTAT:
+      case SSH_FXP_FSTAT:
+        queue_serializable_job(job);
+        break;
+      }
     }
     /* We process the job in a background thread, except that the background
      * threads don't exist until SSH_FXP_INIT has succeeded. */

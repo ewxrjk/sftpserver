@@ -2,6 +2,7 @@
 #define THREAD_H
 
 #include <pthread.h>
+#include <stdio.h>
 
 /* Error-checking for pthreads functions */
 #define ferrcheck(E) do {                                       \

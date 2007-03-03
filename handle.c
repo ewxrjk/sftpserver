@@ -17,6 +17,7 @@ struct handle {
     DIR *dir;                           /* directory handle */
   } u;
   char *path;                           /* name of file or directory */
+  int istext;                           /* text mode? */
 };
 /* A file handle */
 
@@ -44,11 +45,13 @@ static void find_free_handle(struct handleid *id, int type) {
   id->tag = handles[n].tag;
 }
 
-void handle_new_file(struct handleid *id, int fd, const char *path) {
+void handle_new_file(struct handleid *id, 
+                     int fd, const char *path, int istext) {
   ferrcheck(pthread_mutex_lock(&handle_lock));
   find_free_handle(id, SSH_FXP_OPEN);
   handles[id->id].u.fd = fd;
   handles[id->id].path = xstrdup(path);
+  handles[id->id].istext = istext;
   ferrcheck(pthread_mutex_unlock(&handle_lock));
 }
 
@@ -61,7 +64,7 @@ void handle_new_dir(struct handleid *id, DIR *dp, const char *path) {
 }
 
 uint32_t handle_get_fd(const struct handleid *id,
-                       int *fd, const char **pathp) {
+                       int *fd, const char **pathp, int *istext) {
   uint32_t rc;
 
   ferrcheck(pthread_mutex_lock(&handle_lock));
@@ -70,6 +73,7 @@ uint32_t handle_get_fd(const struct handleid *id,
      && handles[id->id].type == SSH_FXP_OPEN) {
     *fd = handles[id->id].u.fd;
     if(pathp) *pathp = handles[id->id].path;
+    if(istext) *istext = handles[id->id].istext;
     rc = 0;
   } else
     rc = SSH_FX_INVALID_HANDLE;

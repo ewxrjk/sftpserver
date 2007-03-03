@@ -10,6 +10,7 @@
 #include "globals.h"
 #include "stat.h"
 #include "utils.h"
+#include "serialize.h"
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -418,10 +419,11 @@ void sftp_v3_fstat(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0))) {
+  if((rc = handle_get_fd(&id, &fd, 0, 0))) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
+  serialize_on_handle(job, 0);
   sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
 
@@ -447,10 +449,11 @@ void sftp_fsetstat(struct sftpjob *job) {
   pcheck(parse_handle(job, &id));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0))) {
+  if((rc = handle_get_fd(&id, &fd, 0, 0))) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
+  serialize_on_handle(job, 0);
   if(set_fstatus(fd, &attrs))
     send_errno_status(job);
   else
@@ -546,7 +549,7 @@ void sftp_v3_open(struct sftpjob *job) {
     unlink(path);
     return;                             /* already sent error */
   }
-  handle_new_file(&id, fd, path);
+  handle_new_file(&id, fd, path, !!(pflags & SSH_FXF_TEXT));
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
   send_begin(job);
   send_uint8(job, SSH_FXP_HANDLE);
@@ -560,7 +563,7 @@ void sftp_read(struct sftpjob *job) {
   uint64_t offset;
   uint32_t len, rc;
   ssize_t n;
-  int fd;
+  int fd, istext;
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
@@ -568,16 +571,20 @@ void sftp_read(struct sftpjob *job) {
   D(("sftp_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
   if(len > MAXREAD) len = MAXREAD;
-  if((rc = handle_get_fd(&id, &fd, 0))) {
+  if((rc = handle_get_fd(&id, &fd, 0,  &istext))) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
+  serialize_on_handle(job, istext);
   /* We read straight into our own output buffer to save a copy. */
   send_begin(job);
   send_uint8(job, SSH_FXP_DATA);
   send_uint32(job, job->id);
   send_need(job->worker, len + 4);
-  n = pread(fd, job->worker->buffer + job->worker->bufused + 4, len, offset);
+  if(istext)
+    n = read(fd, job->worker->buffer + job->worker->bufused + 4, len);
+  else
+    n = pread(fd, job->worker->buffer + job->worker->bufused + 4, len, offset);
   /* Short reads are allowed so we don't try to read more */
   if(n > 0) {
     /* Fix up the buffer */
@@ -599,7 +606,7 @@ void sftp_write(struct sftpjob *job) {
   uint64_t offset;
   uint32_t len, rc;
   ssize_t n;
-  int fd;
+  int fd, istext;
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
@@ -610,13 +617,17 @@ void sftp_write(struct sftpjob *job) {
   }
   D(("sftp_write %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
-  if((rc = handle_get_fd(&id, &fd, 0))) {
+  if((rc = handle_get_fd(&id, &fd, 0, &istext))) {
     protocol->status(job, rc, "invalid file handle");
     return;
   }
+  serialize_on_handle(job, istext);
   while(len > 0) {
     /* Short writes aren't allowed so we loop around writing more */
-    n = pwrite(fd, job->ptr, len, offset);
+    if(istext)
+      n = write(fd, job->ptr, len);
+    else
+      n = pwrite(fd, job->ptr, len, offset);
     if(n < 0) {
       send_errno_status(job);
       return;
@@ -624,7 +635,7 @@ void sftp_write(struct sftpjob *job) {
     job->ptr += n;
     job->left += n;
     len -= n;
-    offset -= n;
+    offset += n;
   }
   send_ok(job);
 }
