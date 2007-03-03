@@ -50,6 +50,8 @@ static char *cwd;
 static const char *inputpath;
 static int inputline;
 static const struct command commands[];
+static int progress_indicators = 1;
+static int terminal_width;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -123,7 +125,7 @@ static void version(void) {
 
 /* Utilities */
 
-static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
+static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
   va_list ap;
 
   fprintf(stderr, "%s:%d ", inputpath, inputline);
@@ -131,6 +133,7 @@ static void attribute((format(printf,1,2))) error(const char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   va_end(ap);
   fputc('\n',  stderr);
+  return -1;
 }
 
 static int status(void) {
@@ -237,13 +240,16 @@ static const char *resolvepath(const char *name) {
 }
 
 static void progress(const char *path, uint64_t sofar, uint64_t total) {
-  if(!total)
-    printf("\r                                                                                \r");
-  else if(total == (uint64_t)-1)
-    printf("\r%.60s: %12"PRIu64"b", path, sofar);
-  else
-    printf("\r%.60s: %12"PRIu64"b %3d%%", path, sofar, (int)(100 * sofar / total));
-  fflush(stdout);
+  if(progress_indicators) {
+    if(!total)
+      printf("\r%*s\r", terminal_width, "");
+    else if(total == (uint64_t)-1)
+      printf("\r%.60s: %12"PRIu64"b", path, sofar);
+    else
+      printf("\r%.60s: %12"PRIu64"b %3d%%",
+             path, sofar, (int)(100 * sofar / total));
+    fflush(stdout);
+  }
 }
 
 /* SFTP operation stubs */
@@ -600,11 +606,8 @@ static int cmd_ls(int ac,
   struct sftpattr *attrs, *allattrs = 0, fileattrs;
   size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
   struct handle h;
-  struct winsize ws;
-  const char *e;
-  size_t width, cols, rows;
+  size_t cols, rows;
 
-  setlocale(LC_ALL, "");
   if(ac > 0 && av[0][0] == '-') {
     options = *av++;
     --ac;
@@ -675,12 +678,6 @@ static int cmd_ls(int ac,
       xprintf("%s\n", allattrs[n].name);
   } else {
     /* multi-column listing.  First figure out the terminal width. */
-    if((e = getenv("COLUMNS")))
-      width = (size_t)strtoul(e, 0, 10);
-    else if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
-      width = ws.ws_col;
-    else
-      width = 80;
     /* We have C columns of width M, with C-1 single-character blank columns
      * between them.  So the total width is C * M + (C - 1).  The lot had
      * better fit into W columns in total.
@@ -701,7 +698,7 @@ static int cmd_ls(int ac,
      * If we end up with 0 columns we round it up to 1 and put up with the
      * overflow.
      */
-    cols = (width + 1) / (maxnamewidth + 1);
+    cols = (terminal_width + 1) / (maxnamewidth + 1);
     if(!cols) cols = 1;
     /* Now we have the number of columns.  The N files are conventionally
      * listed down the columns, in this sort of order:
@@ -1031,12 +1028,14 @@ static int cmd_get(int ac,
   if(r.failed) 
     goto error;
   gettimeofday(&finished, 0);
-  elapsed = ((finished.tv_sec - started.tv_sec)
-             + (finished.tv_usec - started.tv_usec) / 1000000.0);
-  xprintf("%"PRIu64" bytes in %.1f seconds", written, elapsed);
-  if(elapsed > 0.1)
-    xprintf(" %.0f bytes/sec", written / elapsed);
-  xprintf("\n");
+  if(progress_indicators) {
+    elapsed = ((finished.tv_sec - started.tv_sec)
+               + (finished.tv_usec - started.tv_usec) / 1000000.0);
+    xprintf("%"PRIu64" bytes in %.1f seconds", written, elapsed);
+    if(elapsed > 0.1)
+      xprintf(" %.0f bytes/sec", written / elapsed);
+    xprintf("\n");
+  }
   /* Close the handle */
   sftp_close(&r.h);
   r.h.len = 0;
@@ -1250,12 +1249,14 @@ static int cmd_put(int ac,
   ferrcheck(pthread_cond_destroy(&w.c2));
   if(failed || w.failed) goto error;
   gettimeofday(&finished, 0);
-  elapsed = ((finished.tv_sec - started.tv_sec)
-             + (finished.tv_usec - started.tv_usec) / 1000000.0);
-  xprintf("%"PRIu64" bytes in %.1f seconds", w.written, elapsed);
-  if(elapsed > 0.1)
-    xprintf(" %.0f bytes/sec", w.written / elapsed);
-  xprintf("\n");
+  if(progress_indicators) {
+    elapsed = ((finished.tv_sec - started.tv_sec)
+               + (finished.tv_usec - started.tv_usec) / 1000000.0);
+    xprintf("%"PRIu64" bytes in %.1f seconds", w.written, elapsed);
+    if(elapsed > 0.1)
+      xprintf(" %.0f bytes/sec", w.written / elapsed);
+    xprintf("\n");
+  }
   close(fd); fd = -1;
   if(preserve) {
     /* mtime at least will be nadgered */
@@ -1270,6 +1271,19 @@ error:
     sftp_remove(remote);                /* tidy up our mess */
   }
   return -1;
+}
+
+static int cmd_progress(int ac, char **av) {
+  if(ac) {
+    if(!strcmp(av[0], "on"))
+      progress_indicators = 1;
+    else if(!strcmp(av[0], "off"))
+      progress_indicators = 0;
+    else
+      return error("invalid progress option '%s'", av[0]);
+  } else
+    progress_indicators ^= 1;
+  return 0;
 }
 
 /* Table of command line operations */
@@ -1348,6 +1362,11 @@ static const struct command commands[] = {
     "mv", 2, 2, cmd_mv,
     "OLDPATH NEWPATH",
     "rename a remote file"
+  },
+  {
+    "progress", 0, 1, cmd_progress,
+    "[on|off]",
+    "set or toggle progress indicators"
   },
   {
     "put", 1, 3, cmd_put, "[-P] LOCAL-PATH [REMOTE-PATH]",
@@ -1441,7 +1460,22 @@ int main(int argc, char **argv) {
   int ip[2], op[2];
   pid_t pid;
   uint32_t u32;
-  
+
+  setlocale(LC_ALL, "");
+
+  /* Figure out terminal width */
+  {
+    struct winsize ws;
+    const char *e;
+
+    if((e = getenv("COLUMNS")))
+      terminal_width = (size_t)strtoul(e, 0, 10);
+    else if(ioctl(1, TIOCGWINSZ, &ws) >= 0)
+      terminal_width = ws.ws_col;
+    else
+      terminal_width = 80;
+  }
+
   while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vd",
 			 options, 0)) >= 0) {
     switch(n) {
