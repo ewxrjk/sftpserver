@@ -161,8 +161,7 @@ void sftp_already_init(struct sftpjob *job) {
 void sftp_remove(struct sftpjob *job) {
   char *path;
   
-  
-pcheck(parse_path(job, &path));
+  pcheck(parse_path(job, &path));
   D(("sftp_remove %s", path));
   if(unlink(path) < 0) send_errno_status(job);
   else send_ok(job);

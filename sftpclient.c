@@ -672,7 +672,7 @@ static int cmd_ls(int ac,
     struct tm nowtime;
     const unsigned long flags = (strchr(options, 'n')
                                  ? FORMAT_PREFER_NUMERIC_UID
-                                 : 0);
+                                 : 0)|FORMAT_PREFER_LOCALTIME;
     
     /* We'd like to know what year we're in for dates in longname */
     time(&now);

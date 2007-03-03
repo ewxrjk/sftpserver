@@ -136,7 +136,7 @@ const char *format_attr(struct allocator *a,
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
     struct tm mtime;
     const time_t m = attrs->mtime.seconds;
-    gmtime_r(&m, &mtime);
+    (flags & FORMAT_PREFER_LOCALTIME ? localtime_r : gmtime_r)(&m, &mtime);
     /* Timestamps in the current year we give down to seconds.  For
      * timestamps in other years we give the year. */
     if(mtime.tm_year == thisyear)

@@ -80,16 +80,20 @@ static void sftp_init(struct sftpjob *job) {
   send_begin(job);
   send_uint8(job, SSH_FXP_VERSION);
   send_uint32(job, version);
-  /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
-   * client always sends \n, freeing us from the burden of translating text
-   * files.  However we still have to deal with the different rules for reads
-   * and writes on text files. */
-  send_string(job, "newline");
-  send_string(job, "\n");
-  /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
-  send_string(job, "versions");
-  send_string(job, "3,4");
-  /* TODO filename-charset extension */
+  if(protocol->version >= 4) {
+    /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
+     * client always sends \n, freeing us from the burden of translating text
+     * files.  However we still have to deal with the different rules for reads
+     * and writes on text files.
+     */
+    send_string(job, "newline");
+    send_string(job, "\n");
+  }
+  if(protocol->version >= 6) {
+    /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
+    send_string(job, "versions");
+    send_string(job, "3,4");
+  }
   /* TODO supported extension */
   /* TODO supported2 extension */
   send_end(job);

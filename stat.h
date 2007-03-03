@@ -5,6 +5,7 @@ const char *format_attr(struct allocator *a,
 			const struct sftpattr *attrs, int thisyear,
 			unsigned long flags);
 #define FORMAT_PREFER_NUMERIC_UID 0x00000001
+#define FORMAT_PREFER_LOCALTIME 0x00000002
 /* Prefer numeric UID instead of names */
 
 const char *set_status(const char *path,
