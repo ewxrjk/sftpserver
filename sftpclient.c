@@ -28,6 +28,7 @@
 #include <sys/ioctl.h>
 #include <locale.h>
 #include <sys/time.h>
+#include <langinfo.h>
 
 struct command {
   const char *name;
@@ -1735,9 +1736,9 @@ int main(int argc, char **argv) {
   sftpout = op[1];
   fakejob.a = alloc_init(&allocator);
   fakejob.worker = &fakeworker;
-  if(!(fakeworker.utf8_to_local = iconv_open("char", "UTF-8")))
+  if(!(fakeworker.utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8")))
     fatal("error calling iconv_open: %s", strerror(errno));
-  if(!(fakeworker.local_to_utf8 = iconv_open("UTF-8", "char")))
+  if(!(fakeworker.local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET))))
     fatal("error calling iconv_open: %s", strerror(errno));
 
   /* Send SSH_FXP_INIT */

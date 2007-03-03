@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <signal.h>
 #include <locale.h>
+#include <langinfo.h>
 
 /* Forward declarations */
 
@@ -121,9 +122,9 @@ static void *worker_init(void) {
 
   memset(w, 0, sizeof *w);
   w->buffer = 0;
-  if(!(w->utf8_to_local = iconv_open("char", "UTF-8")))
+  if(!(w->utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8")))
     fatal("error calling iconv_open: %s", strerror(errno));
-  if(!(w->local_to_utf8 = iconv_open("UTF-8", "char")))
+  if(!(w->local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET))))
     fatal("error calling iconv_open: %s", strerror(errno));
   return w;
 }
