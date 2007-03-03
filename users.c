@@ -12,7 +12,7 @@
 /* We don't rely on the C library doing the right thing */
 static pthread_mutex_t user_lock = PTHREAD_MUTEX_INITIALIZER;
 
-const char *uid2name(struct allocator *a, uid_t uid) {
+char *uid2name(struct allocator *a, uid_t uid) {
   char *s;
   const struct passwd *pw;
 
@@ -25,7 +25,7 @@ const char *uid2name(struct allocator *a, uid_t uid) {
   return s;
 }
 
-const char *gid2name(struct allocator *a, gid_t gid) {
+char *gid2name(struct allocator *a, gid_t gid) {
   char *s;
   const struct group *gr;
 

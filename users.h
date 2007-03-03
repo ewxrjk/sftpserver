@@ -5,8 +5,8 @@
 
 struct allocator;
 
-const char *uid2name(struct allocator *a, uid_t uid);
-const char *gid2name(struct allocator *a, gid_t gid);
+char *uid2name(struct allocator *a, uid_t uid);
+char *gid2name(struct allocator *a, gid_t gid);
 
 #endif /* USERS_H */
 

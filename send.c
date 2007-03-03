@@ -122,7 +122,8 @@ void send_bytes(struct sftpjob *job, const void *bytes, size_t n) {
 }
 
 void send_path(struct sftpjob *job, const char *path) {
-  protocol->encode(job, (char **)&path);
+  if(protocol->encode(job, (char **)&path))
+    fatal("cannot encode local path name '%s'", path);
   send_string(job, path);
 }
 

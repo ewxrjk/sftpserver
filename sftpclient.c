@@ -10,7 +10,7 @@
 #include "debug.h"
 #include "thread.h"
 #include "stat.h"
-#include "widechar.h"
+#include "charset.h"
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
@@ -52,6 +52,8 @@ static int inputline;
 static const struct command commands[];
 static int progress_indicators = 1;
 static int terminal_width;
+static int textmode;
+static const char *newline = "\r\n";
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -68,7 +70,7 @@ static const char *sshconf;
 static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
-static int sftpversion = 3;
+static int sftpversion = 4;
 static int quirk_openssh;
 
 static const struct option options[] = {
@@ -166,7 +168,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
     fatal("unexpected EOF from server while reading data");
   if(debugging) {
     D(("response:"));
-    hexdump(fakejob.data, fakejob.len > 32 ? 32 : fakejob.len);
+    hexdump(fakejob.data, fakejob.len);
   }
   fakejob.left = fakejob.len;
   fakejob.ptr = fakejob.data;
@@ -279,6 +281,8 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   send_uint8(&fakejob, type);
   send_uint32(&fakejob, id = newid());
   send_path(&fakejob, resolvepath(path));
+  if(protocol->version > 3)
+    send_uint32(&fakejob, 0xFFFFFFFF);
   send_end(&fakejob);
   if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
     return -1;
@@ -295,6 +299,8 @@ static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
   send_uint8(&fakejob, SSH_FXP_FSTAT);
   send_uint32(&fakejob, id = newid());
   send_bytes(&fakejob, hp->data, hp->len);
+  if(protocol->version > 3)
+    send_uint32(&fakejob, 0xFFFFFFFF);
   send_end(&fakejob);
   if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
     return -1;
@@ -321,7 +327,7 @@ static int sftp_readdir(const struct handle *hp,
                         size_t *nattrsp) {
   uint32_t id, n;
   struct sftpattr *attrs;
-  char *name, *longname;
+  char *name, *longname = 0;
 
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_READDIR);
@@ -338,7 +344,8 @@ static int sftp_readdir(const struct handle *hp,
     *attrsp = attrs;
     while(n-- > 0) {
       cpcheck(parse_path(&fakejob, &name));
-      cpcheck(parse_path(&fakejob, &longname));
+      if(protocol->version <= 3)
+        cpcheck(parse_path(&fakejob, &longname));
       cpcheck(protocol->parseattrs(&fakejob, attrs));
       attrs->name = name;
       attrs->longname = longname;
@@ -443,7 +450,7 @@ static int sftp_symlink(const char *targetpath, const char *linkpath) {
   send_begin(&fakejob);
   send_uint8(&fakejob, SSH_FXP_SYMLINK);
   send_uint32(&fakejob, id = newid());
-  if(quirk_openssh && sftpversion == 3) {
+  if(quirk_openssh && protocol->version == 3) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
     send_path(&fakejob, resolvepath(targetpath));
@@ -900,6 +907,72 @@ static void *reader_thread(void *arg) {
   return 0;
 }
 
+/* Inbound text file translation */
+static FILE *translated_fp;
+static size_t translated_state;         /* how far thru newline we've seen */
+
+static int write_translated_init(int fd) {
+  if(!(translated_fp = fdopen(fd, "w")))
+    return error("error calling fdopen: %s", strerror(errno));
+  translated_state = 0;
+  return 0;
+}
+
+static int write_translated(const void *vptr, size_t bytes) {
+  const char *ptr = vptr;
+  while(bytes > 0) {
+    const int c = (unsigned char)*ptr++;
+    --bytes;
+    if(c == newline[translated_state]) {
+      /* We've seen part of a newline */
+      ++translated_state;
+      if(!newline[translated_state]) {
+        /* We must have seen a whole newline */
+        if(putc('\n', translated_fp) < 0) return -1;
+        translated_state = 0;
+      } else {
+        /* We're part way thru something that might be a newline.  Keep
+         * going. */
+      }
+    } else {
+      if(translated_state) {
+        /* We're part way thru something that turned out not to be a newline. */
+        if(fwrite(newline, 1, translated_state, translated_fp)
+           != translated_state)
+          return -1;
+        translated_state = 0;
+        /* Try again from the current point. */
+        /* Note that we assume that the newline sequence doesn't contain
+         * repetitions.  If you have a (completely bonkers!) platform that
+         * violates this assumption then you'll have to write a cleverer state
+         * machine here. */
+        continue;
+      } else {
+        if(putc(c, translated_fp) < 0) return -1;
+      }
+    }
+  }
+  return 0;
+}
+
+static int write_translated_done(void) {
+  int rc = 0;
+
+  if(translated_fp) {
+    if(translated_state) {
+      /* The file ends part way thru something that starts out like a newline
+       * sequence but turns out not to be one. */
+      if(fwrite(newline, 1, translated_state, translated_fp) != translated_state)
+        rc = -1;
+      translated_state = 0;
+    }
+    if(fclose(translated_fp) < 0)
+      rc = -1;
+    translated_fp = 0;
+  }
+  return rc;
+}
+
 static int cmd_get(int ac,
                    char **av) {
   int preserve = 0;
@@ -934,8 +1007,14 @@ static int cmd_get(int ac,
   sprintf(tmp, "%s.new", local);
   if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0)
     goto error;
+  if(textmode) {
+    if(write_translated_init(fd))
+      goto error;
+    fd = -1;
+  }
   /* open the remote file */
-  if(sftp_open(remote, SSH_FXF_READ, &attrs, &r.h))
+  if(sftp_open(remote, SSH_FXF_READ|(textmode ? SSH_FXF_TEXT : 0),
+               &attrs, &r.h))
     goto error;
   /* stat the file */
   if(sftp_fstat(&r.h, &attrs))
@@ -999,8 +1078,16 @@ static int cmd_get(int ac,
        * the right place in the file according to what we asked for.  There's
        * not much point releasing the lock while doing the write - the
        * background thread will have done all it wants while we were awaiting
-       * the response. */
-      rc = pwrite(fd, fakejob.ptr, len, r.reqs[n].offset);
+       * the response. 
+       *
+       * In text mode we can rely on the responses arriving in the correct
+       * order.
+       */
+      if(textmode) {
+        /* We must replace each instance of the newline string with \n */
+        rc = write_translated(fakejob.ptr, len);
+      } else
+        rc = pwrite(fd, fakejob.ptr, len, r.reqs[n].offset);
       if(rc < 0) {
         fprintf(stderr, "error writing to %s: %s\n", tmp, strerror(errno));
         r.failed = 1;
@@ -1048,7 +1135,12 @@ static int cmd_get(int ac,
       goto error;
     }
   }
-  if(close(fd) < 0) {
+  if(textmode) {
+    if(write_translated_done()) {
+      error("error writing to %s: %s", tmp, strerror(errno));
+      goto error;
+    }
+  } else if(close(fd) < 0) {
     error("error closing %s: %s", tmp, strerror(errno));
     fd = -1;
     goto error;
@@ -1059,6 +1151,7 @@ static int cmd_get(int ac,
   }
   return 0;
 error:
+  write_translated_done();              /* ok to call if not initialized */
   if(fd >= 0) close(fd);
   if(tmp) unlink(tmp);
   if(r.h.len) sftp_close(&r.h);
@@ -1136,6 +1229,7 @@ static int cmd_put(int ac,
   struct timeval started, finished;
   double elapsed;
   uint32_t id;
+  FILE *fp = 0;
 
   memset(&h, 0, sizeof h);
   memset(&attrs, 0, sizeof attrs);
@@ -1173,7 +1267,7 @@ static int cmd_put(int ac,
   } else
     w.total = (uint64_t)-1;
   if(preserve) {
-    stat_to_attrs(fakejob.a, &sb, &attrs);
+    stat_to_attrs(fakejob.a, &sb, &attrs, 0xFFFFFFFF);
     /* Mask out things that don't make sense: we set the size by dint of
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
@@ -1182,9 +1276,17 @@ static int cmd_put(int ac,
                      |SSH_FILEXFER_ATTR_LINK_COUNT
                      |SSH_FILEXFER_ATTR_UIDGID);
   }
-  if(sftp_open(remote, SSH_FXF_WRITE|SSH_FXF_CREAT|SSH_FXF_TRUNC,
+  if(sftp_open(remote, (SSH_FXF_WRITE|SSH_FXF_CREAT|SSH_FXF_TRUNC
+                        |(textmode ? SSH_FXF_TEXT : 0)),
                &attrs, &h))
     goto error;
+  if(textmode) {
+    if(!(fp = fdopen(fd, "r"))) {
+      error("error calling fdopen: %s", strerror(errno));
+      goto error;
+    }
+    fd = -1;
+  }
   w.reqs = alloc(fakejob.a, nrequests * sizeof *w.reqs);
   w.remote = remote;
   gettimeofday(&started,  0);
@@ -1208,10 +1310,48 @@ static int cmd_put(int ac,
     send_uint32(&fakejob, id = newid());
     send_bytes(&fakejob, h.data, h.len);
     send_uint64(&fakejob, offset);
-    /* We read straight into our output buffer */
     send_need(fakejob.worker, buffersize + 4);
-    n = read(fd, fakejob.worker->buffer + fakejob.worker->bufused + 4,
-             buffersize);
+    if(textmode) {
+      char *const start = ((char *)fakejob.worker->buffer
+                           + fakejob.worker->bufused + 4);
+      char *ptr = start;
+      size_t left = buffersize;
+      const size_t newline_len = strlen(newline);
+      int c;
+      /* We will need to perform a translation step.  We read from stdio into
+       * our buffer expanding newlines as necessary. */
+      
+      while(left > 0 && (c = getc(fp)) != EOF) {
+        if(c == '\n') {
+          /* We found a newline.  Let us translated it to the desired wire
+           * format. */
+          if(left >= newline_len) {
+            /* We can fit a translated newline here */
+            strcpy(ptr, newline);
+            ptr += newline_len;
+            left -= newline_len;
+          } else {
+            /* Whoops, we cannot fit a translated newline in. */
+            if(ungetc(c, fp) < 0) fatal("ungetc: %s", strerror(errno));
+          }
+        } else {
+          /* This character is not a newline. */
+          *ptr++ = c;
+          --left;
+        }
+      }
+      /* Fake up n to look like the result of read() */
+      if(ferror(fp))
+        n = -1;
+      else
+        n = ptr - start;
+      /* There is always space to write at least one translated newline (see
+       * main() below) so n will only be 0 if we genuinely are at EOF. */
+    } else {
+      /* We read straight into our output buffer */
+      n = read(fd, fakejob.worker->buffer + fakejob.worker->bufused + 4,
+               buffersize);
+    }
     if(n > 0) {
       /* Send off another write request with however much data we read */
       send_uint32(&fakejob, n);
@@ -1256,7 +1396,14 @@ static int cmd_put(int ac,
       xprintf(" %.0f bytes/sec", w.written / elapsed);
     xprintf("\n");
   }
-  close(fd); fd = -1;
+  if(fd >= 0) {
+    close(fd); 
+    fd = -1;
+  }
+  if(fp) {
+    fclose(fp);
+    fp = 0;
+  }
   if(preserve) {
     /* mtime at least will be nadgered */
     if(sftp_fsetstat(&h, &attrs)) goto error;
@@ -1264,6 +1411,7 @@ static int cmd_put(int ac,
   sftp_close(&h);
   return 0;
 error:
+  if(fp) fclose(fp);
   if(fd >= 0) close(fd);
   if(h.len) {
     sftp_close(&h);
@@ -1285,8 +1433,34 @@ static int cmd_progress(int ac, char **av) {
   return 0;
 }
 
+static int cmd_text(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  if(protocol->version < 4)
+    return error("text mode not supported in protocol version %d",
+                 protocol->version);
+  textmode = 1;
+  return 0;
+}
+
+static int cmd_binary(int attribute((unused)) ac,
+                      char attribute((unused)) **av) {
+  textmode = 0;
+  return 0;
+}
+
+static int cmd_version(int attribute((unused)) ac,
+                       char attribute((unused)) **av) {
+  xprintf("%d\n", protocol->version);
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
+  {
+    "binary", 0, 0, cmd_binary,
+    0,
+    "binary mode"
+  },
   {
     "bye", 0, 0, cmd_quit,
     0,
@@ -1401,6 +1575,16 @@ static const struct command commands[] = {
     "TARGET NEWPATH",
     "create a remote symlink"
   },
+  {
+    "text", 0, 0, cmd_text,
+    0,
+    "text mode"
+  },
+  {
+    "version", 0, 0, cmd_version,
+    0,
+    "display protocol version"
+  },
   { 0, 0, 0, 0, 0, 0 }
 };
 
@@ -1504,7 +1688,7 @@ int main(int argc, char **argv) {
   if(buffersize < 64) buffersize = 64;
   if(buffersize > 1048576) buffersize = 1048576;
 
-  if(sftpversion != 3)
+  if(sftpversion < 3 || sftpversion > 4)
     fatal("unknown SFTP version %d", sftpversion);
   
   ncmdline = 0;
@@ -1551,6 +1735,10 @@ int main(int argc, char **argv) {
   sftpout = op[1];
   fakejob.a = alloc_init(&allocator);
   fakejob.worker = &fakeworker;
+  if(!(fakeworker.utf8_to_local = iconv_open("char", "UTF-8")))
+    fatal("error calling iconv_open: %s", strerror(errno));
+  if(!(fakeworker.local_to_utf8 = iconv_open("UTF-8", "char")))
+    fatal("error calling iconv_open: %s", strerror(errno));
 
   /* Send SSH_FXP_INIT */
   send_begin(&fakejob);
@@ -1561,10 +1749,33 @@ int main(int argc, char **argv) {
   /* Parse the version reponse */
   getresponse(SSH_FXP_VERSION, 0);
   cpcheck(parse_uint32(&fakejob, &u32));
-  if(u32 != 3)
-    fatal("we only know protocol version 3 but server wanted version %"PRIu32,
-          u32);
-  /* TODO parse extensions */
+  switch(u32) {
+  case 3:
+    protocol = &sftpv3;
+    break;
+  case 4:
+    protocol = &sftpv4;
+    break;
+  default:
+    fatal("server wanted protocol version %"PRIu32, u32);
+  }
+  /* Extension data */
+  while(fakejob.left) {
+    char *xname, *xdata;
+
+    cpcheck(parse_string(&fakejob, &xname, 0));
+    cpcheck(parse_string(&fakejob, &xdata, 0));
+    D(("server sent extension '%s'", xname));
+    if(!strcmp(xname, "newline")) {
+      newline = xstrdup(xdata);
+      if(!*newline)
+        fatal("cannot cope with empty newline sequence");
+      /* TODO check newline sequence doesn't contain repeats */
+    }
+  }
+  /* Make sure outbound translation will actually work */
+  if(buffersize < strlen(newline))
+    buffersize = strlen(newline);
 
   /* Find path to current directory */
   if(!(cwd = sftp_realpath("."))) exit(1);

@@ -13,7 +13,8 @@ const char *set_fstatus(int fd,
 			const struct sftpattr *attrs);
 
 void stat_to_attrs(struct allocator *a,
-		   const struct stat *sb, struct sftpattr *attrs);
+		   const struct stat *sb, struct sftpattr *attrs,
+                   uint32_t flags);
 
 #endif /* STAT_H */
 

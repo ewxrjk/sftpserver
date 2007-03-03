@@ -11,7 +11,7 @@
 int parse_uint8(struct sftpjob *job, uint8_t *ur) {
   if(job->left < 1) return -1;
   *ur = *job->ptr++;
-  --job->len;
+  --job->left;
   return 0;
 }
 
@@ -29,6 +29,7 @@ int parse_uint32(struct sftpjob *job, uint32_t *ur) {
     *ur = u;
   }
 #endif
+  job->left -= 4;
   return 0;
 }
 
@@ -44,6 +45,7 @@ int parse_uint64(struct sftpjob *job, uint64_t *ur) {
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
+  job->left -= 8;
   *ur = u;
   return 0;
 }
@@ -61,6 +63,7 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
     *strp = str;
   }
   job->ptr += len;
+  job->left -= len;
   return 0;
 }
 

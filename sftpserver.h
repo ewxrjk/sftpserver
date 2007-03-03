@@ -25,10 +25,9 @@
 # define MAXREQUEST 1048576
 #endif
 
-void generic_status(struct sftpjob *job,
-                    uint32_t status,
-                    uint32_t original_status,
-                    const char *msg);
+void send_status(struct sftpjob *job, 
+                 uint32_t status,
+                 const char *msg);
 /* Send an SSH_FXP_STATUS */
 
 void sftp_already_init(struct sftpjob *job);
@@ -46,24 +45,22 @@ void sftp_readdir(struct sftpjob *job);
 void sftp_mkdir(struct sftpjob *job);
 void sftp_extended(struct sftpjob *job);
 
-void v3_status(struct sftpjob *job,
-               uint32_t status,
-               const char *msg);
-void v3_sendnames(struct sftpjob *job, 
-                  int nnames, const struct sftpattr *names);
-void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs);
-int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
-void v3_encode(struct sftpjob *job, char **path);
-int v3_decode(struct sftpjob *job, char **path);
-void sftp_v3_rename(struct sftpjob *job);
-void sftp_v3_open(struct sftpjob *job);
-void sftp_v3_lstat(struct sftpjob *job);
-void sftp_v3_stat(struct sftpjob *job);
-void sftp_v3_fstat(struct sftpjob *job);
-void sftp_v3_realpath(struct sftpjob *job);
+void v456_sendnames(struct sftpjob *job, 
+                    int nnames, const struct sftpattr *names);
+void v456_sendattrs(struct sftpjob *job,
+ 		    const struct sftpattr *attrs);
+int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
+int v456_encode(struct sftpjob *job, char **path);
+int v456_decode(struct sftpjob *job, char **path);
+void sftp_v34_rename(struct sftpjob *job);
+void sftp_v34_open(struct sftpjob *job);
+void sftp_v456_lstat(struct sftpjob *job);
+void sftp_v456_stat(struct sftpjob *job);
+void sftp_v456_fstat(struct sftpjob *job);
+void sftp_v345_realpath(struct sftpjob *job);
 
 void send_errno_status(struct sftpjob *job);
-/* Call protocol->status based on errno */
+/* Call send_status based on errno */
 
 void send_ok(struct sftpjob *job);
 /* Send an OK */

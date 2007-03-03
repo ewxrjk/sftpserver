@@ -45,10 +45,9 @@ const char *status_to_string(uint32_t status) {
   }
 }
 
-void generic_status(struct sftpjob *job, 
-		    uint32_t status,
-		    uint32_t original_status,
-		    const char *msg) {
+void send_status(struct sftpjob *job, 
+                 uint32_t status,
+                 const char *msg) {
   if(status == (uint32_t)-1) {
     /* Bodge to allow us to treat -1 as a magical status meaning 'consult
      * errno'.  This goes back via the protocol-specific status callback, so
@@ -57,8 +56,12 @@ void generic_status(struct sftpjob *job,
     send_errno_status(job);
     return;
   }
+  /* If there is no message, fill one in */
   if(!msg)
-    msg = status_to_string(original_status);
+    msg = status_to_string(status);
+  /* Limit to status values known to this version of the protocol */
+  if(status > protocol->maxstatus)
+    status = SSH_FX_FAILURE;
   send_begin(job);
   send_uint8(job, SSH_FXP_STATUS);
   send_uint32(job, job->id);
@@ -97,11 +100,11 @@ void send_errno_status(struct sftpjob *job) {
       errnotab[n].errno_value != errno_value && errnotab[n].errno_value != -1;
       ++n)
     ;
-  protocol->status(job, errnotab[n].status_value, strerror(errno_value));
+  send_status(job, errnotab[n].status_value, strerror(errno_value));
 }
 
 void send_ok(struct sftpjob *job) {
-  protocol->status(job, SSH_FX_OK, 0);
+  send_status(job, SSH_FX_OK, 0);
 }
 
 /*

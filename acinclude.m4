@@ -88,6 +88,12 @@ AC_DEFUN([RJK_GCC_ATTRS],[
   ])
 ])
 
+AC_DEFUN([RJK_ICONV],[
+  # MacOS has a rather odd iconv (presumably for some good reason)
+  AC_CHECK_LIB([iconv],[iconv_open])
+  AC_CHECK_LIB([iconv],[libiconv_open])
+])
+
 dnl Local Variables:
 dnl mode:autoconf
 dnl End:

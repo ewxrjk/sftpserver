@@ -16,6 +16,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <signal.h>
+#include <locale.h>
 
 /* Forward declarations */
 
@@ -43,18 +44,17 @@ static void sftp_init(struct sftpjob *job) {
 
   if(protocol != &sftppreinit) {
     /* Cannot initialize more than once */
-    protocol->status(job, SSH_FX_FAILURE, "already initialized");
+    send_status(job, SSH_FX_FAILURE, "already initialized");
     return;
   }
   if(parse_uint32(job, &version)) {
-    protocol->status(job, SSH_FX_BAD_MESSAGE,
-                     "no version found in SSH_FXP_INIT");
+    send_status(job, SSH_FX_BAD_MESSAGE, "no version found in SSH_FXP_INIT");
     return;
   }
   switch(version) {
   case 0: case 1: case 2:               /* we don't understand these at all. */
-    protocol->status(job, SSH_FX_OP_UNSUPPORTED,
-                     "client protocol version is too old (need at least 3)");
+    send_status(job, SSH_FX_OP_UNSUPPORTED,
+                "client protocol version is too old (need at least 3)");
     return;
   case 3:
   case 4:
@@ -69,6 +69,9 @@ static void sftp_init(struct sftpjob *job) {
   switch(version) {
   case 3:
     protocol = &sftpv3;
+    break;
+  case 4:
+    protocol = &sftpv4;
     break;
   default:
     assert(!"cannot happen");
@@ -101,12 +104,14 @@ static const struct sftpcmd sftppreinittab[] = {
 const struct sftpprotocol sftppreinit = {
   sizeof sftppreinittab / sizeof (struct sftpcmd),
   sftppreinittab,
-  v3_status,
-  v3_sendnames,
-  v3_sendattrs,
-  v3_parseattrs,
-  v3_encode,
-  v3_decode
+  3,
+  0xFFFFFFFF,                           /* never used */
+  SSH_FX_OP_UNSUPPORTED,
+  0,
+  0,
+  0,
+  0,
+  0
 };
 
 /* Worker setup/teardown */
@@ -116,6 +121,10 @@ static void *worker_init(void) {
 
   memset(w, 0, sizeof *w);
   w->buffer = 0;
+  if(!(w->utf8_to_local = iconv_open("char", "UTF-8")))
+    fatal("error calling iconv_open: %s", strerror(errno));
+  if(!(w->local_to_utf8 = iconv_open("UTF-8", "char")))
+    fatal("error calling iconv_open: %s", strerror(errno));
   return w;
 }
 
@@ -140,7 +149,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   job->left = job->len;
   /* Empty messages are never valid */
   if(!job->left) {
-    protocol->status(job, SSH_FX_BAD_MESSAGE, "empty request");
+    send_status(job, SSH_FX_BAD_MESSAGE, "empty request");
     goto done;
   }
   /* Get the type */
@@ -149,7 +158,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   /* Everything but SSH_FXP_INIT has an ID field */
   if(type != SSH_FXP_INIT)
     if(parse_uint32(job, &job->id)) {
-      protocol->status(job, SSH_FX_BAD_MESSAGE, "missing ID field");
+      send_status(job, SSH_FX_BAD_MESSAGE, "missing ID field");
       goto done;
     }
   /* Locate the handler for the command */
@@ -168,7 +177,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
     }
   }
   /* We did not find a handler */
-  protocol->status(job, SSH_FX_OP_UNSUPPORTED, "operation not supported");
+  send_status(job, SSH_FX_OP_UNSUPPORTED, "operation not supported");
 done:
   serialize_remove_job(job);
   free(job->data);
@@ -197,6 +206,9 @@ int main(void) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
+  /* We need I18N support for filename encoding */
+  setlocale(LC_CTYPE, "");
+  /* Enable debugging */
   if(getenv("SFTPSERVER_DEBUGGING"))
     debugging = 1;
   while(!do_read(0, &len, sizeof len)) {

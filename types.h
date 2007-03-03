@@ -3,6 +3,7 @@
 
 #include <sys/stat.h>
 #include <wchar.h>
+#include <iconv.h>
 
 struct sftptime {
   int64_t seconds;
@@ -15,7 +16,7 @@ struct sftpattr {
   uint64_t size;
   uint64_t allocation_size;             /* v6+ */
   uid_t uid, gid;                       /* v3 */ 
-  const char *owner, *group;            /* v4+ */
+  char *owner, *group;                  /* v4+ */
   uint32_t permissions;
   struct sftptime atime;
   struct sftptime createtime;           /* v4+ */
@@ -40,6 +41,7 @@ struct sftpattr {
 struct worker {
   size_t bufsize, bufused;
   uint8_t *buffer;
+  iconv_t local_to_utf8, utf8_to_local;
 };
 /* Thread-specific data */
 
@@ -62,15 +64,15 @@ struct sftpcmd {
 struct sftpprotocol {
   int ncommands;
   const struct sftpcmd *commands;       /* sorted by type */
-  void (*status)(struct sftpjob *job, 
-                 uint32_t status,
-                 const char *msg);      /* Send an SSH_FXP_STATUS */
+  int version;                          /* protocol version number */
+  uint32_t attrbits;                    /* known attr bits */
+  uint32_t maxstatus;                   /* max known status */
   void (*sendnames)(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
   void (*sendattrs)(struct sftpjob *job, const struct sftpattr *filestat);
   int (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
-  void (*encode)(struct sftpjob *job,
-                 char **path);          /* Convert from local to wire */
+  int (*encode)(struct sftpjob *job,
+                char **path);           /* Convert from local to wire */
   int (*decode)(struct sftpjob *job,
                 char **path);           /* Convert from wire to local */
   

@@ -21,7 +21,7 @@ int parse_handle(struct sftpjob *job, struct handleid *id);
 #define pcheck(E) do {					\
   if((E)) {						\
     D(("%s:%d: %s", __FILE__, __LINE__, #E));		\
-    protocol->status(job, SSH_FX_BAD_MESSAGE, 0);	\
+    send_status(job, SSH_FX_BAD_MESSAGE, 0);		\
     return;						\
   }							\
 } while(0)

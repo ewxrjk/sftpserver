@@ -13,7 +13,8 @@
 #include <unistd.h>
 
 void stat_to_attrs(struct allocator *a,
-		   const struct stat *sb, struct sftpattr *attrs) {
+		   const struct stat *sb, struct sftpattr *attrs,
+                   uint32_t flags) {
   memset(attrs, 0, sizeof *attrs);
   attrs->valid = (SSH_FILEXFER_ATTR_SIZE
 		  |SSH_FILEXFER_ATTR_PERMISSIONS
@@ -37,9 +38,14 @@ void stat_to_attrs(struct allocator *a,
   }
   attrs->size = sb->st_size;
   attrs->allocation_size = sb->st_blksize;
-  attrs->owner = uid2name(a, sb->st_uid);
+  /* Only look up owner/group info if wanted */
+  if(flags & SSH_FILEXFER_ATTR_OWNERGROUP) {
+    attrs->owner = uid2name(a, sb->st_uid);
+    attrs->group = gid2name(a, sb->st_gid);
+  } else {
+    attrs->valid &= ~SSH_FILEXFER_ATTR_OWNERGROUP;
+  }
   attrs->uid = sb->st_uid;
-  attrs->group = gid2name(a, sb->st_gid);
   attrs->gid = sb->st_gid;
   attrs->permissions = sb->st_mode;
   attrs->atime.seconds = sb->st_atime;
