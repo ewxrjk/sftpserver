@@ -12,6 +12,9 @@ const char *set_status(const char *path,
 const char *set_fstatus(int fd,
 			const struct sftpattr *attrs);
 
+void stat_to_attrs(struct allocator *a,
+		   const struct stat *sb, struct sftpattr *attrs);
+
 #endif /* STAT_H */
 
 /*

@@ -68,9 +68,6 @@ void send_errno_status(struct sftpjob *job);
 void send_ok(struct sftpjob *job);
 /* Send an OK */
 
-void stat_to_attrs(struct allocator *a,
-		   const struct stat *sb, struct sftpattr *attrs);
-
 #endif /* SFTPSERVER_H */
 
 /*
