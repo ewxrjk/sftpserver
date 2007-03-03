@@ -20,22 +20,28 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
                                 [Don't treat compiler warnings as errors])],
 		[warnings_as_errors="$enableval"],
 		[warnings_as_errors=yes])
-  if test "$GCC" = yes; then
-    if test "$warnings" = yes; then
-      CC="${CC} -Wall -W -Wpointer-arith -Wbad-function-cast \
+  AC_CACHE_CHECK([for ${CC} warning options],[rjk_cv_ccwarnings],[
+    if test "$GCC" = yes; then
+      rjk_cv_ccwarnings="-Wall -W -Wpointer-arith -Wbad-function-cast \
 -Wwrite-strings -Wmissing-prototypes \
 -Wmissing-declarations -Wnested-externs"
+    else
+      rjk_cv_ccwarnings="unknown"
     fi
-    if test "$warnings_as_errors" = yes; then
-      CC="${CC} -Werror"
+  ])
+  AC_CACHE_CHECK([how to make ${CC} treat warnings as errors],
+                 [rjk_cv_ccwerror],[
+    if test "$GCC" = yes; then
+      rjk_cv_ccwerror="-Werror"
+    else
+      rjk_cv_ccwerror="unknown"
     fi
-  else
-   if test "$warnings" = yes; then
-     AC_MSG_WARN([don't know how to enable warnings for your compiler])
-   fi
-   if test "$warnings_as_errors" = yes; then
-     AC_MSG_WARN([don't know how to treat warnings as errors for your compiler])
-   fi
+  ])
+  if test "$warnings" = yes && test "$rjk_cv_ccwarnings" != unknown; then
+    CC="${CC} $rjk_cv_ccwarnings"
+  fi
+  if test "$warnings_as_errors" = yes && test "$rjk_cv_ccwerror" != unknown; then
+    CC="${CC} $rjk_cv_ccwerror"
   fi
 ])
 
