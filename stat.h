@@ -15,7 +15,7 @@ const char *set_fstatus(int fd,
 
 void stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs,
-                   uint32_t flags);
+                   uint32_t flags, const char *path);
 
 #endif /* STAT_H */
 

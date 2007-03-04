@@ -32,7 +32,7 @@ struct sftpattr {
   char *untranslated_name;
   /* We stuff these in here too so we can conveniently use sftpattrs for
    * name lists */
-  const char *name;
+  const char *name;                     /* still in local encoding */
   const char *longname;
   const wchar_t *wname;                 /* name converted to wide chars */
 };

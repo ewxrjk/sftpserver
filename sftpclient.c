@@ -1268,13 +1268,14 @@ static int cmd_put(int ac,
   } else
     w.total = (uint64_t)-1;
   if(preserve) {
-    stat_to_attrs(fakejob.a, &sb, &attrs, 0xFFFFFFFF);
+    stat_to_attrs(fakejob.a, &sb, &attrs, 0xFFFFFFFF, local);
     /* Mask out things that don't make sense: we set the size by dint of
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
     attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE
                      |SSH_FILEXFER_ATTR_LINK_COUNT
                      |SSH_FILEXFER_ATTR_UIDGID);
+    attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
   }
   if(sftp_open(remote, (SSH_FXF_WRITE|SSH_FXF_CREAT|SSH_FXF_TRUNC
                         |(textmode ? SSH_FXF_TEXT : 0)),

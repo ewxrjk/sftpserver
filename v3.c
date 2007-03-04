@@ -302,7 +302,7 @@ void sftp_readdir(struct sftpjob *job) {
       send_errno_status(job);
       return;
     }
-    stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF);
+    stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF, childpath);
     d[n].name = childpath;
     ++n;
   }
@@ -357,7 +357,8 @@ static void sftp_v3_stat_core(struct sftpjob *job, int rc,
   if(!rc) {
     /* We suppress owner/group name lookup since there is no way to communicate
      * it in protocol version 3 */
-    stat_to_attrs(job->a, sb, &attrs, ~(uint32_t)SSH_FILEXFER_ATTR_OWNERGROUP);
+    stat_to_attrs(job->a, sb, &attrs,
+                  ~(uint32_t)SSH_FILEXFER_ATTR_OWNERGROUP, 0);
     send_begin(job->worker);
     send_uint8(job->worker, SSH_FXP_ATTRS);
     send_uint32(job->worker, job->id);

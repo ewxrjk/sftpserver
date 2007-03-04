@@ -14,7 +14,7 @@
 
 void stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs,
-                   uint32_t flags) {
+                   uint32_t flags, const char *path) {
   memset(attrs, 0, sizeof *attrs);
   attrs->valid = (SSH_FILEXFER_ATTR_SIZE
 		  |SSH_FILEXFER_ATTR_PERMISSIONS
@@ -25,7 +25,8 @@ void stat_to_attrs(struct allocator *a,
 		  |SSH_FILEXFER_ATTR_OWNERGROUP
 		  |SSH_FILEXFER_ATTR_ALLOCATION_SIZE
 		  |SSH_FILEXFER_ATTR_LINK_COUNT
-		  |SSH_FILEXFER_ATTR_CTIME);
+		  |SSH_FILEXFER_ATTR_CTIME
+                  |SSH_FILEXFER_ATTR_BITS);
   switch(sb->st_mode & S_IFMT) {
   case S_IFIFO: attrs->type = SSH_FILEXFER_TYPE_FIFO; break;
   case S_IFCHR: attrs->type = SSH_FILEXFER_TYPE_CHAR_DEVICE; break;
@@ -58,6 +59,23 @@ void stat_to_attrs(struct allocator *a,
   attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIMES;
 #endif
   attrs->link_count = sb->st_nlink;
+  /* If we know the path we can determine whether the file is hidden or not */
+  if(path) {
+    const char *s = path + strlen(path);
+    /* Ignore trailing slashes */
+    while(s > path && s[-1] == '/')
+      --s;
+    while(s > path && s[-1] != '/')
+      --s;
+    if(*s == '.')
+      attrs->attrib_bits |= SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
+    attrs->attrib_bits_valid |= SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
+  }
+  /* TODO: SSH_FILEXFER_ATTR_FLAGS_CASE_INSENSITIVE for directories on
+   * case-independent filesystems */
+  /* TODO: SSH_FILEXFER_ATTR_FLAGS_IMMUTABLE for immutable files.  Perhaps when
+   * I can find some documentation on the subject. */
+  attrs->name = path;
 }
 
 const char *format_attr(struct allocator *a,

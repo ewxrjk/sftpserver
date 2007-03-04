@@ -161,13 +161,13 @@ void v456_sendnames(struct sftpjob *job,
 /* Command code for the various _*STAT calls.  rc is the return value
  * from *stat() and SB is the buffer. */
 static void sftp_v456_stat_core(struct sftpjob *job, int rc, 
-				const struct stat *sb) {
+				const struct stat *sb, const char *path) {
   struct sftpattr attrs;
   uint32_t flags;
 
   if(!rc) {
     pcheck(parse_uint32(job, &flags));
-    stat_to_attrs(job->a, sb, &attrs, flags);
+    stat_to_attrs(job->a, sb, &attrs, flags, path);
     send_begin(job->worker);
     send_uint8(job->worker, SSH_FXP_ATTRS);
     send_uint32(job->worker, job->id);
@@ -183,7 +183,7 @@ void sftp_v456_lstat(struct sftpjob *job) {
 
   pcheck(parse_path(job, &path));
   D(("sftp_lstat %s", path));
-  sftp_v456_stat_core(job, lstat(path, &sb), &sb);
+  sftp_v456_stat_core(job, lstat(path, &sb), &sb, path);
 }
 
 void sftp_v456_stat(struct sftpjob *job) {
@@ -192,7 +192,7 @@ void sftp_v456_stat(struct sftpjob *job) {
 
   pcheck(parse_path(job, &path));
   D(("sftp_stat %s", path));
-  sftp_v456_stat_core(job, stat(path, &sb), &sb);
+  sftp_v456_stat_core(job, stat(path, &sb), &sb, path);
 }
 
 void sftp_v456_fstat(struct sftpjob *job) {
@@ -208,7 +208,7 @@ void sftp_v456_fstat(struct sftpjob *job) {
     return;
   }
   serialize_on_handle(job, 0);
-  sftp_v456_stat_core(job, fstat(fd, &sb), &sb);
+  sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
 }
 
 static const struct sftpcmd sftpv4tab[] = {
