@@ -27,52 +27,52 @@ void v456_sendattrs(struct sftpjob *job,
  		    const struct sftpattr *attrs) {
   const uint32_t valid = attrs->valid & protocol->attrbits;
 
-  send_uint32(job, valid);
-  send_uint8(job, attrs->type);
+  send_uint32(job->worker, valid);
+  send_uint8(job->worker, attrs->type);
   if(valid & SSH_FILEXFER_ATTR_SIZE)
-    send_uint64(job, attrs->size);
+    send_uint64(job->worker, attrs->size);
   if(valid & SSH_FILEXFER_ATTR_OWNERGROUP) {
-    send_path(job, attrs->owner);
-    send_path(job, attrs->group);
+    send_path(job, job->worker, attrs->owner);
+    send_path(job, job->worker, attrs->group);
   }
   if(valid & SSH_FILEXFER_ATTR_PERMISSIONS)
-    send_uint32(job, attrs->permissions);
+    send_uint32(job->worker, attrs->permissions);
   if(valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    send_uint64(job, attrs->atime.seconds);
+    send_uint64(job->worker, attrs->atime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job, attrs->atime.nanoseconds);
+      send_uint32(job->worker, attrs->atime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_CREATETIME) {
-    send_uint64(job, attrs->createtime.seconds);
+    send_uint64(job->worker, attrs->createtime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job, attrs->createtime.nanoseconds);
+      send_uint32(job->worker, attrs->createtime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    send_uint64(job, attrs->mtime.seconds);
+    send_uint64(job->worker, attrs->mtime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job, attrs->mtime.nanoseconds);
+      send_uint32(job->worker, attrs->mtime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_CTIME) {
-    send_uint64(job, attrs->ctime.seconds);
+    send_uint64(job->worker, attrs->ctime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job, attrs->ctime.nanoseconds);
+      send_uint32(job->worker, attrs->ctime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_ACL) {
-    send_string(job, attrs->acl);
+    send_string(job->worker, attrs->acl);
   }
   if(valid & SSH_FILEXFER_ATTR_BITS) {
-    send_uint32(job, attrs->attrib_bits);
+    send_uint32(job->worker, attrs->attrib_bits);
     if(protocol->version >= 6)
-      send_uint32(job, attrs->attrib_bits_valid);
+      send_uint32(job->worker, attrs->attrib_bits_valid);
   }
   if(valid & SSH_FILEXFER_ATTR_TEXT_HINT) {
-    send_uint8(job, attrs->text_hint);
+    send_uint8(job->worker, attrs->text_hint);
   }
   if(valid & SSH_FILEXFER_ATTR_MIME_TYPE) {
-    send_string(job, attrs->mime_type);
+    send_string(job->worker, attrs->mime_type);
   }
   if(valid & SSH_FILEXFER_ATTR_LINK_COUNT) {
-    send_uint32(job, attrs->link_count);
+    send_uint32(job->worker, attrs->link_count);
   }
   /* We don't implement untranslated-name yet */
 }
@@ -149,9 +149,9 @@ int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
 void v456_sendnames(struct sftpjob *job, 
 		    int nnames, const struct sftpattr *names) {
   /* We'd like to know what year we're in for dates in longname */
-  send_uint32(job, nnames);
+  send_uint32(job->worker, nnames);
   while(nnames > 0) {
-    send_path(job, names->name);
+    send_path(job, job->worker, names->name);
     protocol->sendattrs(job, names);
     ++names;
     --nnames;
@@ -168,11 +168,11 @@ static void sftp_v456_stat_core(struct sftpjob *job, int rc,
   if(!rc) {
     pcheck(parse_uint32(job, &flags));
     stat_to_attrs(job->a, sb, &attrs, flags);
-    send_begin(job);
-    send_uint8(job, SSH_FXP_ATTRS);
-    send_uint32(job, job->id);
+    send_begin(job->worker);
+    send_uint8(job->worker, SSH_FXP_ATTRS);
+    send_uint32(job->worker, job->id);
     protocol->sendattrs(job, &attrs);
-    send_end(job);
+    send_end(job->worker);
   } else
     send_errno_status(job);
 }

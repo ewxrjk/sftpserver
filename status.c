@@ -62,13 +62,13 @@ void send_status(struct sftpjob *job,
   /* Limit to status values known to this version of the protocol */
   if(status > protocol->maxstatus)
     status = SSH_FX_FAILURE;
-  send_begin(job);
-  send_uint8(job, SSH_FXP_STATUS);
-  send_uint32(job, job->id);
-  send_uint32(job, status);
-  send_string(job, msg);
-  send_string(job, "en");               /* we are not I18N'd yet */
-  send_end(job);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_STATUS);
+  send_uint32(job->worker, job->id);
+  send_uint32(job->worker, status);
+  send_string(job->worker, msg);
+  send_string(job->worker, "en");               /* we are not I18N'd yet */
+  send_end(job->worker);
 }
 
 static const struct {

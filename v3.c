@@ -47,10 +47,10 @@ static void v3_sendnames(struct sftpjob *job,
   /* We'd like to know what year we're in for dates in longname */
   time(&now);
   gmtime_r(&now, &nowtime);
-  send_uint32(job, nnames);
+  send_uint32(job->worker, nnames);
   while(nnames > 0) {
-    send_path(job, names->name);
-    send_string(job, format_attr(job->a, names, nowtime.tm_year, 0));
+    send_path(job, job->worker, names->name);
+    send_string(job->worker, format_attr(job->a, names, nowtime.tm_year, 0));
     protocol->sendattrs(job, names);
     ++names;
     --nnames;
@@ -75,15 +75,15 @@ static void v3_sendattrs(struct sftpjob *job,
     v3bits = (attrs->valid & (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_UIDGID
                               |SSH_FILEXFER_ATTR_PERMISSIONS));
-  send_uint32(job, v3bits);
+  send_uint32(job->worker, v3bits);
   if(v3bits & SSH_FILEXFER_ATTR_SIZE)
-    send_uint64(job, attrs->size);
+    send_uint64(job->worker, attrs->size);
   if(v3bits & SSH_FILEXFER_ATTR_UIDGID) {
-    send_uint32(job, attrs->uid);
-    send_uint32(job, attrs->gid);
+    send_uint32(job->worker, attrs->uid);
+    send_uint32(job->worker, attrs->gid);
   }
   if(v3bits & SSH_FILEXFER_ATTR_PERMISSIONS)
-    send_uint32(job, attrs->permissions);
+    send_uint32(job->worker, attrs->permissions);
   if(v3bits & SSH_FILEXFER_ACMODTIME) {
     m = attrs->mtime.seconds;
     a = attrs->atime.seconds;
@@ -96,8 +96,8 @@ static void v3_sendattrs(struct sftpjob *job,
       fatal("sending out-of-range mtime");
     if(a != attrs->atime.seconds)
       fatal("sending out-of-range mtime");
-    send_uint32(job, m);
-    send_uint32(job, a);
+    send_uint32(job->worker, m);
+    send_uint32(job->worker, a);
   }
   /* Note that we just discard unknown bits rather than reporting errors. */
 }
@@ -238,11 +238,11 @@ void sftp_readlink(struct sftpjob *job) {
   }
   memset(&attr, 0, sizeof attr);
   attr.name = result;
-  send_begin(job);
-  send_uint8(job, SSH_FXP_NAME);
-  send_uint32(job, job->id);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_NAME);
+  send_uint32(job->worker, job->id);
   protocol->sendnames(job, 1, &attr);
-  send_end(job);
+  send_end(job->worker);
 }
 
 void sftp_opendir(struct sftpjob *job) {
@@ -258,11 +258,11 @@ void sftp_opendir(struct sftpjob *job) {
   }
   handle_new_dir(&id, dp, path);
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
-  send_begin(job);
-  send_uint8(job, SSH_FXP_HANDLE);
-  send_uint32(job, job->id);
-  send_handle(job, &id);
-  send_end(job);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_HANDLE);
+  send_uint32(job->worker, job->id);
+  send_handle(job->worker, &id);
+  send_end(job->worker);
 }
 
 void sftp_readdir(struct sftpjob *job) {
@@ -312,11 +312,11 @@ void sftp_readdir(struct sftpjob *job) {
     return;
   }
   if(n) {
-    send_begin(job);
-    send_uint8(job, SSH_FXP_NAME);
-    send_uint32(job, job->id);
+    send_begin(job->worker);
+    send_uint8(job->worker, SSH_FXP_NAME);
+    send_uint32(job->worker, job->id);
     protocol->sendnames(job, n, d);
-    send_end(job);
+    send_end(job->worker);
   } else
     send_status(job, SSH_FX_EOF, "end of directory list");
 }
@@ -339,11 +339,11 @@ void sftp_v345_realpath(struct sftpjob *job) {
   attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST);;
   if(attr.name) {
     D(("...real path is %s", attr.name));
-    send_begin(job);
-    send_uint8(job, SSH_FXP_NAME);
-    send_uint32(job, job->id);
+    send_begin(job->worker);
+    send_uint8(job->worker, SSH_FXP_NAME);
+    send_uint32(job->worker, job->id);
     protocol->sendnames(job, 1, &attr);
-    send_end(job);
+    send_end(job->worker);
   } else
     send_errno_status(job);
 }
@@ -358,11 +358,11 @@ static void sftp_v3_stat_core(struct sftpjob *job, int rc,
     /* We suppress owner/group name lookup since there is no way to communicate
      * it in protocol version 3 */
     stat_to_attrs(job->a, sb, &attrs, ~(uint32_t)SSH_FILEXFER_ATTR_OWNERGROUP);
-    send_begin(job);
-    send_uint8(job, SSH_FXP_ATTRS);
-    send_uint32(job, job->id);
+    send_begin(job->worker);
+    send_uint8(job->worker, SSH_FXP_ATTRS);
+    send_uint32(job->worker, job->id);
     protocol->sendattrs(job, &attrs);
-    send_end(job);
+    send_end(job->worker);
   } else
     send_errno_status(job);
 }
@@ -524,11 +524,11 @@ void sftp_v34_open(struct sftpjob *job) {
   }
   handle_new_file(&id, fd, path, !!(pflags & SSH_FXF_TEXT));
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
-  send_begin(job);
-  send_uint8(job, SSH_FXP_HANDLE);
-  send_uint32(job, job->id);
-  send_handle(job, &id);
-  send_end(job);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_HANDLE);
+  send_uint32(job->worker, job->id);
+  send_handle(job->worker, &id);
+  send_end(job->worker);
 }
 
 void sftp_read(struct sftpjob *job) {
@@ -550,9 +550,9 @@ void sftp_read(struct sftpjob *job) {
   }
   serialize_on_handle(job, istext);
   /* We read straight into our own output buffer to save a copy. */
-  send_begin(job);
-  send_uint8(job, SSH_FXP_DATA);
-  send_uint32(job, job->id);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_DATA);
+  send_uint32(job->worker, job->id);
   send_need(job->worker, len + 4);
   if(istext)
     n = read(fd, job->worker->buffer + job->worker->bufused + 4, len);
@@ -561,9 +561,9 @@ void sftp_read(struct sftpjob *job) {
   /* Short reads are allowed so we don't try to read more */
   if(n > 0) {
     /* Fix up the buffer */
-    send_uint32(job, n);
+    send_uint32(job->worker, n);
     job->worker->bufused += n;
-    send_end(job);
+    send_end(job->worker);
     return;
   }
   /* The error-sending code calls send_begin(), so we don't get half a

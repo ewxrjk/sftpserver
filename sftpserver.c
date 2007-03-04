@@ -77,26 +77,77 @@ static void sftp_init(struct sftpjob *job) {
   default:
     assert(!"cannot happen");
   }
-  send_begin(job);
-  send_uint8(job, SSH_FXP_VERSION);
-  send_uint32(job, version);
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_VERSION);
+  send_uint32(job->worker, version);
   if(protocol->version >= 4) {
     /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
      * client always sends \n, freeing us from the burden of translating text
      * files.  However we still have to deal with the different rules for reads
      * and writes on text files.
      */
-    send_string(job, "newline");
-    send_string(job, "\n");
+    send_string(job->worker, "newline");
+    send_string(job->worker, "\n");
+  }
+  if(protocol->version == 5) {
+    /* draft-ietf-secsh-filexfer-05.txt 4.4 */
+    send_string(job->worker, "supported");
+    const size_t offset = send_sub_begin(job->worker);
+    send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
+                              |SSH_FILEXFER_ATTR_PERMISSIONS
+                              |SSH_FILEXFER_ATTR_ACCESSTIME
+                              |SSH_FILEXFER_ATTR_MODIFYTIME
+                              |SSH_FILEXFER_ATTR_OWNERGROUP
+                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
+    send_uint32(job->worker, 0);         /* supported-attribute-bits */
+    send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
+                              |SSH_FXF_APPEND_DATA
+                              |SSH_FXF_APPEND_DATA_ATOMIC
+                              |SSH_FXF_TEXT_MODE));
+    send_uint32(job->worker, 0xFFFFFFFF);
+    /* If we send a non-0 max-read-size then we promise to return that many
+     * bytes if asked for it and to mean EOF or error if we return less.
+     *
+     * This is completely useless.  If we end up reading from something like a
+     * pipe then we may get a short read before EOF.  If we've sent a non-0
+     * max-read-size then the client will wrongly interpret this as EOF.
+     *
+     * Therefore we send 0 here.
+     */
+    send_uint32(job->worker, 0);
+    send_sub_end(job->worker, offset);
   }
   if(protocol->version >= 6) {
+    /* draft-ietf-secsh-filexfer-13.txt 5.4 */
+    send_string(job->worker, "supported2");
+    const size_t offset = send_sub_begin(job->worker);
+    send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
+                              |SSH_FILEXFER_ATTR_PERMISSIONS
+                              |SSH_FILEXFER_ATTR_ACCESSTIME
+                              |SSH_FILEXFER_ATTR_MODIFYTIME
+                              |SSH_FILEXFER_ATTR_OWNERGROUP
+                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
+                              |SSH_FILEXFER_ATTR_CTIME
+                              |SSH_FILEXFER_ATTR_LINK_COUNT));
+    send_uint32(job->worker, 0);         /* supported-attribute-bits */
+    send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
+                              |SSH_FXF_APPEND_DATA
+                              |SSH_FXF_APPEND_DATA_ATOMIC
+                              |SSH_FXF_TEXT_MODE
+                              |SSH_FXF_NOFOLLOW
+                              |SSH_FXF_DELETE_ON_CLOSE));
+    send_uint32(job->worker, 0xFFFFFFFF);
+    send_uint32(job->worker, 0);        /* max-read-size - see above */
+    send_uint16(job->worker, 0);        /* supported-open-block-vector */
+    send_uint16(job->worker, 0);        /* supported-block-vector */
+    send_uint32(job->worker, 0);        /* attrib-extension-count */
+    send_uint32(job->worker, 0);        /* extension-count */
+    send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
-    send_string(job, "versions");
-    send_string(job, "3,4");
+    send_string(job->worker, "versions");
+    send_string(job->worker, "3,4");
   }
-  /* TODO supported extension */
-  /* TODO supported2 extension */
-  send_end(job);
+  send_end(job->worker);
   /* Now we are initialized we can safely process other jobs in the
    * background. */
   queue_init(&workqueue, &workqueue_details, 4);

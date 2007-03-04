@@ -37,7 +37,7 @@ void stat_to_attrs(struct allocator *a,
   default: attrs->type = SSH_FILEXFER_TYPE_SPECIAL; break;
   }
   attrs->size = sb->st_size;
-  attrs->allocation_size = sb->st_blksize;
+  attrs->allocation_size = sb->st_blksize * sb->st_blocks;
   /* Only look up owner/group info if wanted */
   if(flags & SSH_FILEXFER_ATTR_OWNERGROUP) {
     attrs->owner = uid2name(a, sb->st_uid);

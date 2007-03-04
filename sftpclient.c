@@ -261,11 +261,11 @@ static char *sftp_realpath(const char *path) {
   char *resolved;
   uint32_t u32, id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_REALPATH);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, path);
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_REALPATH);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, path);
+  send_end(&fakeworker);
   if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
     return 0;
   cpcheck(parse_uint32(&fakejob, &u32));
@@ -278,13 +278,13 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
                      uint8_t type) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, type);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, type);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
   if(protocol->version > 3)
-    send_uint32(&fakejob, 0xFFFFFFFF);
-  send_end(&fakejob);
+    send_uint32(&fakeworker, 0xFFFFFFFF);
+  send_end(&fakeworker);
   if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
@@ -296,13 +296,13 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
 static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_FSTAT);
-  send_uint32(&fakejob, id = newid());
-  send_bytes(&fakejob, hp->data, hp->len);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_FSTAT);
+  send_uint32(&fakeworker, id = newid());
+  send_bytes(&fakeworker, hp->data, hp->len);
   if(protocol->version > 3)
-    send_uint32(&fakejob, 0xFFFFFFFF);
-  send_end(&fakejob);
+    send_uint32(&fakeworker, 0xFFFFFFFF);
+  send_end(&fakeworker);
   if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
@@ -312,11 +312,11 @@ static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
 static int sftp_opendir(const char *path, struct handle *hp) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_OPENDIR);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_OPENDIR);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_end(&fakeworker);
   if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
     return -1;
   cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
@@ -330,11 +330,11 @@ static int sftp_readdir(const struct handle *hp,
   struct sftpattr *attrs;
   char *name, *longname = 0;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_READDIR);
-  send_uint32(&fakejob, id = newid());
-  send_bytes(&fakejob, hp->data, hp->len);
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READDIR);
+  send_uint32(&fakeworker, id = newid());
+  send_bytes(&fakeworker, hp->data, hp->len);
+  send_end(&fakeworker);
   switch(getresponse(-1, id)) {
   case SSH_FXP_NAME:
     cpcheck(parse_uint32(&fakejob, &n));
@@ -371,11 +371,11 @@ static int sftp_readdir(const struct handle *hp,
 static int sftp_close(const struct handle *hp) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_CLOSE);
-  send_uint32(&fakejob, id = newid());
-  send_bytes(&fakejob, hp->data, hp->len);
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_CLOSE);
+  send_uint32(&fakeworker, id = newid());
+  send_bytes(&fakeworker, hp->data, hp->len);
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -384,12 +384,12 @@ static int sftp_setstat(const char *path,
                         const struct sftpattr *attrs) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_SETSTAT);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_SETSTAT);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
   protocol->sendattrs(&fakejob, attrs);
-  send_end(&fakejob);
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -398,12 +398,12 @@ static int sftp_fsetstat(const struct handle *hp,
                          const struct sftpattr *attrs) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_FSETSTAT);
-  send_uint32(&fakejob, id = newid());
-  send_bytes(&fakejob, hp->data, hp->len);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_FSETSTAT);
+  send_uint32(&fakeworker, id = newid());
+  send_bytes(&fakeworker, hp->data, hp->len);
   protocol->sendattrs(&fakejob, attrs);
-  send_end(&fakejob);
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -411,11 +411,11 @@ static int sftp_fsetstat(const struct handle *hp,
 static int sftp_rmdir(const char *path) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_RMDIR);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_RMDIR);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -423,11 +423,11 @@ static int sftp_rmdir(const char *path) {
 static int sftp_remove(const char *path) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_REMOVE);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_REMOVE);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -435,12 +435,12 @@ static int sftp_remove(const char *path) {
 static int sftp_rename(const char *oldpath, const char *newpath) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_RENAME);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(oldpath));
-  send_path(&fakejob, resolvepath(newpath));
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_RENAME);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(oldpath));
+  send_path(&fakejob, &fakeworker, resolvepath(newpath));
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -448,19 +448,19 @@ static int sftp_rename(const char *oldpath, const char *newpath) {
 static int sftp_symlink(const char *targetpath, const char *linkpath) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_SYMLINK);
-  send_uint32(&fakejob, id = newid());
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_SYMLINK);
+  send_uint32(&fakeworker, id = newid());
   if(quirk_openssh && protocol->version == 3) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
-    send_path(&fakejob, resolvepath(targetpath));
-    send_path(&fakejob, resolvepath(linkpath));
+    send_path(&fakejob, &fakeworker, resolvepath(targetpath));
+    send_path(&fakejob, &fakeworker, resolvepath(linkpath));
   } else {
-    send_path(&fakejob, resolvepath(linkpath));
-    send_path(&fakejob, resolvepath(targetpath));
+    send_path(&fakejob, &fakeworker, resolvepath(linkpath));
+    send_path(&fakejob, &fakeworker, resolvepath(targetpath));
   }
-  send_end(&fakejob);
+  send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
 }
@@ -470,15 +470,15 @@ static int sftp_open(const char *path, uint32_t flags,
                      struct handle *hp) {
   uint32_t id;
 
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_OPEN);
-  send_uint32(&fakejob, id = newid());
-  send_path(&fakejob, resolvepath(path));
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_OPEN);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
   /* For the time being we just send the v3 values.  We'll have to do somethnig
    * cleverer when we support later protocol version. */
-  send_uint32(&fakejob, flags);
+  send_uint32(&fakeworker, flags);
   protocol->sendattrs(&fakejob, attrs);
-  send_end(&fakejob);
+  send_end(&fakeworker);
   if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
     return -1;
   cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
@@ -877,21 +877,21 @@ static void *reader_thread(void *arg) {
         ;
       assert(n < nrequests);
       id = newid();
-      send_begin(&fakejob);
-      send_uint8(&fakejob, SSH_FXP_READ);
-      send_uint32(&fakejob, id);
-      send_bytes(&fakejob, r->h.data, r->h.len);
-      send_uint64(&fakejob, r->next_offset);
+      send_begin(&fakeworker);
+      send_uint8(&fakeworker, SSH_FXP_READ);
+      send_uint32(&fakeworker, id);
+      send_bytes(&fakeworker, r->h.data, r->h.len);
+      send_uint64(&fakeworker, r->next_offset);
       if(r->size - r->next_offset > buffersize)
         len = buffersize;
       else {
         len = (uint32_t)(r->size - r->next_offset);
         r->eof = 1;
       }
-      send_uint32(&fakejob, len);
+      send_uint32(&fakeworker, len);
       /* Don't hold the lock while doing the send itself */
       ferrcheck(pthread_mutex_unlock(&r->m));
-      send_end(&fakejob);
+      send_end(&fakeworker);
       ferrcheck(pthread_mutex_lock(&r->m));
       /* Only fill in the outstanding_read once we've sent it */
       r->reqs[n].id = id;
@@ -1273,7 +1273,6 @@ static int cmd_put(int ac,
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
     attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE
-                     |SSH_FILEXFER_ATTR_ALLOCATION_SIZE
                      |SSH_FILEXFER_ATTR_LINK_COUNT
                      |SSH_FILEXFER_ATTR_UIDGID);
   }
@@ -1306,11 +1305,11 @@ static int cmd_put(int ac,
     /* Release the lock while we mess around with IO */
     ferrcheck(pthread_mutex_unlock(&w.m));
     /* Construct a write command */
-    send_begin(&fakejob);
-    send_uint8(&fakejob, SSH_FXP_WRITE);
-    send_uint32(&fakejob, id = newid());
-    send_bytes(&fakejob, h.data, h.len);
-    send_uint64(&fakejob, offset);
+    send_begin(&fakeworker);
+    send_uint8(&fakeworker, SSH_FXP_WRITE);
+    send_uint32(&fakeworker, id = newid());
+    send_bytes(&fakeworker, h.data, h.len);
+    send_uint64(&fakeworker, offset);
     send_need(fakejob.worker, buffersize + 4);
     if(textmode) {
       char *const start = ((char *)fakejob.worker->buffer
@@ -1355,9 +1354,9 @@ static int cmd_put(int ac,
     }
     if(n > 0) {
       /* Send off another write request with however much data we read */
-      send_uint32(&fakejob, n);
+      send_uint32(&fakeworker, n);
       fakejob.worker->bufused += n;
-      send_end(&fakejob);
+      send_end(&fakeworker);
       offset += n;
       /* We can only fill in the request details when we have the lock, so we
        * don't do that yet */
@@ -1744,10 +1743,10 @@ int main(int argc, char **argv) {
     fatal("error calling iconv_open: %s", strerror(errno));
 
   /* Send SSH_FXP_INIT */
-  send_begin(&fakejob);
-  send_uint8(&fakejob, SSH_FXP_INIT);
-  send_uint32(&fakejob, sftpversion);
-  send_end(&fakejob);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_INIT);
+  send_uint32(&fakeworker, sftpversion);
+  send_end(&fakeworker);
   
   /* Parse the version reponse */
   getresponse(SSH_FXP_VERSION, 0);

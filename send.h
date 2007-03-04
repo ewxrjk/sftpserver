@@ -4,18 +4,22 @@
 void send_need(struct worker *w, size_t n);
 /* Make sure there are N bytes available in the buffer */
 
-void send_begin(struct sftpjob *job);
-void send_end(struct sftpjob *job);
-void send_uint8(struct sftpjob *job, int n);
-void send_uint32(struct sftpjob *job, uint32_t u);
-void send_uint64(struct sftpjob *job, uint64_t u);
-void send_bytes(struct sftpjob *job, const void *bytes, size_t n);
-void send_handle(struct sftpjob *job, const struct handleid *id);
+void send_begin(struct worker *w);
+void send_end(struct worker *w);
+void send_uint8(struct worker *w, int n);
+void send_uint16(struct worker *w, uint16_t u);
+void send_uint32(struct worker *w, uint32_t u);
+void send_uint64(struct worker *w, uint64_t u);
+void send_bytes(struct worker *w, const void *bytes, size_t n);
+void send_handle(struct worker *w, const struct handleid *id);
 #define send_string(JOB, S) do {                \
   const char *s_ = (S);                         \
   send_bytes(JOB, s_, strlen(s_));              \
 } while(0)
-void send_path(struct sftpjob *job, const char *path);
+void send_path(struct sftpjob *job, struct worker *w, const char *path);
+
+size_t send_sub_begin(struct worker *w);
+void send_sub_end(struct worker *w, size_t offset);
 
 extern int sftpout;                     /* fd to write to */
 
