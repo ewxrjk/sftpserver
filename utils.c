@@ -1,5 +1,7 @@
 #include "sftpserver.h"
 #include "utils.h"
+#include "debug.h"
+#include "alloc.h"
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
@@ -96,6 +98,29 @@ pid_t xfork(void) {
   if(!pid)
     exitfn = _exit;
   return pid;
+}
+
+char *appendn(struct allocator *a, char *s, size_t *ns,
+              const char *t, size_t lt) {
+  const size_t ls = s ? strlen(s) : 0, need = lt + ls + 1;
+  
+  if(need > *ns) {
+    size_t newsize = *ns ? *ns : 16;
+
+    while(need > newsize && newsize)
+      newsize *= 2;
+    if(!newsize) fatal("out of memory");
+    s = allocmore(a, s, *ns, newsize);
+    *ns = newsize;
+  }
+  memcpy(s + ls, t, lt);
+  s[ls + lt] = 0;
+  return s;
+}
+
+char *append(struct allocator *a, char *s, size_t *ns, 
+             const char *t) {
+  return appendn(a, s, ns, t, strlen(t));
 }
 
 /*

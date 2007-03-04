@@ -224,39 +224,25 @@ void sftp_symlink(struct sftpjob *job) {
 }
 
 void sftp_readlink(struct sftpjob *job) {
-  char *path;
-  char *result;
-  int n;
-  size_t nresult;
+  char *path, *result;
   struct sftpattr attr;
 
   pcheck(parse_path(job, &path));
   D(("sftp_readlink %s", path));
-  /* readlink(2) has a rather stupid interface */
-  nresult = 256;
-  while(nresult > 0 && nresult <= 65536) {
-    result = alloc(job->a, nresult);
-    n = readlink(path, result, nresult);
-    if(n < 0) {
+  if(!(result = my_readlink(job->a, path))) {
+    if(errno == E2BIG)
+      send_status(job, SSH_FX_FAILURE, "link name is too long");
+    else
       send_errno_status(job);
-      return;
-    }
-    if((unsigned)n < nresult) {
-      /* 1-element name list */
-      path[n] = 0;
-      memset(&attr, 0, sizeof attr);
-      attr.name = path;
-      send_begin(job);
-      send_uint8(job, SSH_FXP_NAME);
-      send_uint32(job, job->id);
-      protocol->sendnames(job, 1, &attr);
-      send_end(job);
-      return;
-    }
-    nresult *= 2;
+    return;
   }
-  /* We should have wasted at most about 128Kbyte if we get here */
-  send_status(job, SSH_FX_FAILURE, "link name is too long");
+  memset(&attr, 0, sizeof attr);
+  attr.name = result;
+  send_begin(job);
+  send_uint8(job, SSH_FXP_NAME);
+  send_uint32(job, job->id);
+  protocol->sendnames(job, 1, &attr);
+  send_end(job);
 }
 
 void sftp_opendir(struct sftpjob *job) {
@@ -344,17 +330,14 @@ void sftp_close(struct sftpjob *job) {
 }
 
 void sftp_v345_realpath(struct sftpjob *job) {
-  char *path, *resolved;
+  char *path;
   struct sftpattr attr;
 
   pcheck(parse_path(job, &path));
   D(("sftp_realpath %s", path));
   memset(&attr, 0, sizeof attr);
-  /* realpath() demands a buffer of PATH_MAX bytes.  PATH_MAX isn't actually
-   * guaranteed to be a constant so we must allocate in dynamically.  We add a
-   * bit of extra space as a guard against broken C libraries. */
-  attr.name = resolved = alloc(job->a, PATH_MAX + 64);
-  if(realpath(path, resolved)) {
+  attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST);;
+  if(attr.name) {
     D(("...real path is %s", attr.name));
     send_begin(job);
     send_uint8(job, SSH_FXP_NAME);
