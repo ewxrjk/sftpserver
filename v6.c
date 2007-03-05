@@ -10,6 +10,7 @@
 #include "globals.h"
 #include <unistd.h>
 #include <string.h>
+#include <errno.h>
 
 void sftp_v6_realpath(struct sftpjob *job) {
   char *path, *compose;
