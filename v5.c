@@ -11,6 +11,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
+#include <stdio.h>
 
 void sftp_v56_open(struct sftpjob *job) {
   char *path;
@@ -112,7 +114,8 @@ void generic_open(struct sftpjob *job, const char *path,
          * deleted in the meantime then you get an error. */
         fd = open(path, open_flags, initial_permissions);
         created = 0;
-      }
+      } else
+        created = 0;                    /* quieten compiler */
     } else {
       /* As above we cannot use O_EXCL in this case as it'll refuse to follow
        * symlinks. */
@@ -236,6 +239,7 @@ void sftp_text_seek(struct sftpjob *job) {
   }
   /* Look for the right line */
   i = 0;
+  n = 0;                                /* quieten compiler */
   while(line > 0 && (n = read(fd, buffer, 0)) > 0) {
     i = 0;
     while(line > 0 && i < n) {
