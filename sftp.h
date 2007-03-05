@@ -167,16 +167,16 @@
 #define SSH_FX_NO_CONNECTION                 6
 #define SSH_FX_CONNECTION_LOST               7
 #define SSH_FX_OP_UNSUPPORTED                8
-#define SSH_FX_INVALID_HANDLE                9
+#define SSH_FX_INVALID_HANDLE                9  /*      v4+ */
 #define SSH_FX_NO_SUCH_PATH                  10 /* 0x0A */
 #define SSH_FX_FILE_ALREADY_EXISTS           11 /* 0x0B */
 #define SSH_FX_WRITE_PROTECT                 12 /* 0x0C */
 #define SSH_FX_NO_MEDIA                      13 /* 0x0D */
-#define SSH_FX_NO_SPACE_ON_FILESYSTEM        14 /* 0x0E */
+#define SSH_FX_NO_SPACE_ON_FILESYSTEM        14 /* 0x0E v5+ */
 #define SSH_FX_QUOTA_EXCEEDED                15 /* 0x0F */
 #define SSH_FX_UNKNOWN_PRINCIPAL             16 /* 0x10 */
 #define SSH_FX_LOCK_CONFLICT                 17 /* 0x11 */
-#define SSH_FX_DIR_NOT_EMPTY                 18 /* 0x12 */
+#define SSH_FX_DIR_NOT_EMPTY                 18 /* 0x12 v6+ */
 #define SSH_FX_NOT_A_DIRECTORY               19 /* 0x13 */
 #define SSH_FX_INVALID_FILENAME              20 /* 0x14 */
 #define SSH_FX_LINK_LOOP                     21 /* 0x15 */

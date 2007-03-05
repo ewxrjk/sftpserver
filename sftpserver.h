@@ -58,6 +58,12 @@ void sftp_v456_lstat(struct sftpjob *job);
 void sftp_v456_stat(struct sftpjob *job);
 void sftp_v456_fstat(struct sftpjob *job);
 void sftp_v345_realpath(struct sftpjob *job);
+void sftp_v56_open(struct sftpjob *job);
+void sftp_v56_rename(struct sftpjob *job);
+void sftp_text_seek(struct sftpjob *job);
+void generic_open(struct sftpjob *job, const char *path,
+                  uint32_t desired_access, uint32_t flags,
+                  struct sftpattr *attrs);
 
 void send_errno_status(struct sftpjob *job);
 /* Call send_status based on errno */

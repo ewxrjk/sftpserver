@@ -250,7 +250,9 @@ const struct sftpprotocol sftpv4 = {
   v456_sendattrs,
   v456_parseattrs,
   v456_encode,
-  v456_decode
+  v456_decode,
+  0,
+  0,                                    /* extensions */
 };
 
 /*

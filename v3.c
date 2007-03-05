@@ -471,65 +471,47 @@ void sftp_v34_open(struct sftpjob *job) {
   char *path;
   uint32_t pflags;
   struct sftpattr attrs;
-  int open_flags, fd;
-  struct handleid id;
+  uint32_t desired_access = 0;
+  uint32_t flags = 0;
 
   pcheck(parse_path(job, &path));
   pcheck(parse_uint32(job, &pflags));
   pcheck(protocol->parseattrs(job, &attrs));
-  D(("sftp_open %s %#"PRIx32, path, pflags));
-  /* Translate pflags to open(2) format */
-  switch(pflags & (SSH_FXF_READ|SSH_FXF_WRITE)) {
-  case SSH_FXF_READ:
-    open_flags = O_RDONLY;
+  D(("sftp_v34_open %s %#"PRIx32, path, pflags));
+  /* Translate to v5/6 bits */
+  if(pflags & SSH_FXF_READ)
+    desired_access |= ACE4_READ_DATA|ACE4_READ_ATTRIBUTES;
+  if(pflags & SSH_FXF_WRITE) 
+    desired_access |= ACE4_WRITE_DATA|ACE4_WRITE_ATTRIBUTES;
+  if(pflags & SSH_FXF_APPEND) {
+    flags |= SSH_FXF_APPEND_DATA;
+    desired_access |= ACE4_APPEND_DATA;
+  }
+  switch(pflags & (SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL)) {
+  case 0:
+    flags |= SSH_FXF_OPEN_EXISTING;
     break;
-  case SSH_FXF_WRITE:
-    open_flags = O_WRONLY;
+  case SSH_FXF_TRUNC:
+    /* The drafts demand that SSH_FXF_CREAT also be sent making this formally
+     * invalid, though there doesn't seem any good reason for them to do so:
+     * the client intent seems clear.*/
+    flags |= SSH_FXF_TRUNCATE_EXISTING;
     break;
-  case SSH_FXF_READ|SSH_FXF_WRITE:
-    open_flags = O_RDWR;
+  case SSH_FXF_CREAT:
+    flags |= SSH_FXF_OPEN_OR_CREATE;
+    break;
+  case SSH_FXF_CREAT|SSH_FXF_TRUNC:
+    flags |= SSH_FXF_CREATE_TRUNCATE;
+    break;
+  case SSH_FXF_CREAT|SSH_FXF_EXCL:
+  case SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL: /* nonsensical */
+    flags |= SSH_FXF_CREATE_NEW;
     break;
   default:
-    send_status(job, SSH_FX_BAD_MESSAGE, "need SSH_FXF_READ or SSH_FXF_WRITE");
+    send_status(job, SSH_FX_BAD_MESSAGE, "invalid SSH_FXP_OPEN flags");
     return;
   }
-  /* Append only makes sense for writable files */
-  if(pflags & SSH_FXF_WRITE)
-    if(pflags & SSH_FXF_APPEND)
-      open_flags |= O_APPEND;
-  if(pflags & SSH_FXF_CREAT) {
-    open_flags |= O_CREAT;
-    /* Truncate and no-overwrite only make sense if creating */
-    if(pflags & SSH_FXF_TRUNC) open_flags |= O_TRUNC;
-    if(pflags & SSH_FXF_EXCL) open_flags |= O_EXCL;
-  }
-  if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    /* If we're given initial permissions, use them and don't reset them  */
-    if((fd = open(path, open_flags, attrs.permissions & 0777)) < 0) {
-      send_errno_status(job);
-      return;
-    }
-    attrs.valid &= ~SSH_FILEXFER_ATTR_PERMISSIONS;
-  } else {
-    /* Otherwise follow the current umask */
-    if((fd = open(path, open_flags, 0777)) < 0) {
-      send_errno_status(job);
-      return;
-    }
-  }
-  if(set_fstatus(fd, &attrs)) { 
-    send_errno_status(job);
-    close(fd);
-    unlink(path);
-    return;                             /* already sent error */
-  }
-  handle_new_file(&id, fd, path, !!(pflags & SSH_FXF_TEXT));
-  D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_HANDLE);
-  send_uint32(job->worker, job->id);
-  send_handle(job->worker, &id);
-  send_end(job->worker);
+  generic_open(job, path, desired_access, flags, &attrs);
 }
 
 void sftp_read(struct sftpjob *job) {
@@ -537,7 +519,8 @@ void sftp_read(struct sftpjob *job) {
   uint64_t offset;
   uint32_t len, rc;
   ssize_t n;
-  int fd, istext;
+  int fd;
+  unsigned flags;
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
@@ -545,17 +528,17 @@ void sftp_read(struct sftpjob *job) {
   D(("sftp_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
   if(len > MAXREAD) len = MAXREAD;
-  if((rc = handle_get_fd(&id, &fd, 0,  &istext))) {
+  if((rc = handle_get_fd(&id, &fd, 0, &flags))) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, istext);
+  serialize_on_handle(job, flags);
   /* We read straight into our own output buffer to save a copy. */
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_DATA);
   send_uint32(job->worker, job->id);
   send_need(job->worker, len + 4);
-  if(istext)
+  if(flags & (HANDLE_TEXT|HANDLE_APPEND))
     n = read(fd, job->worker->buffer + job->worker->bufused + 4, len);
   else
     n = pread(fd, job->worker->buffer + job->worker->bufused + 4, len, offset);
@@ -580,7 +563,8 @@ void sftp_write(struct sftpjob *job) {
   uint64_t offset;
   uint32_t len, rc;
   ssize_t n;
-  int fd, istext;
+  int fd;
+  unsigned flags;
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
@@ -591,14 +575,14 @@ void sftp_write(struct sftpjob *job) {
   }
   D(("sftp_write %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
-  if((rc = handle_get_fd(&id, &fd, 0, &istext))) {
+  if((rc = handle_get_fd(&id, &fd, 0, &flags))) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, istext);
+  serialize_on_handle(job, flags);
   while(len > 0) {
     /* Short writes aren't allowed so we loop around writing more */
-    if(istext)
+    if(flags & (HANDLE_TEXT|HANDLE_APPEND))
       n = write(fd, job->ptr, len);
     else
       n = pwrite(fd, job->ptr, len, offset);
@@ -647,7 +631,9 @@ const struct sftpprotocol sftpv3 = {
   v3_sendattrs,
   v3_parseattrs,
   v3_encode,
-  v3_decode
+  v3_decode,
+  0,
+  0,                                    /* extensions */
 };
 
 /*

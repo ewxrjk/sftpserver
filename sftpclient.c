@@ -71,7 +71,7 @@ static const char *sshconf;
 static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
-static int sftpversion = 4;
+static int sftpversion = 5;
 static int quirk_openssh;
 
 static const struct option options[] = {
@@ -440,6 +440,8 @@ static int sftp_rename(const char *oldpath, const char *newpath) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(oldpath));
   send_path(&fakejob, &fakeworker, resolvepath(newpath));
+  if(protocol->version >= 5)
+    send_uint32(&fakeworker, SSH_FXF_RENAME_OVERWRITE);
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -465,20 +467,66 @@ static int sftp_symlink(const char *targetpath, const char *linkpath) {
   return status();
 }
 
-static int sftp_open(const char *path, uint32_t flags, 
+static int sftp_open(const char *path, 
+                     uint32_t desired_access, uint32_t flags,
                      const struct sftpattr *attrs,
                      struct handle *hp) {
-  uint32_t id;
+  uint32_t id, pflags = 0;
 
-  send_begin(&fakeworker);
-  send_uint8(&fakeworker, SSH_FXP_OPEN);
-  send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
-  /* For the time being we just send the v3 values.  We'll have to do somethnig
-   * cleverer when we support later protocol version. */
-  send_uint32(&fakeworker, flags);
-  protocol->sendattrs(&fakejob, attrs);
-  send_end(&fakeworker);
+  if(protocol->version <= 4) {
+    /* We must translate the v5/6 style parameters back down to v3/4 */
+    if(desired_access & ACE4_READ_DATA) pflags |= SSH_FXF_READ;
+    if(desired_access & ACE4_WRITE_DATA) pflags |= SSH_FXF_WRITE;
+    switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
+    case SSH_FXF_CREATE_NEW:
+      pflags |= SSH_FXF_CREAT|SSH_FXF_EXCL;
+      break;
+    case SSH_FXF_CREATE_TRUNCATE:
+      pflags |= SSH_FXF_CREAT|SSH_FXF_TRUNC;
+      break;
+    case SSH_FXF_OPEN_OR_CREATE:
+      pflags |= SSH_FXF_CREAT;
+      break;
+    case SSH_FXF_OPEN_EXISTING:
+      break;
+    case SSH_FXF_TRUNCATE_EXISTING:
+      return error("SSH_FXF_TRUNCATE_EXISTING cannot be emulated");
+    default:
+      return error("unknown SSH_FXF_ACCESS_DISPOSITION %#"PRIx32,
+                   flags);
+    }
+    if(flags & (SSH_FXF_APPEND_DATA|SSH_FXF_APPEND_DATA_ATOMIC))
+      pflags |= SSH_FXF_APPEND;
+    if(flags & SSH_FXF_TEXT_MODE) {
+      if(protocol->version < 4)
+        return error("SSH_FXF_TEXT_MODE cannot be emulated in protocol %d",
+                     protocol->version);
+      else
+        pflags |= SSH_FXF_TEXT;
+    }
+    if(flags & ~(SSH_FXF_ACCESS_DISPOSITION
+                 |SSH_FXF_APPEND_DATA
+                 |SSH_FXF_APPEND_DATA_ATOMIC
+                 |SSH_FXF_TEXT_MODE)) 
+      return error("future SSH_FXP_OPEN flags (%#"PRIx32") cannot be emulated in protocol %d",
+                   flags, protocol->version);
+    send_begin(&fakeworker);
+    send_uint8(&fakeworker, SSH_FXP_OPEN);
+    send_uint32(&fakeworker, id = newid());
+    send_path(&fakejob, &fakeworker, resolvepath(path));
+    send_uint32(&fakeworker, pflags);
+    protocol->sendattrs(&fakejob, attrs);
+    send_end(&fakeworker);
+  } else {
+    send_begin(&fakeworker);
+    send_uint8(&fakeworker, SSH_FXP_OPEN);
+    send_uint32(&fakeworker, id = newid());
+    send_path(&fakejob, &fakeworker, resolvepath(path));
+    send_uint32(&fakeworker, desired_access);
+    send_uint32(&fakeworker, flags);
+    protocol->sendattrs(&fakejob, attrs);
+    send_end(&fakeworker);
+  }
   if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
     return -1;
   cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
@@ -1014,7 +1062,8 @@ static int cmd_get(int ac,
     fd = -1;
   }
   /* open the remote file */
-  if(sftp_open(remote, SSH_FXF_READ|(textmode ? SSH_FXF_TEXT : 0),
+  if(sftp_open(remote, ACE4_READ_DATA|ACE4_READ_ATTRIBUTES,
+               SSH_FXF_OPEN_EXISTING|(textmode ? SSH_FXF_TEXT_MODE : 0),
                &attrs, &r.h))
     goto error;
   /* stat the file */
@@ -1277,8 +1326,8 @@ static int cmd_put(int ac,
                      |SSH_FILEXFER_ATTR_UIDGID);
     attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
   }
-  if(sftp_open(remote, (SSH_FXF_WRITE|SSH_FXF_CREAT|SSH_FXF_TRUNC
-                        |(textmode ? SSH_FXF_TEXT : 0)),
+  if(sftp_open(remote, ACE4_WRITE_DATA|ACE4_WRITE_ATTRIBUTES,
+               SSH_FXF_CREATE_TRUNCATE|(textmode ? SSH_FXF_TEXT_MODE : 0),
                &attrs, &h))
     goto error;
   if(textmode) {
@@ -1455,6 +1504,13 @@ static int cmd_version(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_debug(int attribute((unused)) ac,
+                     char attribute((unused)) **av) {
+  debugging = !debugging;
+  D(("debugging enabled"));
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -1486,6 +1542,11 @@ static const struct command commands[] = {
     "chown", 2, 2, cmd_chown,
     "UID PATH",
     "change remote file ownership"
+  },
+  {
+    "debug", 0, 0, cmd_debug,
+    0,
+    "toggle debugging"
   },
   {
     "exit", 0, 0, cmd_quit,
@@ -1689,7 +1750,7 @@ int main(int argc, char **argv) {
   if(buffersize < 64) buffersize = 64;
   if(buffersize > 1048576) buffersize = 1048576;
 
-  if(sftpversion < 3 || sftpversion > 4)
+  if(sftpversion < 3 || sftpversion > 5)
     fatal("unknown SFTP version %d", sftpversion);
   
   ncmdline = 0;
@@ -1758,6 +1819,9 @@ int main(int argc, char **argv) {
     break;
   case 4:
     protocol = &sftpv4;
+    break;
+  case 5:
+    protocol = &sftpv5;
     break;
   default:
     fatal("server wanted protocol version %"PRIu32, u32);

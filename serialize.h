@@ -6,7 +6,7 @@ void queue_serializable_job(struct sftpjob *job);
  * the serialization queue */
 
 void serialize_on_handle(struct sftpjob *job, 
-			 int istext);
+			 unsigned flags);
 /* Wait until there are no olderjobs address the same offset via the same
  * handle */
 

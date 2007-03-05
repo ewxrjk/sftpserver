@@ -61,6 +61,11 @@ struct sftpcmd {
   void (*handler)(struct sftpjob *job);
 };
 
+struct sftpextension {
+  const char *name;
+  void (*handler)(struct sftpjob *job);
+};
+
 struct sftpprotocol {
   int ncommands;
   const struct sftpcmd *commands;       /* sorted by type */
@@ -75,7 +80,8 @@ struct sftpprotocol {
                 char **path);           /* Convert from local to wire */
   int (*decode)(struct sftpjob *job,
                 char **path);           /* Convert from wire to local */
-  
+  int nextensions;
+  const struct sftpextension *extensions;
 };
 /* An SFTP protocol version */
 

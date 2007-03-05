@@ -53,21 +53,10 @@ static void sftp_init(struct sftpjob *job) {
     return;
   }
   switch(version) {
-  case 0: case 1: case 2:               /* we don't understand these at all. */
+  case 0: case 1: case 2:
     send_status(job, SSH_FX_OP_UNSUPPORTED,
                 "client protocol version is too old (need at least 3)");
     return;
-  case 3:
-  case 4:
-    /* If the client offers v3 then it might be sending extension data.  We
-     * would parse it here if we care, but right now we don't know how to
-     * support any extensions the client might ask for that way. */
-    break;
-  default:
-    version = 4;                        /* highest we know right now */
-    break;
-  }
-  switch(version) {
   case 3:
     protocol = &sftpv3;
     break;
@@ -75,11 +64,12 @@ static void sftp_init(struct sftpjob *job) {
     protocol = &sftpv4;
     break;
   default:
-    assert(!"cannot happen");
+    protocol = &sftpv5;
+    break;
   }
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_VERSION);
-  send_uint32(job->worker, version);
+  send_uint32(job->worker, protocol->version);
   if(protocol->version >= 4) {
     /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
      * client always sends \n, freeing us from the burden of translating text
@@ -145,7 +135,7 @@ static void sftp_init(struct sftpjob *job) {
     send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
     send_string(job->worker, "versions");
-    send_string(job->worker, "3,4");
+    send_string(job->worker, "3,4,5");
   }
   send_end(job->worker);
   /* Now we are initialized we can safely process other jobs in the
@@ -163,6 +153,8 @@ const struct sftpprotocol sftppreinit = {
   3,
   0xFFFFFFFF,                           /* never used */
   SSH_FX_OP_UNSUPPORTED,
+  0,
+  0,
   0,
   0,
   0,

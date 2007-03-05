@@ -121,7 +121,7 @@ void queue_serializable_job(struct sftpjob *job) {
 }
 
 void serialize_on_handle(struct sftpjob *job, 
-                         int istext) {
+                         unsigned flags) {
   struct sqnode *q, *oq;
 
   ferrcheck(pthread_mutex_lock(&sq_mutex));
@@ -132,12 +132,13 @@ void serialize_on_handle(struct sftpjob *job,
     if(!q)
       break;
     /* We've found our position in the queue.  See if there is any request on
-     * the same handle which blocks our request.  Note that for binary files we
-     * allow reads to overlap reads, but prohibit writes from overlapping
-     * anything.  For text handles we serialize all operations regardless. */
+     * the same handle which blocks our request.  Note that for non-appending
+     * binary files we allow reads to overlap reads, but prohibit writes from
+     * overlapping anything.  For text and append handles we serialize all
+     * operations regardless. */
     for(oq = q->older; oq; oq = oq->older) {
       if(handles_equal(&q->hid, &oq->hid)
-         && (istext
+         && ((flags & (HANDLE_TEXT|HANDLE_APPEND))
              || ((write_operation(q->type) || write_operation(oq->type))
                  && ranges_overlap(q, oq))))
         break;
