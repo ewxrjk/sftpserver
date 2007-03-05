@@ -55,6 +55,8 @@ static int progress_indicators = 1;
 static int terminal_width;
 static int textmode;
 static const char *newline = "\r\n";
+static const char *servername, *serverversion, *serverversions;
+static uint32_t serverserial;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -1514,7 +1516,14 @@ static int cmd_binary(int attribute((unused)) ac,
 
 static int cmd_version(int attribute((unused)) ac,
                        char attribute((unused)) **av) {
-  xprintf("%d\n", protocol->version);
+  xprintf("Protocol version: %d\n", protocol->version);
+  if(servername)
+    xprintf("Server name:      %s\n"
+            "Server version:   %s\n"
+            "Server serial:    %"PRIu32"\n",
+            servername, serverversion, serverserial);
+  if(serverversions)
+    xprintf("Server supports:  %s\n", serverversions);
   return 0;
 }
 
@@ -1851,16 +1860,30 @@ int main(int argc, char **argv) {
   /* Extension data */
   while(fakejob.left) {
     char *xname, *xdata;
+    size_t xdatalen;
 
     cpcheck(parse_string(&fakejob, &xname, 0));
-    cpcheck(parse_string(&fakejob, &xdata, 0));
+    cpcheck(parse_string(&fakejob, &xdata, &xdatalen));
     D(("server sent extension '%s'", xname));
+    /* TODO table-driven extension parsing */
     if(!strcmp(xname, "newline")) {
       newline = xstrdup(xdata);
       if(!*newline)
         fatal("cannot cope with empty newline sequence");
       /* TODO check newline sequence doesn't contain repeats */
-    }
+    } else if(!strcmp(xname, "sftp-ident@rjk.greenend.org.uk")) {
+      struct sftpjob xjob;
+      
+      xjob.a = &allocator;
+      xjob.ptr = (void *)xdata;
+      xjob.left = xdatalen;
+      cpcheck(parse_string(&xjob, (char **)&servername, 0));
+      cpcheck(parse_string(&xjob, (char **)&serverversion, 0));
+      cpcheck(parse_uint32(&xjob, &serverserial));
+      servername = xstrdup(servername);
+      serverversion = xstrdup(serverversion);
+    } else if(!strcmp(xname, "versions"))
+      serverversions = xstrdup(xdata);
   }
   /* Make sure outbound translation will actually work */
   if(buffersize < strlen(newline))

@@ -43,6 +43,7 @@ void *alloc(struct allocator *a, size_t n) {
   struct chunk *c;
 
   if(!m) return 0;
+  assert(a != 0);
   /* See if there's enough room */
   if(!(c = a->chunks) || c->left < m) {
     /* Make sure we allocate enough space */

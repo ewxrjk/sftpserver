@@ -169,7 +169,36 @@ static void sftp_init(struct sftpjob *job) {
     send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
     send_string(job->worker, "versions");
-    send_string(job->worker, "3,4,5");
+    send_string(job->worker, "3,4,5,6");
+  }
+  {
+    /* sftp-ident@rjk.greenend.org.uk is EXPERIMENTAL.  For the time being, it
+     * may change format without warning.
+     *
+     * It has the following format:
+     *    string agent-name
+     *    string agent-version
+     *    uint32 agent-serial
+     *
+     * 'agent-name' is a string identifying this implementation.  It is intended
+     * both to be human readable and to be compared by other implementations.
+     *
+     * 'agent-version' is a version string.  It is intended to be human
+     * readable.  Other implementations may compare against it but no
+     * particular ordering is defined on it.
+     *
+     * 'agent-serial' is a serial number.  It is increased whenever a bug is
+     * fixed in the implementation.  The intention is that another
+     * implementation can know what version a bug was fixed in and perform a
+     * simple integer comparison to determine whether it should enable a
+     * workaround or not.
+     */
+    send_string(job->worker, "sftp-ident@rjk.greenend.org.uk");
+    const size_t offset = send_sub_begin(job->worker);
+    send_string(job->worker, "gesftpserver");
+    send_string(job->worker, VERSION);
+    send_uint32(job->worker, 0);
+    send_sub_end(job->worker, offset);
   }
   send_end(job->worker);
   /* Now we are initialized we can safely process other jobs in the
