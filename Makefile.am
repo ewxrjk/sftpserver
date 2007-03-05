@@ -13,4 +13,4 @@ libsftp_a_SOURCES=alloc.c alloc.h debug.c debug.h globals.h handle.c	\
 handle.h parse.c parse.h queue.c queue.h send.c send.h sftp.h		\
 sftpclient.h sftpcommon.h sftpserver.h status.c thread.h types.h	\
 users.c users.h utils.c utils.h v3.c xfns.c xfns.h stat.c charset.c	\
-charset.h serialize.h serialize.c v4.c realpath.c readlink.c v5.c
+charset.h serialize.h serialize.c v4.c realpath.c readlink.c v5.c v6.c

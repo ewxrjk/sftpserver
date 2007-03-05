@@ -71,7 +71,7 @@ static const char *sshconf;
 static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
-static int sftpversion = 5;
+static int sftpversion = 6;
 static int quirk_openssh;
 
 static const struct option options[] = {
@@ -447,21 +447,30 @@ static int sftp_rename(const char *oldpath, const char *newpath) {
   return status();
 }
 
-static int sftp_symlink(const char *targetpath, const char *linkpath) {
+static int sftp_link(const char *targetpath, const char *linkpath,
+                     int send_symlink) {
   uint32_t id;
-
+  
+  if(protocol->version < 6 && !send_symlink)
+    return error("hard links not supported in protocol %"PRIu32,
+                 protocol->version);
   send_begin(&fakeworker);
-  send_uint8(&fakeworker, SSH_FXP_SYMLINK);
+  send_uint8(&fakeworker, (protocol->version >= 6
+                           ? SSH_FXP_LINK
+                           : SSH_FXP_SYMLINK));
   send_uint32(&fakeworker, id = newid());
   if(quirk_openssh && protocol->version == 3) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
-    send_path(&fakejob, &fakeworker, resolvepath(targetpath));
+    send_path(&fakejob, &fakeworker, targetpath);
     send_path(&fakejob, &fakeworker, resolvepath(linkpath));
   } else {
     send_path(&fakejob, &fakeworker, resolvepath(linkpath));
-    send_path(&fakejob, &fakeworker, resolvepath(targetpath));
+    send_path(&fakejob, &fakeworker, 
+              send_symlink ? targetpath : resolvepath(targetpath));
   }
+  if(protocol->version >= 6)
+    send_uint8(&fakeworker, !!send_symlink);
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -891,7 +900,12 @@ static int cmd_mv(int attribute((unused)) ac,
 
 static int cmd_symlink(int attribute((unused)) ac,
                        char **av) {
-  return sftp_symlink(av[0], av[1]);
+  return sftp_link(av[0], av[1], 1);
+}
+
+static int cmd_link(int attribute((unused)) ac,
+                    char **av) {
+  return sftp_link(av[0], av[1], 0);
 }
 
 /* cmd_get uses a background thread to send requests */
@@ -1569,6 +1583,11 @@ static const struct command commands[] = {
     "change local directory"
   },
   {
+    "link", 2, 2, cmd_link,
+    "OLDPATH NEWPATH",
+    "create a remote hard link"
+  },
+  {
     "lpwd", 0, 0, cmd_lpwd,
     "DIR",
     "display current local directory"
@@ -1750,7 +1769,7 @@ int main(int argc, char **argv) {
   if(buffersize < 64) buffersize = 64;
   if(buffersize > 1048576) buffersize = 1048576;
 
-  if(sftpversion < 3 || sftpversion > 5)
+  if(sftpversion < 3 || sftpversion > 6)
     fatal("unknown SFTP version %d", sftpversion);
   
   ncmdline = 0;
@@ -1822,6 +1841,9 @@ int main(int argc, char **argv) {
     break;
   case 5:
     protocol = &sftpv5;
+    break;
+  case 6:
+    protocol = &sftpv6;
     break;
   default:
     fatal("server wanted protocol version %"PRIu32, u32);

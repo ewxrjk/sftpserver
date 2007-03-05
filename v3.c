@@ -214,8 +214,8 @@ void sftp_v34_rename(struct sftpjob *job) {
 void sftp_symlink(struct sftpjob *job) {
   char *oldpath, *newpath;
 
-  pcheck(parse_path(job, &oldpath));
-  pcheck(parse_path(job, &newpath));
+  pcheck(parse_path(job, &newpath));    /* aka linkpath */
+  pcheck(parse_path(job, &oldpath));    /* aka targetpath */
   D(("sftp_symlink %s %s", oldpath, newpath));
   if(symlink(oldpath, newpath) < 0) send_errno_status(job);
   else send_ok(job);

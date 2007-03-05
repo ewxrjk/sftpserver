@@ -94,8 +94,11 @@ static void sftp_init(struct sftpjob *job) {
   case 4:
     protocol = &sftpv4;
     break;
-  default:
+  case 5:
     protocol = &sftpv5;
+    break;
+  default:
+    protocol = &sftpv6;
     break;
   }
   send_begin(job->worker);
