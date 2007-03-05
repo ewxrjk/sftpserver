@@ -9,6 +9,7 @@
 #include "types.h"
 #include "globals.h"
 #include "serialize.h"
+#include "xfns.h"
 #include <assert.h>
 #include <arpa/inet.h>
 #include <string.h>
@@ -18,6 +19,7 @@
 #include <signal.h>
 #include <locale.h>
 #include <langinfo.h>
+#include <getopt.h>
 
 /* Forward declarations */
 
@@ -37,6 +39,34 @@ static const struct queuedetails workqueue_details = {
 
 const struct sftpprotocol *protocol = &sftppreinit;
 const char sendtype[] = "response";
+
+/* Options */
+
+static const struct option options[] = {
+  { "help", no_argument, 0, 'h' },
+  { "version", no_argument, 0, 'V' },
+  { "debug", no_argument, 0, 'd' },
+  { 0, 0, 0, 0 }
+};
+
+/* display usage message and terminate */
+static void help(void) {
+  xprintf("Usage:\n"
+          "  sftpserver [OPTIONS]\n"
+          "\n"
+          "Green End SFTP server.  Not intended for interactive use!\n"
+          "\n"
+          "Options:\n"
+          "  --help, -h               Display usage message\n"
+          "  --version, -V            Display version number\n");
+  exit(0);
+}
+
+/* display version number and terminate */
+static void version(void) {
+  xprintf("Green End SFTP server version %s\n", VERSION);
+  exit(0);
+}
 
 /* Initialization */
 
@@ -235,11 +265,22 @@ done:
   return;
 }
 
-int main(void) {
+int main(int argc, char **argv) {
   uint32_t len;
   struct sftpjob *job;
   struct allocator a;
   void *const wdv = worker_init(); 
+  int n;
+
+  while((n = getopt_long(argc, argv, "hVd",
+			 options, 0)) >= 0) {
+    switch(n) {
+    case 'h': help();
+    case 'V': version();
+    case 'd': debugging = 1; break;
+    default: exit(1);
+    }
+  }
 
   /* If writes to the client fail then we'll get EPIPE.  Arguably it might
    * better just to die the SIGPIPE but reporting an EPIPE is pretty harmless.
