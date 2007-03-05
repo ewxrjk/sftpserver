@@ -1,4 +1,5 @@
 noinst_PROGRAMS=sftpclient
+noinst_SCRIPTS=gesftpserver-debug
 libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
 

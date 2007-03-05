@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <assert.h>
+#include <fcntl.h>
+#include <string.h>
 
 static FILE *debugfp;
 const char *debugpath;
@@ -14,8 +16,14 @@ int debugging;
 static void opendebug(void) {
   assert(debugging);
   if(!debugfp) {
-    if(debugpath)
-      debugfp = fopen(debugpath, "w");
+    if(debugpath) {
+      int fd;
+
+      if((fd = open(debugpath, O_WRONLY|O_CREAT|O_TRUNC, 0600)) >= 0)
+        debugfp = fdopen(fd, "w");
+      else
+        fprintf(stderr, "%s: %s\n", debugpath, strerror(errno));
+    }
     if(!debugfp)
       debugfp = stderr;
   }
@@ -38,6 +46,7 @@ void hexdump(const void *ptr, size_t n) {
       if(i + j < n)
 	fputc(isprint(p[i + j]) ? p[i+j] : '.', debugfp);
     fputc('\n', debugfp);
+    fflush(debugfp);
   }
 }
 
@@ -50,6 +59,7 @@ void debug_printf(const char *fmt, ...) {
   vfprintf(debugfp, fmt, ap);
   va_end(ap);
   fputc('\n', debugfp);
+  fflush(debugfp);
   errno = save_errno;
 }
 

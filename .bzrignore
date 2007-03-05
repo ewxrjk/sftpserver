@@ -20,3 +20,5 @@ INSTALL
 ,commit~
 sftpclient
 COPYING
+gesftpserver
+gesftpserver-debug

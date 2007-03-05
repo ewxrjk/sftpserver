@@ -46,6 +46,7 @@ static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
   { "version", no_argument, 0, 'V' },
   { "debug", no_argument, 0, 'd' },
+  { "debug-file", required_argument, 0, 'D' },
   { 0, 0, 0, 0 }
 };
 
@@ -272,12 +273,13 @@ int main(int argc, char **argv) {
   void *const wdv = worker_init(); 
   int n;
 
-  while((n = getopt_long(argc, argv, "hVd",
+  while((n = getopt_long(argc, argv, "hVdD:",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
     case 'V': version();
     case 'd': debugging = 1; break;
+    case 'D': debugging = 1; debugpath = optarg; break;
     default: exit(1);
     }
   }
@@ -302,6 +304,7 @@ int main(int argc, char **argv) {
   /* Enable debugging */
   if(getenv("SFTPSERVER_DEBUGGING"))
     debugging = 1;
+  D(("gesftpserver %s starting up", VERSION));
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
