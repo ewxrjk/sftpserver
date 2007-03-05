@@ -1,8 +1,9 @@
-bin_PROGRAMS=sftpserver sftpclient
+noinst_PROGRAMS=sftpclient
+libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
 
-sftpserver_SOURCES=sftpserver.c
-sftpserver_LDADD=libsftp.a
+gesftpserver_SOURCES=sftpserver.c
+gesftpserver_LDADD=libsftp.a
 
 sftpclient_SOURCES=sftpclient.c
 sftpclient_LDADD=libsftp.a

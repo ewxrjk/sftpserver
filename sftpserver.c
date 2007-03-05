@@ -52,7 +52,7 @@ static const struct option options[] = {
 /* display usage message and terminate */
 static void help(void) {
   xprintf("Usage:\n"
-          "  sftpserver [OPTIONS]\n"
+          "  gesftpserver [OPTIONS]\n"
           "\n"
           "Green End SFTP server.  Not intended for interactive use!\n"
           "\n"
