@@ -29,6 +29,8 @@
 #include <locale.h>
 #include <sys/time.h>
 #include <langinfo.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 struct command {
   const char *name;
@@ -64,7 +66,7 @@ const char sendtype[] = "request";
 /* Command line */
 static size_t buffersize = 8192;
 static int nrequests = 8;
-static const char *subsystem = "sftp";
+static const char *subsystem;
 static const char *program;
 static const char *batchfile;
 static int sshversion;
@@ -87,6 +89,10 @@ static const struct option options[] = {
   { "sftp-version", required_argument, 0, 'S' },
   { "quirk-openssh", no_argument, 0, 256 },
   { "debug", no_argument, 0, 'd' },
+  { "host", required_argument, 0, 'H' },
+  { "port", required_argument, 0, 'p' },
+  { "ipv4", no_argument, 0, '4' },
+  { "ipv6", no_argument, 0, '6' },
   { "1", no_argument, 0, '1' },
   { "2", no_argument, 0, '2' },
   { "C", no_argument, 0, 'C' },
@@ -1728,11 +1734,15 @@ next:
 }
 
 int main(int argc, char **argv) {
-  const char *cmdline[2048];
-  int n, ncmdline;
-  int ip[2], op[2];
-  pid_t pid;
+  int n;
   uint32_t u32;
+  struct addrinfo hints;
+  const char *host = 0, *port = 0;
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_flags = 0;
+  hints.ai_family = PF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
 
   setlocale(LC_ALL, "");
 
@@ -1749,7 +1759,7 @@ int main(int argc, char **argv) {
       terminal_width = 80;
   }
 
-  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vd",
+  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vdH:p:46",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
@@ -1758,7 +1768,7 @@ int main(int argc, char **argv) {
     case 'b': batchfile = optarg; break;
     case 'P': program = optarg; break;
     case 'R': nrequests = atoi(optarg); break;
-    case 's': subsystem = optarg;
+    case 's': subsystem = optarg; break;
     case 'S': sftpversion = atoi(optarg); break;
     case '1': sshversion = 1; break;
     case '2': sshversion = 2; break;
@@ -1768,6 +1778,10 @@ int main(int argc, char **argv) {
     case 'v': sshverbose++; break;
     case 'd': debugging = 1; break;
     case 256: quirk_openssh = 1; break;
+    case 'H': host = optarg; break;
+    case 'p': port = optarg; break;
+    case '4': hints.ai_family = PF_INET; break;
+    case '6': hints.ai_family = PF_INET6; break;
     default: exit(1);
     }
   }
@@ -1781,48 +1795,70 @@ int main(int argc, char **argv) {
   if(sftpversion < 3 || sftpversion > 6)
     fatal("unknown SFTP version %d", sftpversion);
   
-  ncmdline = 0;
-  if(program) {
-    cmdline[ncmdline++] = program;
+  if(host || port) {
+    struct addrinfo *res;
+    int rc, fd;
+
+    if(!(host && port) || program || subsystem)
+      fatal("inconsistent options");
+    if((rc = getaddrinfo(host, port, &hints, &res)))
+      fatal("error resolving host %s port %s: %s",
+            host, port, gai_strerror(rc));
+    if((fd = socket(res->ai_family, res->ai_socktype,
+                    res->ai_protocol)) < 0)
+      fatal("error calling socket: %s", strerror(errno));
+    if(connect(fd, res->ai_addr, res->ai_addrlen) < 0)
+      fatal("error connecting to host %s port %s: %s",
+            host, port, strerror(errno));
+    sftpin = sftpout = fd;
   } else {
-    cmdline[ncmdline++] = "ssh";
-    if(optind >= argc)
-      fatal("missing USER@HOST argument");
-    if(sshversion == 1) cmdline[ncmdline++] = "-1";
-    if(sshversion == 2) cmdline[ncmdline++] = "-2";
-    if(compress) cmdline[ncmdline++] = "-C";
-    if(sshconf) {
-      cmdline[ncmdline++] = "-F";
-      cmdline[ncmdline++] = sshconf;
+    const char *cmdline[2048];
+    int ncmdline = 0;
+    int ip[2], op[2];
+    pid_t pid;
+
+    if(program) {
+      cmdline[ncmdline++] = program;
+    } else {
+      cmdline[ncmdline++] = "ssh";
+      if(optind >= argc)
+        fatal("missing USER@HOST argument");
+      if(sshversion == 1) cmdline[ncmdline++] = "-1";
+      if(sshversion == 2) cmdline[ncmdline++] = "-2";
+      if(compress) cmdline[ncmdline++] = "-C";
+      if(sshconf) {
+        cmdline[ncmdline++] = "-F";
+        cmdline[ncmdline++] = sshconf;
+      }
+      for(n = 0; n < nsshoptions; ++n) {
+        cmdline[ncmdline++] = "-o";
+        cmdline[ncmdline++] = sshoptions[n++];
+      }
+      while(sshverbose-- > 0)
+        cmdline[ncmdline++] = "-v";
+      cmdline[ncmdline++] = "-s";
+      cmdline[ncmdline++] = argv[optind++];
+      cmdline[ncmdline++] = subsystem ? subsystem : "sftp";
     }
-    for(n = 0; n < nsshoptions; ++n) {
-      cmdline[ncmdline++] = "-o";
-      cmdline[ncmdline++] = sshoptions[n++];
+    cmdline[ncmdline] = 0;
+    for(n = 0; n < ncmdline; ++n)
+      fprintf(stderr, " %s", cmdline[n]);
+    fputc('\n',  stderr);
+    xpipe(ip);
+    xpipe(op);
+    if(!(pid = xfork())) {
+      xclose(ip[0]);
+      xclose(op[1]);
+      xdup2(ip[1], 1);
+      xdup2(op[0], 0);
+      execvp(cmdline[0], (void *)cmdline);
+      fatal("executing %s: %s", cmdline[0], strerror(errno));
     }
-    while(sshverbose-- > 0)
-      cmdline[ncmdline++] = "-v";
-    cmdline[ncmdline++] = "-s";
-    cmdline[ncmdline++] = argv[optind++];
-    cmdline[ncmdline++] = subsystem;
+    xclose(ip[1]);
+    xclose(op[0]);
+    sftpin = ip[0];
+    sftpout = op[1];
   }
-  cmdline[ncmdline] = 0;
-  for(n = 0; n < ncmdline; ++n)
-    fprintf(stderr, " %s", cmdline[n]);
-  fputc('\n',  stderr);
-  xpipe(ip);
-  xpipe(op);
-  if(!(pid = xfork())) {
-    xclose(ip[0]);
-    xclose(op[1]);
-    xdup2(ip[1], 1);
-    xdup2(op[0], 0);
-    execvp(cmdline[0], (void *)cmdline);
-    fatal("executing %s: %s", cmdline[0], strerror(errno));
-  }
-  xclose(ip[1]);
-  xclose(op[0]);
-  sftpin = ip[0];
-  sftpout = op[1];
   fakejob.a = alloc_init(&allocator);
   fakejob.worker = &fakeworker;
   if((fakeworker.utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8"))

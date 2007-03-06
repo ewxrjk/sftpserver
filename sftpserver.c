@@ -20,12 +20,16 @@
 #include <locale.h>
 #include <langinfo.h>
 #include <getopt.h>
+#include <pwd.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 /* Forward declarations */
 
 static void *worker_init(void);
 static void worker_cleanup(void *wdv);
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a);
+static void sftp_service(void);
 
 /* Globals */
 
@@ -47,6 +51,13 @@ static const struct option options[] = {
   { "version", no_argument, 0, 'V' },
   { "debug", no_argument, 0, 'd' },
   { "debug-file", required_argument, 0, 'D' },
+  { "chroot", required_argument, 0, 'r' },
+  { "user", required_argument, 0, 'u' },
+  { "listen", required_argument, 0, 'L' },
+  { "host", required_argument, 0, 'H' },
+  { "background", no_argument, 0, 'b' },
+  { "ipv4", no_argument, 0, '4' },
+  { "ipv6", no_argument, 0, '6' },
   { 0, 0, 0, 0 }
 };
 
@@ -59,7 +70,13 @@ static void help(void) {
           "\n"
           "Options:\n"
           "  --help, -h               Display usage message\n"
-          "  --version, -V            Display version number\n");
+          "  --version, -V            Display version number\n"
+          "  --chroot, -r PATH        Change root to PATH\n"
+          "  --user, -u USER          Change to user USER\n"
+          "  --listen, -L PORT        Listen on PORT\n"
+          "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
+          "  -4|-6                    Force IPv4 or IPv6 for --liisten\n"
+          "  --background, -b         Daemonize\n");
   exit(0);
 }
 
@@ -298,23 +315,51 @@ done:
   return;
 }
 
-int main(int argc, char **argv) {
-  uint32_t len;
-  struct sftpjob *job;
-  struct allocator a;
-  void *const wdv = worker_init(); 
-  int n;
+static void sigchld_handler(int attribute((unused)) sig) {
+  const int save_errno = errno;
+  int w;
 
-  while((n = getopt_long(argc, argv, "hVdD:",
+  while(waitpid(-1, &w, WNOHANG) > 0)
+    ;
+  errno = save_errno;
+}
+
+int main(int argc, char **argv) {
+  int n, listenfd = -1;
+  const char *root = 0, *user = 0;
+  struct passwd *pw = 0;
+  const char *host = 0, *port = 0;
+  int daemonize = 0;
+  struct addrinfo hints;
+
+  memset(&hints, 0, sizeof hints);
+  hints.ai_flags = AI_PASSIVE;
+  hints.ai_family = PF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+
+  /* We need I18N support for filename encoding */
+  setlocale(LC_CTYPE, "");
+  
+  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
     case 'V': version();
     case 'd': debugging = 1; break;
     case 'D': debugging = 1; debugpath = optarg; break;
+    case 'r': root = optarg; break;
+    case 'u': user = optarg; break;
+    case 'H': host = optarg; break;
+    case 'L': port = optarg; break;
+    case 'b': daemonize = 1; break;
+    case '4': hints.ai_family = PF_INET; break;
+    case '6': hints.ai_family = PF_INET6; break;
     default: exit(1);
     }
   }
+
+  if(daemonize && !port)
+    fatal("--background requires --port");
 
   /* If writes to the client fail then we'll get EPIPE.  Arguably it might
    * better just to die the SIGPIPE but reporting an EPIPE is pretty harmless.
@@ -331,11 +376,120 @@ int main(int argc, char **argv) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
-  /* We need I18N support for filename encoding */
-  setlocale(LC_CTYPE, "");
+
   /* Enable debugging */
   if(getenv("SFTPSERVER_DEBUGGING"))
     debugging = 1;
+
+  if(user) {
+    /* Look up the user */
+    if(!(pw = getpwnam(user)))
+      fatal("no such user as %s", user);
+    if(initgroups(user, pw->pw_gid))
+      fatal("error calling initgroups: %s", strerror(errno));
+  }
+  
+  if(port) {
+    struct addrinfo *res;
+    int rc;
+    static const int one = 1;
+    struct sigaction sa;
+
+    sa.sa_handler = sigchld_handler;
+    sa.sa_flags = SA_RESTART;
+    sigemptyset(&sa.sa_mask);
+    if(sigaction(SIGCHLD, &sa, 0) < 0)
+      fatal("error calling sigaction: %s", strerror(errno));
+    if((rc = getaddrinfo(host, port, &hints, &res))) {
+      if(host)
+        fatal("error resolving host %s port %s: %s",
+              host, port, gai_strerror(rc));
+      else
+        fatal("error resolving port %s: %s",
+              port, gai_strerror(rc));
+    }
+    if((listenfd = socket(res->ai_family, res->ai_socktype,
+                          res->ai_protocol)) < 0)
+      fatal("error calling socket: %s", strerror(errno));
+    if(bind(listenfd, res->ai_addr, res->ai_addrlen) < 0)
+      fatal("error calling socket: %s", strerror(errno));
+    if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one,  sizeof one) < 0)
+      fatal("error calling setsockopt: %s", strerror(errno));
+    if(listen(listenfd, SOMAXCONN) < 0)
+      fatal("error calling listen: %s", strerror(errno));
+  } else if(host)
+    fatal("--host makes no sense without --port");
+
+  if(root) {
+    /* Enter our chroot */
+    if(chdir(root) < 0)
+      fatal("error calling chdir %s: %s", root, strerror(errno));
+    if(chroot(".") < 0)
+      fatal("error calling chroot: %s", strerror(errno));
+  }
+
+  if(user) {
+    /* Become the right user */
+    assert(pw != 0);
+    if(setgid(pw->pw_gid) < 0)
+      fatal("error calling setgid: %s", strerror(errno));
+    if(setuid(pw->pw_uid) < 0)
+      fatal("error calling setuid: %s", strerror(errno));
+    if(setuid(0) >= 0)
+      fatal("setuid(0) unexpectedly succeeded");
+  }
+  
+  if(daemonize)
+    if(daemon(0, 0) < 0)
+      fatal("error calling daemon: %s", strerror(errno));
+  /* TODO logging */
+
+  if(!port) {
+    sftp_service();
+    return 0;
+  } else {
+    for(;;) {
+      union {
+        struct sockaddr_in sin;
+        struct sockaddr_in6 sin6;
+        struct sockaddr sa;
+      } addr;
+      socklen_t addrlen = sizeof addr;
+      int fd;
+    
+      if((fd = accept(listenfd, &addr.sa, &addrlen)) >= 0) {
+        switch(fork()) {
+        case -1:
+          /* If we can't fork then we stop trying for a minute */
+          fprintf(stderr, "fork: %s\n", strerror(errno));
+          close(fd);
+          sleep(60);
+          break;
+        case 0:
+          forked();
+          signal(SIGCHLD, SIG_DFL);       /* XXX */
+          if(dup2(fd, 0) < 0
+             || dup2(fd, 1) < 0)
+            fatal("dup2: %s", strerror(errno));
+          if(close(fd) < 0
+             || close(listenfd) < 0)
+            fatal("close: %s", strerror(errno));
+          sftp_service();
+          _exit(0);
+        default:
+          close(fd);
+          break;
+        }
+      }
+    }
+  }
+}
+
+static void sftp_service(void) {
+  uint32_t len;
+  struct sftpjob *job;
+  struct allocator a;
+  void *const wdv = worker_init(); 
   D(("gesftpserver %s starting up", VERSION));
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
@@ -377,7 +531,6 @@ int main(int argc, char **argv) {
   }
   queue_destroy(workqueue);
   worker_cleanup(wdv);
-  return 0;
 }
 
 /*

@@ -90,13 +90,17 @@ void fatal(const char *msg, ...) {
   exitfn(-1);
 }
 
+void forked(void) {
+  exitfn = _exit;
+}
+
 pid_t xfork(void) {
   pid_t pid;
 
   if((pid = fork()) < 0)
     fatal("fork: %s", strerror(errno));
   if(!pid)
-    exitfn = _exit;
+    forked();
   return pid;
 }
 

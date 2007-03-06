@@ -46,6 +46,7 @@ void fatal(const char *msg, ...)
   attribute((noreturn))
   attribute((format(printf,1,2)));
 pid_t xfork(void);
+void forked(void);
 
 #endif /* UTILS_H */
 
