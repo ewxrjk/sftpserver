@@ -7,7 +7,7 @@ gesftpserver_SOURCES=sftpserver.c
 gesftpserver_LDADD=libsftp.a
 
 sftpclient_SOURCES=sftpclient.c
-sftpclient_LDADD=libsftp.a
+sftpclient_LDADD=libsftp.a $(LIBREADLINE)
 
 libsftp_a_SOURCES=alloc.c alloc.h debug.c debug.h globals.h handle.c	\
 handle.h parse.c parse.h queue.c queue.h send.c send.h sftp.h		\
