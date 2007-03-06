@@ -21,8 +21,11 @@
 #include <langinfo.h>
 #include <getopt.h>
 #include <pwd.h>
+#include <grp.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <sys/wait.h>
+#include <stdio.h>
 
 /* Forward declarations */
 
@@ -33,6 +36,7 @@ static void sftp_service(void);
 
 /* Globals */
 
+const char *local_encoding;
 struct queue *workqueue;
 
 static const struct queuedetails workqueue_details = {
@@ -249,12 +253,14 @@ static void *worker_init(void) {
 
   memset(w, 0, sizeof *w);
   w->buffer = 0;
-  if((w->utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8"))
+  if((w->utf8_to_local = iconv_open(local_encoding, "UTF-8"))
      == (iconv_t)-1)
-    fatal("error calling iconv_open: %s", strerror(errno));
-  if((w->local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET)))
+    fatal("error calling iconv_open(%s,UTF-8): %s",
+          local_encoding, strerror(errno));
+  if((w->local_to_utf8 = iconv_open("UTF-8", local_encoding))
      == (iconv_t)-1)
-    fatal("error calling iconv_open: %s", strerror(errno));
+    fatal("error calling iconv_open(UTF-8,%s): %s",
+          local_encoding, strerror(errno));
   return w;
 }
 
@@ -331,6 +337,7 @@ int main(int argc, char **argv) {
   const char *host = 0, *port = 0;
   int daemonize = 0;
   struct addrinfo hints;
+  iconv_t cd;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_flags = AI_PASSIVE;
@@ -339,6 +346,7 @@ int main(int argc, char **argv) {
 
   /* We need I18N support for filename encoding */
   setlocale(LC_CTYPE, "");
+  local_encoding = nl_langinfo(CODESET);
   
   while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46",
 			 options, 0)) >= 0) {
@@ -411,15 +419,24 @@ int main(int argc, char **argv) {
     if((listenfd = socket(res->ai_family, res->ai_socktype,
                           res->ai_protocol)) < 0)
       fatal("error calling socket: %s", strerror(errno));
-    if(bind(listenfd, res->ai_addr, res->ai_addrlen) < 0)
-      fatal("error calling socket: %s", strerror(errno));
     if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one,  sizeof one) < 0)
       fatal("error calling setsockopt: %s", strerror(errno));
+    if(bind(listenfd, res->ai_addr, res->ai_addrlen) < 0)
+      fatal("error calling socket: %s", strerror(errno));
     if(listen(listenfd, SOMAXCONN) < 0)
       fatal("error calling listen: %s", strerror(errno));
   } else if(host)
     fatal("--host makes no sense without --port");
 
+  if((cd = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
+    fatal("error calling iconv_open(%s,UTF-8): %s",
+          local_encoding, strerror(errno));
+  iconv_close(cd);
+  if((cd = iconv_open("UTF-8", local_encoding)) == (iconv_t)-1)
+    fatal("error calling iconv_open(UTF-8, %s): %s",
+          local_encoding, strerror(errno));
+  iconv_close(cd);
+  
   if(root) {
     /* Enter our chroot */
     if(chdir(root) < 0)

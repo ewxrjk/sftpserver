@@ -305,6 +305,8 @@ void sftp_readdir(struct sftpjob *job) {
     stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF, childpath);
     d[n].name = childpath;
     ++n;
+    errno = 0;                          /* avoid error slippage from
+                                         * e.g. getpwuid() failure */
   }
   
   if(errno) {
