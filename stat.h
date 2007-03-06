@@ -8,11 +8,15 @@ const char *format_attr(struct allocator *a,
 #define FORMAT_PREFER_LOCALTIME 0x00000002
 /* Prefer numeric UID instead of names */
 
-const char *set_status(const char *path,
-		       const struct sftpattr *attrs);
-const char *set_fstatus(int fd,
-			const struct sftpattr *attrs);
+void normalize_ownergroup(struct allocator *a,
+                          struct sftpattr *attrs);
 
+const char *set_status(struct allocator *a,
+                       const char *path,
+		       const struct sftpattr *attrs);
+const char *set_fstatus(struct allocator *a,
+                        int fd,
+			const struct sftpattr *attrs);
 void stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs,
                    uint32_t flags, const char *path);

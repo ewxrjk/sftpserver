@@ -411,7 +411,7 @@ void sftp_setstat(struct sftpjob *job) {
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
-  if(set_status(path, &attrs))
+  if(set_status(job->a, path, &attrs))
     send_errno_status(job);
   else
     send_ok(job);
@@ -431,7 +431,7 @@ void sftp_fsetstat(struct sftpjob *job) {
     return;
   }
   serialize_on_handle(job, 0);
-  if(set_fstatus(fd, &attrs))
+  if(set_fstatus(job->a, fd, &attrs))
     send_errno_status(job);
   else
     send_ok(job);
@@ -459,7 +459,7 @@ void sftp_mkdir(struct sftpjob *job) {
       return;
     }
   }
-  if(set_status(path, &attrs)) {
+  if(set_status(job->a, path, &attrs)) {
     send_errno_status(job);
     /* If we can't have the desired permissions, don't have the directory at
      * all */

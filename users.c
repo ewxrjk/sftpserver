@@ -20,7 +20,7 @@ char *uid2name(struct allocator *a, uid_t uid) {
   if((pw = getpwuid(uid)))
     s = strcpy(alloc(a, strlen(pw->pw_name) + 1), pw->pw_name);
   else
-    sprintf((s = alloc(a, 32)), "%jd", (intmax_t)uid);
+    s = 0;
   ferrcheck(pthread_mutex_unlock(&user_lock));
   return s;
 }
@@ -33,9 +33,35 @@ char *gid2name(struct allocator *a, gid_t gid) {
   if((gr = getgrgid(gid)))
     s = strcpy(alloc(a, strlen(gr->gr_name) + 1), gr->gr_name);
   else
-    sprintf((s = alloc(a, 32)), "%jd", (intmax_t)gid);
+    s = 0;
   ferrcheck(pthread_mutex_unlock(&user_lock));
   return s;
+}
+
+uid_t name2uid(const char *name) {
+  const struct passwd *pw;
+  uid_t uid;
+
+  ferrcheck(pthread_mutex_lock(&user_lock));
+  if((pw = getpwnam(name)))
+    uid = pw->pw_uid;
+  else
+    uid = -1;
+  ferrcheck(pthread_mutex_unlock(&user_lock));
+  return uid;
+}
+
+gid_t name2gid(const char *name) {
+  const struct group *gr;
+  gid_t gid;
+
+  ferrcheck(pthread_mutex_lock(&user_lock));
+  if((gr = getgrnam(name)))
+    gid = gr->gr_gid;
+  else
+    gid = -1;
+  ferrcheck(pthread_mutex_unlock(&user_lock));
+  return gid;
 }
 
 /*

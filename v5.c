@@ -152,7 +152,7 @@ void generic_open(struct sftpjob *job, const char *path,
     return;
   }
   /* Set initial attributrs if we created the file */
-  if(created && attrs->valid && set_fstatus(fd, attrs)) { 
+  if(created && attrs->valid && set_fstatus(job->a, fd, attrs)) { 
     send_errno_status(job);
     close(fd);
     unlink(path);

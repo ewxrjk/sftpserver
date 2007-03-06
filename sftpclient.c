@@ -868,8 +868,15 @@ static int cmd_chown(int attribute((unused)) ac,
   struct sftpattr attrs;
   
   if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
-  attrs.valid = SSH_FILEXFER_ATTR_UIDGID;
-  attrs.uid = atoi(av[0]);
+  if(protocol->version >= 4) {
+    if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
+      return error("cannot determine former owner/group");
+    attrs.owner = av[0];
+  } else {
+    if(!(attrs.valid & SSH_FILEXFER_ATTR_UIDGID))
+      return error("cannot determine former UID/GID");
+    attrs.uid = atoi(av[0]);
+  }
   return sftp_setstat(av[1], &attrs);
 }
 
@@ -878,8 +885,15 @@ static int cmd_chgrp(int attribute((unused)) ac,
   struct sftpattr attrs;
   
   if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
-  attrs.valid = SSH_FILEXFER_ATTR_UIDGID;
-  attrs.gid = atoi(av[0]);
+  if(protocol->version >= 4) {
+    if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
+      return error("cannot determine former owner/group");
+    attrs.group = av[0];
+  } else {
+    if(!(attrs.valid & SSH_FILEXFER_ATTR_UIDGID))
+      return error("cannot determine former UID/GID");
+    attrs.gid = atoi(av[0]);
+  }
   return sftp_setstat(av[1], &attrs);
 }
 
@@ -1223,7 +1237,7 @@ static int cmd_get(int ac,
     /* Set permissions etc */
     attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* don't truncate */
     attrs.valid &= ~SSH_FILEXFER_ATTR_UIDGID; /* different mapping! */
-    if((e = set_fstatus(fd, &attrs))) {
+    if((e = set_fstatus(fakejob.a, fd, &attrs))) {
       error("cannot %s %s: %s", e, tmp, strerror(errno));
       goto error;
     }
