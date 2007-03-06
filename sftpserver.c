@@ -199,26 +199,31 @@ static void sftp_init(struct sftpjob *job) {
      * It has the following format:
      *    string agent-name
      *    string agent-version
-     *    uint32 agent-serial
+     *    uint32 property-count
+     *    string properties[property-count]
      *
-     * 'agent-name' is a string identifying this implementation.  It is intended
-     * both to be human readable and to be compared by other implementations.
+     * 'agent-name' is a string identifying this implementation, subject to the
+     * RFC4251 s6 rules.  Multiple related implementations may share the same
+     * name, for instance if they are forked versions of the same basic code.
      *
      * 'agent-version' is a version string.  It is intended to be human
      * readable.  Other implementations may compare against it but no
      * particular ordering is defined on it.
      *
-     * 'agent-serial' is a serial number.  It is increased whenever a bug is
-     * fixed in the implementation.  The intention is that another
-     * implementation can know what version a bug was fixed in and perform a
-     * simple integer comparison to determine whether it should enable a
-     * workaround or not.
+     * 'property-count' is a list of properties of this particular version,
+     * again subject to the RFC451 s6 rules.
+     *
+     * The idea is that the client knows what the bugs in the server are (by
+     * checking its name) and enables workarounds for them.  The server gets to
+     * advertize that it has fixed particular bugs using 'properties', allowing
+     * clients to disable the workaround.
      */
     send_string(job->worker, "sftp-ident@rjk.greenend.org.uk");
     const size_t offset = send_sub_begin(job->worker);
     send_string(job->worker, "gesftpserver");
     send_string(job->worker, VERSION);
-    send_uint32(job->worker, 0);
+    send_uint32(job->worker, 1);
+    send_string(job->worker, "sftp-correct-symlink@rjk.greenend.org.uk");
     send_sub_end(job->worker, offset);
   }
   send_end(job->worker);

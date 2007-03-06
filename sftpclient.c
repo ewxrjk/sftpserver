@@ -58,7 +58,6 @@ static int terminal_width;
 static int textmode;
 static const char *newline = "\r\n";
 static const char *servername, *serverversion, *serverversions;
-static uint32_t serverserial;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -76,7 +75,7 @@ static const char *sshoptions[1024];
 static int nsshoptions;
 static int sshverbose;
 static int sftpversion = 6;
-static int quirk_openssh;
+static int quirk_reverse_symlink;
 
 static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
@@ -87,7 +86,7 @@ static const struct option options[] = {
   { "requests", required_argument, 0, 'R' },
   { "subsystem", required_argument, 0, 's' },
   { "sftp-version", required_argument, 0, 'S' },
-  { "quirk-openssh", no_argument, 0, 256 },
+  { "quirk-reverse-symlink", no_argument, 0, 256 },
   { "debug", no_argument, 0, 'd' },
   { "host", required_argument, 0, 'H' },
   { "port", required_argument, 0, 'p' },
@@ -467,7 +466,7 @@ static int sftp_link(const char *targetpath, const char *linkpath,
                            ? SSH_FXP_LINK
                            : SSH_FXP_SYMLINK));
   send_uint32(&fakeworker, id = newid());
-  if(quirk_openssh && protocol->version == 3) {
+  if(quirk_reverse_symlink && protocol->version == 3) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
     send_path(&fakejob, &fakeworker, targetpath);
@@ -1525,9 +1524,8 @@ static int cmd_version(int attribute((unused)) ac,
   xprintf("Protocol version: %d\n", protocol->version);
   if(servername)
     xprintf("Server name:      %s\n"
-            "Server version:   %s\n"
-            "Server serial:    %"PRIu32"\n",
-            servername, serverversion, serverserial);
+            "Server version:   %s\n",
+            servername, serverversion);
   if(serverversions)
     xprintf("Server supports:  %s\n", serverversions);
   return 0;
@@ -1777,7 +1775,7 @@ int main(int argc, char **argv) {
     case 'o': sshoptions[nsshoptions++] = optarg; break;
     case 'v': sshverbose++; break;
     case 'd': debugging = 1; break;
-    case 256: quirk_openssh = 1; break;
+    case 256: quirk_reverse_symlink = 1; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;
@@ -1908,14 +1906,22 @@ int main(int argc, char **argv) {
         fatal("cannot cope with empty newline sequence");
       /* TODO check newline sequence doesn't contain repeats */
     } else if(!strcmp(xname, "sftp-ident@rjk.greenend.org.uk")) {
+      /* See comment in sftpserver.c */
       struct sftpjob xjob;
+      uint32_t property_count;
+      char *property;
       
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
       cpcheck(parse_string(&xjob, (char **)&servername, 0));
       cpcheck(parse_string(&xjob, (char **)&serverversion, 0));
-      cpcheck(parse_uint32(&xjob, &serverserial));
+      cpcheck(parse_uint32(&xjob, &property_count));
+      while(property_count-- > 0) {
+        cpcheck(parse_string(&xjob, (char **)&property, 0));
+        if(!strcmp(property, "sftp-reverse-symlink@rjk.greenend.org.uk"))
+          quirk_reverse_symlink = 1;
+      }
       servername = xstrdup(servername);
       serverversion = xstrdup(serverversion);
     } else if(!strcmp(xname, "versions"))
