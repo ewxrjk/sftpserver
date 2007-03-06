@@ -16,6 +16,7 @@ RJK_BUILDSYS_FINK
 AC_PROG_RANLIB
 
 AC_CHECK_LIB([pthread],[pthread_create])
+AC_CHECK_LIB([readline],[readline])
 RJK_ICONV
 AC_DEFINE(_GNU_SOURCE, 1, [required for e.g. strsignal])
 AC_C_CONST

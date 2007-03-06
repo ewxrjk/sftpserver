@@ -31,6 +31,8 @@
 #include <langinfo.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <readline/readline.h>
+#include <readline/history.h>
 
 struct command {
   const char *name;
@@ -1718,26 +1720,44 @@ static const struct command commands[] = {
   { 0, 0, 0, 0, 0, 0 }
 };
 
+static char *input(const char *prompt, FILE *fp) {
+  if(prompt) {
+    char *const s = readline(prompt);
+
+    if(s) {
+      const char *t = s;
+
+      while(isspace((unsigned char)*t))
+        ++t;
+      if(*t)
+        add_history(s);
+    }
+    return s;
+  } else {
+    char buffer[4096];
+    
+    if(!fgets(buffer, sizeof buffer, fp))
+      return 0;
+    return xstrdup(buffer);
+  }
+}
+
 /* Input processing loop */
 static void process(const char *prompt, FILE *fp) {
-  char buffer[4096];
+  char *line;
   int ac, n;
   char *avbuf[256], **av;
  
-  if(prompt) {
-    fputs(prompt, stdout);
-    fflush(stdout);
-  }
-  while(fgets(buffer, sizeof buffer, fp)) {
+  while((line = input(prompt, fp))) {
     ++inputline;
-    if(buffer[0] == '!') {
-      if(buffer[1] != '\n')
-        system(buffer + 1);
+    if(line[0] == '!') {
+      if(line[1] != '\n')
+        system(line + 1);
       else
         system(getenv("SHELL"));
       goto next;
     }
-    if((ac = split(buffer, av = avbuf)) < 0 && !prompt)
+    if((ac = split(line, av = avbuf)) < 0 && !prompt)
       exit(1);
     if(!ac) goto next;
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
@@ -1758,13 +1778,12 @@ static void process(const char *prompt, FILE *fp) {
       exit(1);
 next:
     alloc_destroy(fakejob.a);
-    if(prompt) {
-      fputs(prompt, stdout);
-      fflush(stdout);
-    }
+    free(line);
   }
   if(ferror(fp))
     fatal("error reading %s: %s", inputpath, strerror(errno));
+  if(prompt)
+    xprintf("\n");
 }
 
 int main(int argc, char **argv) {

@@ -4,8 +4,8 @@ AC_DEFUN([RJK_BUILDSYS_FINK],[
     AC_CACHE_CHECK([fink install directory],[rjk_cv_finkprefix],[
       rjk_cv_finkprefix="`echo "$FINK" | sed 's,/bin/fink$,,'`"
     ])
-    CPPFLAGS="${CPPFLAGS} -I${rjk_cv_finkprefix}/include"
-    LDFLAGS="${LDFLAGS} -L${rjk_cv_finkprefix}/lib"
+    CPPFLAGS="${CPPFLAGS} -isystem /usr/include -isystem ${rjk_cv_finkprefix}/include"
+    LDFLAGS="${LDFLAGS} -L/usr/lib -L${rjk_cv_finkprefix}/lib"
   fi
 ])
 
