@@ -439,16 +439,21 @@ static int sftp_remove(const char *path) {
   return status();
 }
 
-static int sftp_rename(const char *oldpath, const char *newpath) {
+static int sftp_rename(const char *oldpath, const char *newpath, 
+                       unsigned flags) {
   uint32_t id;
-
+  
+  /* In v3/4 atomic is assumed, overwrite and native are not available */
+  if(protocol->version <= 4 && (flags & ~SSH_FXF_RENAME_ATOMIC) != 0)
+    return error("cannot emulate rename flags %#x in protocol %d",
+                 flags, protocol->version);
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_RENAME);
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(oldpath));
   send_path(&fakejob, &fakeworker, resolvepath(newpath));
   if(protocol->version >= 5)
-    send_uint32(&fakeworker, SSH_FXF_RENAME_OVERWRITE);
+    send_uint32(&fakeworker, flags);
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id);
   return status();
@@ -902,7 +907,24 @@ static int cmd_rmdir(int attribute((unused)) ac,
 
 static int cmd_mv(int attribute((unused)) ac,
                      char **av) {
-  return sftp_rename(av[0], av[1]);
+  if(ac == 3) {
+    const char *ptr = av[0];
+    int c;
+    unsigned flags = 0;
+
+    if(*ptr++ != '-')
+      return error("invalid options '%s'", av[0]);
+    while((c = *ptr++)) {
+      switch(c) {
+      case 'n': flags |= SSH_FXF_RENAME_NATIVE; break;
+      case 'a': flags |= SSH_FXF_RENAME_ATOMIC; break;
+      case 'o': flags |= SSH_FXF_RENAME_OVERWRITE; break;
+      default: return error("invalid options '%s'", av[0]);
+      }
+    }
+    return sftp_rename(av[1], av[2], flags);
+  } else
+    return sftp_rename(av[0], av[1], 0);
 }
 
 static int cmd_symlink(int attribute((unused)) ac,
@@ -1626,8 +1648,8 @@ static const struct command commands[] = {
     "get or set local umask"
   },
   {
-    "mv", 2, 2, cmd_mv,
-    "OLDPATH NEWPATH",
+    "mv", 2, 3, cmd_mv,
+    "[-nao] OLDPATH NEWPATH",
     "rename a remote file"
   },
   {
