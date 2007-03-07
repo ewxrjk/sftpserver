@@ -1615,11 +1615,11 @@ static void report_bytes(int width, const char *what, uint64_t howmuch) {
   if(!howmuch)
     return;
   xprintf("%s:%*s ", what, width - (int)strlen(what), "");
-  if(howmuch >= 2 * gbyte)
+  if(howmuch >= 8 * gbyte)
     xprintf("%"PRIu64" Gbytes\n", howmuch / gbyte);
-  else if(howmuch >= 2 * mbyte)
+  else if(howmuch >= 8 * mbyte)
     xprintf("%"PRIu64" Mbytes\n", howmuch / mbyte);
-  else if(howmuch >= 2 * kbyte)
+  else if(howmuch >= 8 * kbyte)
     xprintf("%"PRIu64" Kbytes\n", howmuch / kbyte);
   else 
     xprintf("%"PRIu64" bytes\n", howmuch);

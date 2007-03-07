@@ -495,7 +495,7 @@ static void sftp_service(void) {
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
-    job->data = xmalloc(len);
+    job->data = xmalloc(job->len);
     if(do_read(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */

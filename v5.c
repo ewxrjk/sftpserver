@@ -13,8 +13,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
-#include <sys/param.h>
-#include <sys/mount.h>
+#include <sys/statvfs.h>
 
 void sftp_v56_open(struct sftpjob *job) {
   char *path;
@@ -268,11 +267,11 @@ void sftp_text_seek(struct sftpjob *job) {
 
 void sftp_space_available(struct sftpjob *job) {
   char *path;
-  struct statfs fs;
+  struct statvfs fs;
 
   pcheck(parse_string(job, &path, 0));
   D(("sftp_space_available %s", path));
-  if(statfs(path, &fs) < 0) {
+  if(statvfs(path, &fs) < 0) {
     send_errno_status(job);
     return;
   }
@@ -280,27 +279,15 @@ void sftp_space_available(struct sftpjob *job) {
   send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
   send_uint32(job->worker, job->id);
   /* bytes-on-device */
-  if(fs.f_bsize >= 0 && fs.f_blocks >= 0)
-    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_blocks);
-  else
-    send_uint64(job->worker, 0);
+  send_uint64(job->worker, (uint64_t)fs.f_frsize * (uint64_t)fs.f_blocks);
   /* unused-bytes-on-device */
-  if(fs.f_bsize >= 0 && fs.f_bfree >= 0)
-    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_bfree);
-  else
-    send_uint64(job->worker, 0);
+  send_uint64(job->worker, (uint64_t)fs.f_frsize * (uint64_t)fs.f_bfree);
   /* bytes-available-to-user  (i.e. both used and unused) */
   send_uint64(job->worker, 0);
   /* unused-bytes-available-to-user  (i.e. unused) */
-  if(fs.f_bsize >= 0 && fs.f_bavail >= 0)
-    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_bavail);
-  else
-    send_uint64(job->worker, 0);
+  send_uint64(job->worker, (uint64_t)fs.f_frsize * (uint64_t)fs.f_bavail);
   /* bytes-per-allocation-unit */
-  if(fs.f_bsize >= 0)
-    send_uint32(job->worker, (uint64_t)fs.f_bsize);
-  else
-    send_uint32(job->worker, 0);
+  send_uint32(job->worker, fs.f_frsize);
   send_end(job->worker);
 }
 
