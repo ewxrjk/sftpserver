@@ -59,7 +59,8 @@ static int progress_indicators = 1;
 static int terminal_width;
 static int textmode;
 static const char *newline = "\r\n";
-static const char *servername, *serverversion, *serverversions;
+static const char *vendorname, *servername, *serverversion, *serverversions;
+static uint64_t serverbuild;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -1561,9 +1562,11 @@ static int cmd_version(int attribute((unused)) ac,
                        char attribute((unused)) **av) {
   xprintf("Protocol version: %d\n", protocol->version);
   if(servername)
-    xprintf("Server name:      %s\n"
-            "Server version:   %s\n",
-            servername, serverversion);
+    xprintf("Sever vendor:     %s\n"
+            "Server name:      %s\n"
+            "Server version:   %s\n"
+            "Sevrer build:     %"PRIu64"\n",
+            vendorname, servername, serverversion, serverbuild);
   if(serverversions)
     xprintf("Server supports:  %s\n", serverversions);
   return 0;
@@ -1960,23 +1963,17 @@ int main(int argc, char **argv) {
       if(!*newline)
         fatal("cannot cope with empty newline sequence");
       /* TODO check newline sequence doesn't contain repeats */
-    } else if(!strcmp(xname, "sftp-ident@rjk.greenend.org.uk")) {
-      /* See comment in sftpserver.c */
+    } else if(!strcmp(xname, "vendor-id")) {
       struct sftpjob xjob;
-      uint32_t property_count;
-      char *property;
       
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
+      cpcheck(parse_string(&xjob, (char **)&vendorname, 0));
       cpcheck(parse_string(&xjob, (char **)&servername, 0));
       cpcheck(parse_string(&xjob, (char **)&serverversion, 0));
-      cpcheck(parse_uint32(&xjob, &property_count));
-      while(property_count-- > 0) {
-        cpcheck(parse_string(&xjob, (char **)&property, 0));
-        if(!strcmp(property, "sftp-reverse-symlink@rjk.greenend.org.uk"))
-          quirk_reverse_symlink = 1;
-      }
+      cpcheck(parse_uint64(&xjob, &serverbuild));
+      vendorname = xstrdup(vendorname);
       servername = xstrdup(servername);
       serverversion = xstrdup(serverversion);
     } else if(!strcmp(xname, "versions"))

@@ -193,37 +193,14 @@ static void sftp_init(struct sftpjob *job) {
     send_string(job->worker, "3,4,5,6");
   }
   {
-    /* sftp-ident@rjk.greenend.org.uk is EXPERIMENTAL.  For the time being, it
-     * may change format without warning.
-     *
-     * It has the following format:
-     *    string agent-name
-     *    string agent-version
-     *    uint32 property-count
-     *    string properties[property-count]
-     *
-     * 'agent-name' is a string identifying this implementation, subject to the
-     * RFC4251 s6 rules.  Multiple related implementations may share the same
-     * name, for instance if they are forked versions of the same basic code.
-     *
-     * 'agent-version' is a version string.  It is intended to be human
-     * readable.  Other implementations may compare against it but no
-     * particular ordering is defined on it.
-     *
-     * 'property-count' is a list of properties of this particular version,
-     * again subject to the RFC451 s6 rules.
-     *
-     * The idea is that the client knows what the bugs in the server are (by
-     * checking its name) and enables workarounds for them.  The server gets to
-     * advertize that it has fixed particular bugs using 'properties', allowing
-     * clients to disable the workaround.
-     */
-    send_string(job->worker, "sftp-ident@rjk.greenend.org.uk");
+    /* vendor-id is defined in some of the SFTP drafts but not all.
+     * Whatever. */
+    send_string(job->worker, "vendor-id");
     const size_t offset = send_sub_begin(job->worker);
-    send_string(job->worker, "gesftpserver");
+    send_string(job->worker, "Green End");
+    send_string(job->worker, "Green End SFTP Server");
     send_string(job->worker, VERSION);
-    send_uint32(job->worker, 1);
-    send_string(job->worker, "sftp-correct-symlink@rjk.greenend.org.uk");
+    send_uint64(job->worker, 0);
     send_sub_end(job->worker, offset);
   }
   send_end(job->worker);
