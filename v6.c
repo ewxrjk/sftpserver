@@ -132,7 +132,8 @@ static const struct sftpcmd sftpv6tab[] = {
 /* TODO: file locking */
 
 static const struct sftpextension sftp_v6_extensions[] = {
-  { "text-seek", sftp_text_seek }
+  { "text-seek", sftp_text_seek },
+  { "space-available", sftp_space_available }
 };
 
 const struct sftpprotocol sftpv6 = {

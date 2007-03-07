@@ -13,6 +13,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <stdio.h>
+#include <sys/param.h>
+#include <sys/mount.h>
 
 void sftp_v56_open(struct sftpjob *job) {
   char *path;
@@ -36,6 +38,9 @@ void generic_open(struct sftpjob *job, const char *path,
   struct handleid id;
   unsigned handle_flags = 0;
 
+  /* For opens, the size indicates the planned total size, and doesn't affect
+   * the file creation. */
+  attrs->valid &= ~(uint32_t)SSH_FILEXFER_ATTR_SIZE;
 #ifdef O_NOCTTY
   /* We don't want to accidentally acquire a controlling terminal. */
   open_flags |= O_NOCTTY;
@@ -261,17 +266,56 @@ void sftp_text_seek(struct sftpjob *job) {
   }
 }
 
+void sftp_space_available(struct sftpjob *job) {
+  char *path;
+  struct statfs fs;
+
+  pcheck(parse_string(job, &path, 0));
+  D(("sftp_space_available %s", path));
+  if(statfs(path, &fs) < 0) {
+    send_errno_status(job);
+    return;
+  }
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
+  send_uint32(job->worker, job->id);
+  /* bytes-on-device */
+  if(fs.f_bsize >= 0 && fs.f_blocks >= 0)
+    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_blocks);
+  else
+    send_uint64(job->worker, 0);
+  /* unused-bytes-on-device */
+  if(fs.f_bsize >= 0 && fs.f_bfree >= 0)
+    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_bfree);
+  else
+    send_uint64(job->worker, 0);
+  /* bytes-available-to-user  (i.e. both used and unused) */
+  send_uint64(job->worker, 0);
+  /* unused-bytes-available-to-user  (i.e. unused) */
+  if(fs.f_bsize >= 0 && fs.f_bavail >= 0)
+    send_uint64(job->worker, (uint64_t)fs.f_bsize * (uint64_t)fs.f_bavail);
+  else
+    send_uint64(job->worker, 0);
+  /* bytes-per-allocation-unit */
+  if(fs.f_bsize >= 0)
+    send_uint32(job->worker, (uint64_t)fs.f_bsize);
+  else
+    send_uint32(job->worker, 0);
+  send_end(job->worker);
+}
+
 void sftp_extended(struct sftpjob *job) {
   char *name;
   int n;
 
   pcheck(parse_string(job, &name, 0));
+  D(("extension %s", name));
   /* TODO when we have nontrivially many extensions we should use a binary
    * search here. */
   for(n = 0; (n < protocol->nextensions
 	      && strcmp(name, protocol->extensions[n].name)); ++n)
     ;
-  if(n > protocol->nextensions)
+  if(n >= protocol->nextensions)
     send_status(job, SSH_FX_OP_UNSUPPORTED,
                 "extension not supported");
   else
@@ -302,7 +346,8 @@ static const struct sftpcmd sftpv5tab[] = {
 };
 
 static const struct sftpextension sftp_v5_extensions[] = {
-  { "text-seek", sftp_text_seek }
+  { "text-seek", sftp_text_seek },
+  { "space-available", sftp_space_available }
 };
 
 const struct sftpprotocol sftpv5 = {

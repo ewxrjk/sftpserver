@@ -61,6 +61,7 @@ int sftpout = 1;                        /* default is stdout */
 #endif
 
 void send_need(struct worker *w, size_t n) {
+  assert(w->bufused < 0x80000000);
   if(n > w->bufsize - w->bufused) {
     size_t newsize = w->bufsize ? w->bufsize : 64;
     while(newsize && newsize < w->bufsize + n)

@@ -66,6 +66,7 @@ void sftp_text_seek(struct sftpjob *job);
 void generic_open(struct sftpjob *job, const char *path,
                   uint32_t desired_access, uint32_t flags,
                   struct sftpattr *attrs);
+void sftp_space_available(struct sftpjob *job);
 
 void send_errno_status(struct sftpjob *job);
 /* Call send_status based on errno */

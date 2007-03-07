@@ -557,6 +557,34 @@ static int sftp_open(const char *path,
   return 0;
 }
 
+struct space_available {
+  uint64_t bytes_on_device;
+  uint64_t unused_bytes_on_device;
+  uint64_t bytes_available_to_user;
+  uint64_t unused_bytes_available_to_user;
+  uint32_t bytes_per_allocation_unit;
+};
+
+static int sftp_space_available(const char *path,
+                                struct space_available *as) {
+  uint32_t id;
+
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  send_uint32(&fakeworker, id = newid());
+  send_string(&fakeworker, "space-available");
+  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_end(&fakeworker);
+  if(getresponse(SSH_FXP_EXTENDED_REPLY, id) != SSH_FXP_EXTENDED_REPLY)
+    return -1;
+  cpcheck(parse_uint64(&fakejob, &as->bytes_on_device));
+  cpcheck(parse_uint64(&fakejob, &as->unused_bytes_on_device));
+  cpcheck(parse_uint64(&fakejob, &as->bytes_available_to_user));
+  cpcheck(parse_uint64(&fakejob, &as->unused_bytes_available_to_user));
+  cpcheck(parse_uint32(&fakejob, &as->bytes_per_allocation_unit));
+  return 0;
+}
+
 /* Command line operations */
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -1579,6 +1607,39 @@ static int cmd_debug(int attribute((unused)) ac,
   return 0;
 }
 
+static void report_bytes(int width, const char *what, uint64_t howmuch) {
+  static const uint64_t gbyte = (uint64_t)1 << 30;
+  static const uint64_t mbyte = (uint64_t)1 << 20;
+  static const uint64_t kbyte = (uint64_t)1 << 10;
+
+  if(!howmuch)
+    return;
+  xprintf("%s:%*s ", what, width - (int)strlen(what), "");
+  if(howmuch >= 2 * gbyte)
+    xprintf("%"PRIu64" Gbytes\n", howmuch / gbyte);
+  else if(howmuch >= 2 * mbyte)
+    xprintf("%"PRIu64" Mbytes\n", howmuch / mbyte);
+  else if(howmuch >= 2 * kbyte)
+    xprintf("%"PRIu64" Kbytes\n", howmuch / kbyte);
+  else 
+    xprintf("%"PRIu64" bytes\n", howmuch);
+}
+
+static int cmd_df(int ac,
+                  char **av) {
+  struct space_available as;
+
+  if(sftp_space_available(ac ? av[0] : cwd, &as)) 
+    return -1;
+  report_bytes(32, "Bytes on device", as.bytes_on_device);
+  report_bytes(32, "Unused bytes on device", as.unused_bytes_on_device);
+  report_bytes(32, "Available bytes on device", as.bytes_available_to_user);
+  report_bytes(32, "Unused available bytes on device", 
+               as.unused_bytes_available_to_user);
+  report_bytes(32, "Bytes per allocation unit", as.bytes_per_allocation_unit);
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -1615,6 +1676,11 @@ static const struct command commands[] = {
     "debug", 0, 0, cmd_debug,
     0,
     "toggle debugging"
+  },
+  {
+    "df", 0, 1, cmd_df,
+    "[PATH]",
+    "query available space"
   },
   {
     "exit", 0, 0, cmd_quit,
@@ -1978,6 +2044,7 @@ int main(int argc, char **argv) {
       serverversion = xstrdup(serverversion);
     } else if(!strcmp(xname, "versions"))
       serverversions = xstrdup(xdata);
+    /* TODO supported and supported2 */
   }
   /* Make sure outbound translation will actually work */
   if(buffersize < strlen(newline))

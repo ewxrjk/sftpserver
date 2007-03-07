@@ -160,6 +160,7 @@ static void sftp_init(struct sftpjob *job) {
      * Therefore we send 0 here.
      */
     send_uint32(job->worker, 0);
+    send_string(job->worker, "space-available");
     send_sub_end(job->worker, offset);
   }
   if(protocol->version >= 6) {
@@ -186,7 +187,8 @@ static void sftp_init(struct sftpjob *job) {
     send_uint16(job->worker, 0);        /* supported-open-block-vector */
     send_uint16(job->worker, 0);        /* supported-block-vector */
     send_uint32(job->worker, 0);        /* attrib-extension-count */
-    send_uint32(job->worker, 0);        /* extension-count */
+    send_uint32(job->worker, 1);        /* extension-count */
+    send_string(job->worker, "space-available");
     send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
     send_string(job->worker, "versions");

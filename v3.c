@@ -620,7 +620,11 @@ static const struct sftpcmd sftpv3tab[] = {
   { SSH_FXP_RENAME, sftp_v34_rename },
   { SSH_FXP_READLINK, sftp_readlink },
   { SSH_FXP_SYMLINK, sftp_symlink },
-  //{ SSH_FXP_EXTENDED, sftp_extended },
+  { SSH_FXP_EXTENDED, sftp_extended }
+};
+
+static const struct sftpextension v3_extensions[] = {
+  { "space-available", sftp_space_available }
 };
 
 const struct sftpprotocol sftpv3 = {
@@ -634,8 +638,8 @@ const struct sftpprotocol sftpv3 = {
   v3_parseattrs,
   v3_encode,
   v3_decode,
-  0,
-  0,                                    /* extensions */
+  sizeof v3_extensions / sizeof (struct sftpextension),
+  v3_extensions,                        /* extensions */
 };
 
 /*
