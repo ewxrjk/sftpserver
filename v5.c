@@ -123,7 +123,7 @@ void generic_open(struct sftpjob *job, const char *path,
     } else {
       /* As above we cannot use O_EXCL in this case as it'll refuse to follow
        * symlinks. */
-      if(stat(path, &sb)) {
+      if(stat(path, &sb) == 0) {
         /* The file exists.  Open and maybe truncate.  If it got deleted in the
          * meantime then you get an error. */
         fd = open(path, open_flags, initial_permissions);

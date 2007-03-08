@@ -37,6 +37,10 @@ void v456_sendattrs(struct sftpjob *job,
   }
   if(valid & SSH_FILEXFER_ATTR_PERMISSIONS)
     send_uint32(job->worker, attrs->permissions);
+  /* lftp 3.1.3 expects subsecond time fields even if the corresonding time is
+   * absent.  It sends no identifying information so we cannot enable a
+   * workaround for this bizarre bug.  lftp 3.5.9 gets this right as does
+   * WinSCP. */
   if(valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
     send_uint64(job->worker, attrs->atime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
