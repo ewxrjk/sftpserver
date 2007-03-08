@@ -71,22 +71,6 @@ static int ranges_overlap(const struct sqnode *a,
   return 0;
 }
 
-/* Return true iff operation N modifies the file */
-static int write_operation(int n) {
-  switch(n) {
-  case SSH_FXP_WRITE:
-  case SSH_FXP_FSETSTAT:
-  case SSH_FXP_FSTAT:
-    /* We consider SSH_FXP_FSTAT a write so that it will not be re-ordered with
-     * respect to SSH_FXP_READ (and thus return a wrong atime).  This is a
-     * hack!  This prevents it being re-ordered with respect to itself, too,
-     * but that's not much of a loss. */
-    return 1;
-  default:
-    return 0;
-  }
-}
-
 /* Return true iff it's acceptable to re-order Q1 with respect to Q2 */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
@@ -97,9 +81,9 @@ static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
       /* Operations on different handles can always be re-ordered. */
       return 1;
     if(flags & (HANDLE_TEXT|HANDLE_APPEND))
-      /* Operation on text or append-write files cannot be re-oredered. */
+      /* Operations on text or append-write files cannot be re-oredered. */
       return 0;
-    if(write_operation(q1->type) || write_operation(q2->type))
+    if(q1->type == SSH_FXP_WRITE || q2->type == SSH_FXP_WRITE)
       if(ranges_overlap(q1, q2))
         /* If one of the operations is a write and the ranges overlap then no
          * re-ordering is allowed. */
@@ -162,10 +146,7 @@ void serialize(struct sftpjob *job) {
     if(!q)
       break;
     /* We've found our position in the queue.  See if there is any request on
-     * the same handle which blocks our request.  Note that for non-appending
-     * binary files we allow reads to overlap reads, but prohibit writes from
-     * overlapping anything.  For text and append handles we serialize all
-     * operations regardless. */
+     * the same handle which blocks our request. */
     for(oq = q->older; oq; oq = oq->older)
       if(!reorderable(q, oq, q->handleflags))
         break;
