@@ -585,6 +585,26 @@ static int sftp_space_available(const char *path,
   return 0;
 }
 
+static int sftp_mkdir(const char *path, mode_t mode) {
+  struct sftpattr attrs;
+  uint32_t id;
+
+  if(mode == (mode_t)-1)
+    attrs.valid = 0;
+  else {
+    attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
+    attrs.permissions = mode;
+  }
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_MKDIR);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, resolvepath(path));
+  protocol->sendattrs(&fakejob, &attrs);
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
 /* Command line operations */
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -935,7 +955,7 @@ static int cmd_chmod(int attribute((unused)) ac,
   attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
   errno = 0;
   attrs.permissions = strtol(av[0], 0, 8);
-  if(errno || attrs.permissions != (attrs.permissions & 0777))
+  if(errno || attrs.permissions != (attrs.permissions & 07777))
     error("invalid permissions: %s", strerror(errno));
   return sftp_setstat(av[1], &attrs);
 }
@@ -1640,6 +1660,21 @@ static int cmd_df(int ac,
   return 0;
 }
 
+static int cmd_mkdir(int ac,
+                     char **av) {
+  const char *path;
+  mode_t mode;
+
+  if(ac == 2) {
+    mode = strtoul(av[0], 0, 8);
+    path = av[1];
+  } else {
+    mode = -1;
+    path = av[0];
+  }
+  return sftp_mkdir(path, mode);
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -1731,6 +1766,11 @@ static const struct command commands[] = {
     "lumask", 0, 1, cmd_lumask,
     "OCTAL",
     "get or set local umask"
+  },
+  {
+    "mkdir", 1, 2, cmd_mkdir,
+    "[MODE] DIRECTORY",
+    "create a remote directory"
   },
   {
     "mv", 2, 3, cmd_mv,

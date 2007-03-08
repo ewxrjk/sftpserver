@@ -215,7 +215,7 @@ void normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
       return #CHOWN;							\
   }                                                                     \
   if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {                     \
-    const mode_t mode = attrs.permissions & 0777;                       \
+    const mode_t mode = attrs.permissions & 07777;                      \
     D(("...chmod to %#o", (unsigned)mode));                             \
     if(CHMOD(WHAT, mode) < 0)                                           \
       return #CHMOD;                                                    \

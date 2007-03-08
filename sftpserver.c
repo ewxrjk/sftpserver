@@ -494,6 +494,9 @@ static void sftp_service(void) {
   struct allocator a;
   void *const wdv = worker_init(); 
   D(("gesftpserver %s starting up", VERSION));
+  /* draft -13 s7.6 "The server SHOULD NOT apply a 'umask' to the mode
+   * bits". */
+  umask(0);
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);

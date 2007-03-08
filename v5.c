@@ -81,10 +81,14 @@ void generic_open(struct sftpjob *job, const char *path,
 #endif
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    initial_permissions = attrs->permissions & 0777;
-    attrs->valid ^= SSH_FILEXFER_ATTR_PERMISSIONS;
+    /* If we're given permissions use them */
+    initial_permissions = attrs->permissions & 07777;
+    /* Don't modify permissions later unless necessary */
+    if(attrs->permissions == (attrs->permissions & 0777))
+      attrs->valid ^= SSH_FILEXFER_ATTR_PERMISSIONS;
   } else
-    initial_permissions = 0777;
+    /* Otherwise be conservative */
+    initial_permissions = DEFAULT_PERMISSIONS & 0666;
   switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
   case SSH_FXF_CREATE_NEW:
     /* We create the file anew and if it exists we return an error. */

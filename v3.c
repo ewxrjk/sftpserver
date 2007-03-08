@@ -444,15 +444,19 @@ void sftp_mkdir(struct sftpjob *job) {
   D(("sftp_mkdir %s", path));
   attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* makes no sense */
   if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    /* If we're given initial permissions, use them and don't reset them  */
-    if(mkdir(path, attrs.permissions & 0777) < 0) {
+    D(("initial permissions are %#o (%d decimal)",
+       attrs.permissions, attrs.permissions));
+    /* If we're given initial permissions, use them  */
+    if(mkdir(path, attrs.permissions & 07777) < 0) {
       send_errno_status(job);
       return;
     }
-    attrs.valid &= ~SSH_FILEXFER_ATTR_PERMISSIONS;
+    /* Don't modify permissions later unless necessary */
+    if(attrs.permissions == (attrs.permissions & 0777))
+      attrs.valid ^= SSH_FILEXFER_ATTR_PERMISSIONS;
   } else {
-    /* Otherwise follow the current umask */
-    if(mkdir(path, 0777) < 0) {
+    /* Otherwise be conservative */
+    if(mkdir(path, DEFAULT_PERMISSIONS) < 0) {
       send_errno_status(job);
       return;
     }

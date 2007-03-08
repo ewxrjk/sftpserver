@@ -25,6 +25,11 @@
 # define MAXREQUEST 1048576
 #endif
 
+/* Default file permissions */
+#ifndef DEFAULT_PERMISSIONS
+# define DEFAULT_PERMISSIONS 0755
+#endif
+
 void send_status(struct sftpjob *job, 
                  uint32_t status,
                  const char *msg);
