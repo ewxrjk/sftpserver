@@ -54,7 +54,6 @@ static struct worker fakeworker;
 static char *cwd;
 static const char *inputpath;
 static int inputline;
-static const struct command commands[];
 static int progress_indicators = 1;
 static int terminal_width;
 static int textmode;
@@ -107,26 +106,26 @@ static const struct option options[] = {
 /* display usage message and terminate */
 static void help(void) {
   xprintf("Usage:\n"
-	 "  sftpclient [OPTIONS] [USER@]HOST\n"
-	 "\n"
-	 "Quick and dirty SFTP client\n"
-	 "\n"
-	 "Options:\n"
-	 "  --help, -h               Display usage message\n"
-	 "  --version, -V            Display version number\n"
-	 "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
-	 "  -b, --batch PATH         Read batch file\n"
-	 "  -P, --program PATH       Execute program as SFTP server\n"
-	 "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
-	 "  -s, --subsystem NAME     Remote subsystem name\n"
-	 "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
-         "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n"
-	 "Options passed to SSH:\n"
-	 "  -1, -2                   Select protocol version\n"
-	 "  -C                       Enable compression\n"
-	 "  -F PATH                  Use alternative  config file\n"
-	 "  -o OPTION                Pass option to client\n"
-	 "  -v                       Raise logging level\n");
+          "  sftpclient [OPTIONS] [USER@]HOST\n"
+          "\n"
+          "Quick and dirty SFTP client\n"
+          "\n");
+  xprintf("Options:\n"
+          "  --help, -h               Display usage message\n"
+          "  --version, -V            Display version number\n"
+          "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
+          "  -b, --batch PATH         Read batch file\n"
+          "  -P, --program PATH       Execute program as SFTP server\n");
+  xprintf("  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
+          "  -s, --subsystem NAME     Remote subsystem name\n"
+          "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
+          "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n");
+  xprintf("Options passed to SSH:\n"
+          "  -1, -2                   Select protocol version\n"
+          "  -C                       Enable compression\n"
+          "  -F PATH                  Use alternative  config file\n"
+          "  -o OPTION                Pass option to client\n"
+          "  -v                       Raise logging level\n");
   exit(0);
 }
 
@@ -636,30 +635,8 @@ static int cmd_quit(int attribute((unused)) ac,
   exit(0);
 }
 
-
 static int cmd_help(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
-  int n;
-  size_t max = 0, len = 0;
-
-  for(n = 0; commands[n].name; ++n) {
-    len = strlen(commands[n].name);
-    if(commands[n].args)
-      len += strlen(commands[n].args) + 1;
-    if(len > max) 
-      max = len;
-  }
-  for(n = 0; commands[n].name; ++n) {
-    len = strlen(commands[n].name);
-    xprintf("%s", commands[n].name);
-    if(commands[n].args) {
-      len += strlen(commands[n].args) + 1;
-      xprintf(" %s", commands[n].args);
-    }
-    xprintf("%*s  %s\n", (int)(max - len), "", commands[n].help);
-  }
-  return 0;
-}
+                    char attribute((unused)) **av);
 
 static int cmd_lpwd(int attribute((unused)) ac,
                     char attribute((unused)) **av) {
@@ -1828,6 +1805,30 @@ static const struct command commands[] = {
   },
   { 0, 0, 0, 0, 0, 0 }
 };
+
+static int cmd_help(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  int n;
+  size_t max = 0, len = 0;
+
+  for(n = 0; commands[n].name; ++n) {
+    len = strlen(commands[n].name);
+    if(commands[n].args)
+      len += strlen(commands[n].args) + 1;
+    if(len > max) 
+      max = len;
+  }
+  for(n = 0; commands[n].name; ++n) {
+    len = strlen(commands[n].name);
+    xprintf("%s", commands[n].name);
+    if(commands[n].args) {
+      len += strlen(commands[n].args) + 1;
+      xprintf(" %s", commands[n].args);
+    }
+    xprintf("%*s  %s\n", (int)(max - len), "", commands[n].help);
+  }
+  return 0;
+}
 
 static char *input(const char *prompt, FILE *fp) {
   if(prompt) {

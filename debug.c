@@ -35,7 +35,7 @@ void hexdump(const void *ptr, size_t n) {
 
   opendebug();
   for(i = 0; i < n; i += 16) {
-    fprintf(debugfp, "%4zx ", i);
+    fprintf(debugfp, "%4lx ", (unsigned long)i);
     for(j = 0; j < 16; ++j)
       if(i + j < n)
 	fprintf(debugfp, " %02x", p[i + j]);

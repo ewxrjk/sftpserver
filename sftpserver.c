@@ -72,8 +72,8 @@ static void help(void) {
           "  gesftpserver [OPTIONS]\n"
           "\n"
           "Green End SFTP server.  Not intended for interactive use!\n"
-          "\n"
-          "Options:\n"
+          "\n");
+  xprintf("Options:\n"
           "  --help, -h               Display usage message\n"
           "  --version, -V            Display version number\n"
           "  --chroot, -r PATH        Change root to PATH\n"
@@ -96,6 +96,7 @@ static void version(void) {
 
 static void sftp_init(struct sftpjob *job) {
   uint32_t version;
+  size_t offset;
 
   if(protocol != &sftppreinit) {
     /* Cannot initialize more than once */
@@ -139,7 +140,7 @@ static void sftp_init(struct sftpjob *job) {
   if(protocol->version == 5) {
     /* draft-ietf-secsh-filexfer-05.txt 4.4 */
     send_string(job->worker, "supported");
-    const size_t offset = send_sub_begin(job->worker);
+    offset = send_sub_begin(job->worker);
     send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_PERMISSIONS
                               |SSH_FILEXFER_ATTR_ACCESSTIME
@@ -168,7 +169,7 @@ static void sftp_init(struct sftpjob *job) {
   if(protocol->version >= 6) {
     /* draft-ietf-secsh-filexfer-13.txt 5.4 */
     send_string(job->worker, "supported2");
-    const size_t offset = send_sub_begin(job->worker);
+    offset = send_sub_begin(job->worker);
     send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_PERMISSIONS
                               |SSH_FILEXFER_ATTR_ACCESSTIME
@@ -200,7 +201,7 @@ static void sftp_init(struct sftpjob *job) {
     /* vendor-id is defined in some of the SFTP drafts but not all.
      * Whatever. */
     send_string(job->worker, "vendor-id");
-    const size_t offset = send_sub_begin(job->worker);
+    offset = send_sub_begin(job->worker);
     send_string(job->worker, "Green End");
     send_string(job->worker, "Green End SFTP Server");
     send_string(job->worker, VERSION);

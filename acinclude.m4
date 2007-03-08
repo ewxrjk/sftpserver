@@ -43,6 +43,19 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
   if test "$warnings_as_errors" = yes && test "$rjk_cv_ccwerror" != unknown; then
     CC="${CC} $rjk_cv_ccwerror"
   fi
+  AC_CACHE_CHECK([whether <inttypes.h> macros produce warnings],
+                 [rjk_cv_inttypeswarnings],[
+    AC_TRY_COMPILE([#include <stddef.h>
+#include <stdio.h>
+#if HAVE_INTTYPES_H
+  #include <inttypes.h>
+#endif],[uint64_t x=0;size_t sz=0;printf("%"PRIu64" %zu\n", x, sz);],
+                   [rjk_cv_inttypeswarnings=no],
+                   [rjk_cv_inttypeswarnings=yes])
+  ])
+  if test $rjk_cv_inttypeswarnings = yes && test "$GCC" = yes; then
+    CC="${CC} -Wno-format"
+  fi
 ])
 
 AC_DEFUN([RJK_GTKFLAGS],[
