@@ -66,8 +66,8 @@ const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
 
 /* Command line */
-static size_t buffersize = 8192;
-static int nrequests = 8;
+static size_t buffersize = 32768;
+static int nrequests = 16;
 static const char *subsystem;
 static const char *program;
 static const char *batchfile;

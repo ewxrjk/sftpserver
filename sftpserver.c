@@ -495,6 +495,8 @@ static void sftp_service(void) {
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
+    if(!job->len)
+      fatal("zero length job");         /* that's not cricket */
     job->data = xmalloc(job->len);
     if(do_read(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
@@ -504,21 +506,8 @@ static void sftp_service(void) {
       D(("request:"));
       hexdump(job->data, job->len);
     }
-    /* Overlapping or text-mode reads and writes on the same handle must be
-     * processed in the order in which they arrived.  Therefore we must pick
-     * out reads and writes and add them to a queue to allow this rule to be
-     * implemented.  See handle.c for fuller commentary and notes on
-     * interpretation. */
-    if(job->len) {
-      switch(*job->data) {
-      case SSH_FXP_READ:
-      case SSH_FXP_WRITE:
-      case SSH_FXP_FSETSTAT:
-      case SSH_FXP_FSTAT:
-        queue_serializable_job(job);
-        break;
-      }
-    }
+    /* See serialize.c for the serialization rules we follow */
+    queue_serializable_job(job);
     /* We process the job in a background thread, except that the background
      * threads don't exist until SSH_FXP_INIT has succeeded. */
     if(workqueue)
