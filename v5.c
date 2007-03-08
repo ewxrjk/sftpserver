@@ -50,9 +50,17 @@ void generic_open(struct sftpjob *job, const char *path,
     open_flags |= O_RDONLY;
     break;
   case ACE4_WRITE_DATA:
+    if(readonly) {
+      send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+      return;
+    }
     open_flags |= O_WRONLY;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
+    if(readonly) {
+      send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+      return;
+    }
     open_flags |= O_RDWR;
     break;
   }
@@ -89,6 +97,12 @@ void generic_open(struct sftpjob *job, const char *path,
   } else
     /* Otherwise be conservative */
     initial_permissions = DEFAULT_PERMISSIONS & 0666;
+  if(readonly
+     && ((flags & SSH_FXF_ACCESS_DISPOSITION) != SSH_FXF_OPEN_EXISTING
+         || (flags & SSH_FXF_DELETE_ON_CLOSE))) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
   case SSH_FXF_CREATE_NEW:
     /* We create the file anew and if it exists we return an error. */
@@ -184,6 +198,10 @@ void sftp_v56_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
   uint32_t flags;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   pcheck(parse_uint32(job, &flags));

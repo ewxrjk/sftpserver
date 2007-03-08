@@ -161,6 +161,10 @@ void sftp_already_init(struct sftpjob *job) {
 void sftp_remove(struct sftpjob *job) {
   char *path;
   
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &path));
   D(("sftp_remove %s", path));
   if(unlink(path) < 0) send_errno_status(job);
@@ -170,6 +174,10 @@ void sftp_remove(struct sftpjob *job) {
 void sftp_rmdir(struct sftpjob *job) {
   char *path;
   
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &path));
   D(("sftp_rmdir %s", path));
   if(rmdir(path) < 0) send_errno_status(job);
@@ -179,6 +187,10 @@ void sftp_rmdir(struct sftpjob *job) {
 void sftp_v34_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   D(("sftp_v34_rename %s %s", oldpath, newpath));
@@ -214,6 +226,10 @@ void sftp_v34_rename(struct sftpjob *job) {
 void sftp_symlink(struct sftpjob *job) {
   char *oldpath, *newpath;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &newpath));    /* aka linkpath */
   pcheck(parse_path(job, &oldpath));    /* aka targetpath */
   D(("sftp_symlink %s %s", oldpath, newpath));
@@ -407,6 +423,10 @@ void sftp_setstat(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
@@ -422,6 +442,10 @@ void sftp_fsetstat(struct sftpjob *job) {
   int fd;
   uint32_t rc;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_handle(job, &id));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
@@ -439,6 +463,10 @@ void sftp_mkdir(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_mkdir %s", path));
@@ -485,7 +513,7 @@ void sftp_v34_open(struct sftpjob *job) {
   /* Translate to v5/6 bits */
   if(pflags & SSH_FXF_READ)
     desired_access |= ACE4_READ_DATA|ACE4_READ_ATTRIBUTES;
-  if(pflags & SSH_FXF_WRITE) 
+  if(pflags & SSH_FXF_WRITE)
     desired_access |= ACE4_WRITE_DATA|ACE4_WRITE_ATTRIBUTES;
   if(pflags & SSH_FXF_APPEND) {
     flags |= SSH_FXF_APPEND_DATA;
@@ -569,6 +597,10 @@ void sftp_write(struct sftpjob *job) {
   int fd;
   unsigned flags;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
   pcheck(parse_uint32(job, &len));

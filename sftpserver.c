@@ -62,6 +62,7 @@ static const struct option options[] = {
   { "background", no_argument, 0, 'b' },
   { "ipv4", no_argument, 0, '4' },
   { "ipv6", no_argument, 0, '6' },
+  { "readonly", no_argument, 0, 'R' },
   { 0, 0, 0, 0 }
 };
 
@@ -79,7 +80,8 @@ static void help(void) {
           "  --user, -u USER          Change to user USER\n"
           "  --listen, -L PORT        Listen on PORT\n"
           "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
-          "  -4|-6                    Force IPv4 or IPv6 for --liisten\n"
+          "  -4|-6                    Force IPv4 or IPv6 for --listen\n"
+          "  --readonly, -R           Read-only mode\n"
           "  --background, -b         Daemonize\n");
   exit(0);
 }
@@ -334,7 +336,7 @@ int main(int argc, char **argv) {
   setlocale(LC_CTYPE, "");
   local_encoding = nl_langinfo(CODESET);
   
-  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46",
+  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46R",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
@@ -348,6 +350,7 @@ int main(int argc, char **argv) {
     case 'b': daemonize = 1; break;
     case '4': hints.ai_family = PF_INET; break;
     case '6': hints.ai_family = PF_INET6; break;
+    case 'R': readonly = 1; break;
     default: exit(1);
     }
   }

@@ -92,6 +92,10 @@ void sftp_link(struct sftpjob *job) {
   char *oldpath, *newpath;
   uint8_t symbolic;
 
+  if(readonly) {
+    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
+    return;
+  }
   pcheck(parse_path(job, &newpath));    /* aka new-link-path */
   pcheck(parse_path(job, &oldpath));    /* aka existing-path/target-paths */
   pcheck(parse_uint8(job, &symbolic));
