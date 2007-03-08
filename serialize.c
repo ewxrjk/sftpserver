@@ -42,6 +42,7 @@ struct sqnode {
   struct sqnode *older;
   struct sftpjob *job;
   struct handleid hid;
+  unsigned handleflags;
   uint64_t offset;
   uint64_t len;
   uint8_t type;
@@ -115,6 +116,7 @@ void queue_serializable_job(struct sftpjob *job) {
   uint64_t offset, len64;
   uint32_t len;
   struct handleid hid;
+  unsigned handleflags;
   struct sqnode *q;
 
   job->ptr = job->data;
@@ -127,11 +129,13 @@ void queue_serializable_job(struct sftpjob *job) {
      && !parse_uint32(job, &len)) {
     /* This is a well-formed read or write operation */
     len64 = len;
+    handleflags = handle_flags(&hid);
   } else {
     /* Anything else has dummy values */
     memset(&hid, 0, sizeof hid);
     offset = 0;
     len64 = ~(uint64_t)0;
+    handleflags = 0;
   }
   ferrcheck(pthread_mutex_lock(&sq_mutex));
   q = xmalloc(sizeof *q);
@@ -139,14 +143,14 @@ void queue_serializable_job(struct sftpjob *job) {
   q->job = job;
   q->type = type;
   q->hid = hid;
+  q->handleflags = handleflags;
   q->offset = offset;
   q->len = len64;
   newest = q;
   ferrcheck(pthread_mutex_unlock(&sq_mutex));
 }
 
-void serialize_on_handle(struct sftpjob *job, 
-                         unsigned flags) {
+void serialize(struct sftpjob *job) {
   struct sqnode *q, *oq;
 
   ferrcheck(pthread_mutex_lock(&sq_mutex));
@@ -163,7 +167,7 @@ void serialize_on_handle(struct sftpjob *job,
      * overlapping anything.  For text and append handles we serialize all
      * operations regardless. */
     for(oq = q->older; oq; oq = oq->older)
-      if(!reorderable(q, oq, flags))
+      if(!reorderable(q, oq, q->handleflags))
         break;
     if(!oq)
       break;

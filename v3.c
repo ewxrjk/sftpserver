@@ -400,7 +400,6 @@ static void sftp_v3_fstat(struct sftpjob *job) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, 0);
   sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
 
@@ -430,7 +429,6 @@ void sftp_fsetstat(struct sftpjob *job) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, 0);
   if(set_fstatus(job->a, fd, &attrs))
     send_errno_status(job);
   else
@@ -534,7 +532,6 @@ void sftp_read(struct sftpjob *job) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, flags);
   /* We read straight into our own output buffer to save a copy. */
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_DATA);
@@ -581,7 +578,6 @@ void sftp_write(struct sftpjob *job) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, flags);
   while(len > 0) {
     /* Short writes aren't allowed so we loop around writing more */
     if(flags & (HANDLE_TEXT|HANDLE_APPEND))

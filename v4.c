@@ -207,7 +207,6 @@ void sftp_v456_fstat(struct sftpjob *job) {
     send_status(job, rc, "invalid file handle");
     return;
   }
-  serialize_on_handle(job, 0);
   sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
 }
 

@@ -5,8 +5,7 @@ void queue_serializable_job(struct sftpjob *job);
 /* Called for SSH_FXP_READ and SSH_FXP_WRITE to establish the job's place in
  * the serialization queue */
 
-void serialize_on_handle(struct sftpjob *job, 
-			 unsigned flags);
+void serialize(struct sftpjob *job);
 /* Wait until there are no olderjobs address the same offset via the same
  * handle */
 

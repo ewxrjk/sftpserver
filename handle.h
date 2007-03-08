@@ -16,6 +16,8 @@ void handle_new_file(struct handleid *id, int fd, const char *path,
 void handle_new_dir(struct handleid *id, DIR *dp, const char *path);
 /* Create new file handle */
 
+unsigned handle_flags(const struct handleid *id);
+
 uint32_t handle_get_fd(const struct handleid *id, 
                        int *fd, const char **pathp,
                        unsigned *flagsp);

@@ -291,6 +291,8 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
     if(type < mtype) r = m - 1;
     else if(type > mtype) l = m + 1;
     else {
+      /* Serialize */
+      serialize(job);
       /* Run the handler */
       protocol->commands[m].handler(job);
       goto done;

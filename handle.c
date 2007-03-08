@@ -128,6 +128,19 @@ uint32_t handle_close(const struct handleid *id) {
   return rc;
 }
 
+unsigned handle_flags(const struct handleid *id) {
+  unsigned rc;
+
+  ferrcheck(pthread_mutex_lock(&handle_lock));
+  if(id->id < nhandles
+     && id->tag == handles[id->id].tag)
+    rc = handles[id->id].flags;
+  else
+    rc = 0;
+  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  return rc;
+}
+
 /*
 Local Variables:
 c-basic-offset:2
