@@ -1,0 +1,4 @@
+!touch input
+!chmod 600 input
+put -P input output
+ls -l output
