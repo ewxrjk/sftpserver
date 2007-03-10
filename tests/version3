@@ -1,1 +1,6 @@
 version
+#Protocol version: +3
+#Server vendor: +.+
+#Server name: +.+
+#Server version: +.+
+#Server build: +\d+

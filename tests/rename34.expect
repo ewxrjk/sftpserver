@@ -1,4 +1,0 @@
-file
-.*file does not exist.*
-newname
-.*File exists.*

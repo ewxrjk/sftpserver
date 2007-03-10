@@ -1,2 +1,3 @@
 put /dev/null foo
 symlink notexist foo
+#.*File exists.*

@@ -1,7 +1,11 @@
 put /dev/null file
 ls -1 file
+#file
 mv file newname
 ls -1 file
+#.*file does not exist.*
 ls -1 newname
+#newname
 put /dev/null otherfile
 mv newname otherfile
+#.*File exists.*

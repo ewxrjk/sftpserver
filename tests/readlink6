@@ -1,2 +1,3 @@
 !ln -s a b
 ls -l b
+#lrwxr.xr.x +\d+ +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d\d b -> a

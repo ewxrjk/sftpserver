@@ -33,6 +33,7 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
         os.chdir(root)
         output = Popen([client, "-S", proto, "-P", server,
                         "-b", os.path.join(srcdir, 'tests', test),
+                        '--echo',
                         '--no-stop-on-error'],
                        stdout=PIPE,
                        stderr=STDOUT).communicate()[0].split('\n')
@@ -41,7 +42,7 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
         n = 0
         errors = []
         for expected in file(os.path.join(srcdir, 'tests',
-                                          '%s.expect' % test)):
+                                          '%s' % test)):
             expected = expected[:-1]    # strip newline
 	    if n >= len(output):
                 errors.append("EXPECTED: %s" % expected)
@@ -49,13 +50,19 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
                 break
             got = output[n]
             n += 1
-            try:
-                if not re.match(expected, got):
+            if expected[0] == '#':
+                expected = expected[1:]
+                try:
+                    if not re.match(expected, got):
+                        errors.append("EXPECTED: %s" % expected)
+                        errors.append("     GOT: %s" % got)
+                except:
+                    print "\n\nPossible invalid regexp:\n%s\n" % expected
+                    raise
+            else:
+                if expected != got:
                     errors.append("EXPECTED: %s" % expected)
                     errors.append("     GOT: %s" % got)
-            except:
-                print "\n\nPossible invalid regexp:\n%s\n" % expected
-                raise
         if n < len(output):
             errors.append("   EXTRA: %s" % output[n])
         if len(errors) > 0:

@@ -2,5 +2,6 @@ put /dev/null foo
 put /dev/null wibble
 link foo bar
 ls -l bar
-# The spec is silent on whether SSH_FXP_LINK overwrites or not
+#-rw-r--r-- +2 +\S+ +\S+ +0 +[a-zA-Z]+ \d+ \d+:\d+ bar
 link wibble bar
+#.*File exists.*

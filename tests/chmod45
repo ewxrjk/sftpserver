@@ -2,3 +2,4 @@
 !chmod 600 input
 put -P input output
 ls -l output
+#-rw------- +\? +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d\d output

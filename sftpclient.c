@@ -61,6 +61,7 @@ static const char *newline = "\r\n";
 static const char *vendorname, *servername, *serverversion, *serverversions;
 static uint64_t serverbuild;
 static int stoponerror;
+static int echo;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -94,6 +95,7 @@ static const struct option options[] = {
   { "no-stop-on-error", no_argument, 0, 258 },
   { "progress", no_argument, 0, 259 },
   { "no-progress", no_argument, 0, 260 },
+  { "echo", no_argument, 0, 261 },
   { "debug", no_argument, 0, 'd' },
   { "debug-path", required_argument, 0, 'D' },
   { "host", required_argument, 0, 'H' },
@@ -260,13 +262,14 @@ static const char *resolvepath(const char *name) {
 static void progress(const char *path, uint64_t sofar, uint64_t total) {
   if(progress_indicators) {
     if(!total)
-      printf("\r%*s\r", terminal_width, "");
+      xprintf("\r%*s\r", terminal_width, "");
     else if(total == (uint64_t)-1)
-      printf("\r%.60s: %12"PRIu64"b", path, sofar);
+      xprintf("\r%.60s: %12"PRIu64"b", path, sofar);
     else
-      printf("\r%.60s: %12"PRIu64"b %3d%%",
-             path, sofar, (int)(100 * sofar / total));
-    fflush(stdout);
+      xprintf("\r%.60s: %12"PRIu64"b %3d%%",
+              path, sofar, (int)(100 * sofar / total));
+    if(fflush(stdout) < 0) 
+      fatal("error writing to stdout: %s", strerror(errno));
   }
 }
 
@@ -867,7 +870,7 @@ static int cmd_ls(int ac,
                 (m + 1 < cols && i + rows < nallattrs
                  ? (int)(maxnamewidth - w + 1) : 0), "");
       }
-      printf("\n");
+      xprintf("\n");
     }
   }
   if(allattrs != &fileattrs)
@@ -1902,6 +1905,10 @@ static void process(const char *prompt, FILE *fp) {
   while((line = input(prompt, fp))) {
     ++inputline;
     if(line[0] == '#') goto next;
+    if(echo) {
+      xprintf("%s", line);
+      if(fflush(stdout) < 0) fatal("error calling fflush: %s", strerror(errno));
+    }
     if(line[0] == '!') {
       if(line[1] != '\n')
         system(line + 1);
@@ -1990,6 +1997,7 @@ int main(int argc, char **argv) {
     case 258: stoponerror = 0; break;
     case 259: progress_indicators = 1; break;
     case 260: progress_indicators = 0; break;
+    case 261: echo = 1; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;

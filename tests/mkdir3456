@@ -1,0 +1,16 @@
+mkdir defperms
+ls -ld defperms
+#drwxr-xr-x +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ defperms
+mkdir defperms
+#.*File exists.*
+mkdir 2700 fixedperms
+ls -ld fixedperms
+#drwx--S--- +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ fixedperms
+rmdir defperms
+ls -ld defperms
+#.*file does not exist.*
+rmdir fixedperms
+ls -ld fixedperms
+#.*file does not exist.*
+rmdir defprems
+#.*file does not exist.*
