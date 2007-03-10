@@ -1,0 +1,6 @@
+put /dev/null foo
+put /dev/null wibble
+link foo bar
+ls -l bar
+# The spec is silent on whether SSH_FXP_LINK overwrites or not
+link wibble bar

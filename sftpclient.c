@@ -92,6 +92,8 @@ static const struct option options[] = {
   { "quirk-reverse-symlink", no_argument, 0, 256 },
   { "stop-on-error", no_argument, 0, 257 },
   { "no-stop-on-error", no_argument, 0, 258 },
+  { "progress", no_argument, 0, 259 },
+  { "no-progress", no_argument, 0, 260 },
   { "debug", no_argument, 0, 'd' },
   { "debug-path", required_argument, 0, 'D' },
   { "host", required_argument, 0, 'H' },
@@ -1927,6 +1929,8 @@ static void process(const char *prompt, FILE *fp) {
     if(commands[n].handler(ac, av) && stoponerror)
       fatal("stopping on error");
 next:
+    if(fflush(stdout) < 0)
+      fatal("error calling fflush: %s", strerror(errno));
     alloc_destroy(fakejob.a);
     free(line);
   }
@@ -1968,7 +1972,7 @@ int main(int argc, char **argv) {
     case 'h': help();
     case 'V': version();
     case 'B': buffersize = atoi(optarg); break;
-    case 'b': batchfile = optarg; stoponerror = 1; break;
+    case 'b': batchfile = optarg; stoponerror = 1; progress_indicators = 0; break;
     case 'P': program = optarg; break;
     case 'R': nrequests = atoi(optarg); break;
     case 's': subsystem = optarg; break;
@@ -1984,6 +1988,8 @@ int main(int argc, char **argv) {
     case 256: quirk_reverse_symlink = 1; break;
     case 257: stoponerror = 1; break;
     case 258: stoponerror = 0; break;
+    case 259: progress_indicators = 1; break;
+    case 260: progress_indicators = 0; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;

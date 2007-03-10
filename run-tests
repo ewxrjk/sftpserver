@@ -1,6 +1,6 @@
 #! /usr/bin/env python2.4
 import os,sys,re,string
-from subprocess import Popen,PIPE
+from subprocess import Popen,PIPE,STDOUT
 
 srcdir = os.path.abspath(os.getenv('srcdir'))
 builddir = os.path.abspath('.')
@@ -16,13 +16,16 @@ def rmrf(path):
         else:
             os.remove(path)
 
+os.umask(022)                           # for consistent permissions
 failed = 0
 
-for proto in ['3', '4', '5', '6']:
-    for test in os.listdir(os.path.join(srcdir, 'tests')):
-        if '.' in test or not proto in test:
+for test in os.listdir(os.path.join(srcdir, 'tests')):
+    for proto in ['3', '4', '5', '6']:
+        if ('.' in test
+            or not proto in test
+            or '~' in test):
             continue
-        print "Testing %s proto %s ... " % (test, proto),
+        print "Testing %s protocol %s ... " % (test, proto),
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         rmrf(root)
         os.makedirs(root)
@@ -30,7 +33,10 @@ for proto in ['3', '4', '5', '6']:
         output = Popen([client, "-S", proto, "-P", server,
                         "-b", os.path.join(srcdir, 'tests', test),
                         '--no-stop-on-error'],
-                       stdout=PIPE).communicate()[0].split('\n')
+                       stdout=PIPE,
+                       stderr=STDOUT).communicate()[0].split('\n')
+        if output[len(output)-1] == "":
+            output = output[:-1]
         n = 0
         errors = []
         for expected in file(os.path.join(srcdir, 'tests',
@@ -38,9 +44,15 @@ for proto in ['3', '4', '5', '6']:
             expected = expected[:-1]    # strip newline
             got = output[n]
             n += 1
-            if not re.match(expected, got):
-                errors.append("EXPECTED: %s" % expected)
-                errors.append("     GOT: %s" % got)
+            try:
+                if not re.match(expected, got):
+                    errors.append("EXPECTED: %s" % expected)
+                    errors.append("     GOT: %s" % got)
+            except:
+                print "\n\nPossible invalid regexp:\n%s\n" % expected
+                raise
+        if n < len(output):
+            errors.append("   EXTRA: %s" % output[n])
         if len(errors) > 0:
             print "FAILED"
             print string.join(errors, '\n')
