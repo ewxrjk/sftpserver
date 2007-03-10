@@ -1,0 +1,2 @@
+!ln -s a b
+ls -l b

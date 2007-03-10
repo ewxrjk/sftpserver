@@ -1,0 +1,56 @@
+#! /usr/bin/env python2.4
+import os,sys,re,string
+from subprocess import Popen,PIPE
+
+srcdir = os.path.abspath(os.getenv('srcdir'))
+builddir = os.path.abspath('.')
+client = os.path.abspath("sftpclient")
+server = os.path.abspath("gesftpserver")
+
+def rmrf(path):
+    if os.path.lexists(path):
+        if os.path.isdir(path):
+            for name in os.listdir(path):
+                rmrf(os.path.join(path,name))
+            os.rmdir(path)
+        else:
+            os.remove(path)
+
+failed = 0
+
+for proto in ['3', '4', '5', '6']:
+    for test in os.listdir(os.path.join(srcdir, 'tests')):
+        if '.' in test or not proto in test:
+            continue
+        print "Testing %s proto %s ... " % (test, proto),
+        root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
+        rmrf(root)
+        os.makedirs(root)
+        os.chdir(root)
+        output = Popen([client, "-S", proto, "-P", server,
+                        "-b", os.path.join(srcdir, 'tests', test),
+                        '--no-stop-on-error'],
+                       stdout=PIPE).communicate()[0].split('\n')
+        n = 0
+        errors = []
+        for expected in file(os.path.join(srcdir, 'tests',
+                                          '%s.expect' % test)):
+            expected = expected[:-1]    # strip newline
+            got = output[n]
+            n += 1
+            if not re.match(expected, got):
+                errors.append("EXPECTED: %s" % expected)
+                errors.append("     GOT: %s" % got)
+        if len(errors) > 0:
+            print "FAILED"
+            print string.join(errors, '\n')
+            failed += 1
+        else:
+            print "passed"
+
+if errors:
+    print "%d test failed" % failed
+    sys.exit(1)
+else:
+    print "OK"
+

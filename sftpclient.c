@@ -60,6 +60,7 @@ static int textmode;
 static const char *newline = "\r\n";
 static const char *vendorname, *servername, *serverversion, *serverversions;
 static uint64_t serverbuild;
+static int stoponerror;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -89,7 +90,10 @@ static const struct option options[] = {
   { "subsystem", required_argument, 0, 's' },
   { "sftp-version", required_argument, 0, 'S' },
   { "quirk-reverse-symlink", no_argument, 0, 256 },
+  { "stop-on-error", no_argument, 0, 257 },
+  { "no-stop-on-error", no_argument, 0, 258 },
   { "debug", no_argument, 0, 'd' },
+  { "debug-path", required_argument, 0, 'D' },
   { "host", required_argument, 0, 'H' },
   { "port", required_argument, 0, 'p' },
   { "ipv4", no_argument, 0, '4' },
@@ -611,7 +615,7 @@ static char *sftp_readlink(const char *path) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READLINK);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, path);
+  send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
   if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
     return 0;
@@ -729,6 +733,7 @@ static int cmd_ls(int ac,
   size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
   struct handle h;
   size_t cols, rows;
+  int singlefile;
 
   if(ac > 0 && av[0][0] == '-') {
     options = *av++;
@@ -737,16 +742,18 @@ static int cmd_ls(int ac,
     options = "";
   path = ac > 0 ? av[0] : cwd;
   /* See what type the file is */
-  if(sftp_stat(path, &fileattrs, SSH_FXP_STAT)) return -1;
+  if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT)) return -1;
   if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY
      || strchr(options, 'd')) {
     /* The file is not a directory, or we used -d */
     allattrs = &fileattrs;
     nallattrs = 1;
+    singlefile = 1;
   } else {
     const int include_dotfiles = !!strchr(options, 'a');
 
     /* The file is a directory and we did not use -d */
+    singlefile = 0;
     if(sftp_opendir(path, &h)) return -1;
     for(;;) {
       if(sftp_readdir(&h, &attrs, &nattrs)) {
@@ -795,12 +802,17 @@ static int cmd_ls(int ac,
       struct sftpattr *const attrs = &allattrs[n];
       if(attrs->type == SSH_FILEXFER_TYPE_SYMLINK
          && !attrs->target) {
-        char *const fullname = alloc(fakejob.a,
-                                     strlen(path) + strlen(attrs->name) + 2);
-        strcpy(fullname, path);
-        strcat(fullname, "/");
-        strcat(fullname, attrs->name);
-        attrs->target = sftp_readlink(fullname);
+        if(singlefile)
+          attrs->target = sftp_readlink(attrs->name);
+        else {
+          char *const fullname = alloc(fakejob.a,
+                                       strlen(path) + strlen(attrs->name) + 2);
+          strcpy(fullname, path);
+          strcat(fullname, "/");
+          strcat(fullname, attrs->name);
+          D(("%s -> %s",  attrs->name, fullname));
+          attrs->target = sftp_readlink(fullname);
+        }
       }
       xprintf("%s\n", format_attr(fakejob.a, attrs, nowtime.tm_year, flags));
     }
@@ -1887,6 +1899,7 @@ static void process(const char *prompt, FILE *fp) {
  
   while((line = input(prompt, fp))) {
     ++inputline;
+    if(line[0] == '#') goto next;
     if(line[0] == '!') {
       if(line[1] != '\n')
         system(line + 1);
@@ -1894,25 +1907,25 @@ static void process(const char *prompt, FILE *fp) {
         system(getenv("SHELL"));
       goto next;
     }
-    if((ac = split(line, av = avbuf)) < 0 && !prompt)
-      exit(1);
+    if((ac = split(line, av = avbuf)) < 0 && stoponerror)
+      fatal("stopping on error");
     if(!ac) goto next;
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
       ;
     if(!commands[n].name) {
       error("unknown command: '%s'", av[0]);
-      if(!prompt) exit(1);
+      if(stoponerror) fatal("stopping on error");
       goto next;
     }
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
       error("wrong number of arguments");
-      if(!prompt) exit(1);
+      if(stoponerror) fatal("stopping on error");
       goto next;
     }
-    if(commands[n].handler(ac, av) && !prompt)
-      exit(1);
+    if(commands[n].handler(ac, av) && stoponerror)
+      fatal("stopping on error");
 next:
     alloc_destroy(fakejob.a);
     free(line);
@@ -1949,13 +1962,13 @@ int main(int argc, char **argv) {
       terminal_width = 80;
   }
 
-  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vdH:p:46",
+  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vdH:p:46D:",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
     case 'V': version();
     case 'B': buffersize = atoi(optarg); break;
-    case 'b': batchfile = optarg; break;
+    case 'b': batchfile = optarg; stoponerror = 1; break;
     case 'P': program = optarg; break;
     case 'R': nrequests = atoi(optarg); break;
     case 's': subsystem = optarg; break;
@@ -1967,7 +1980,10 @@ int main(int argc, char **argv) {
     case 'o': sshoptions[nsshoptions++] = optarg; break;
     case 'v': sshverbose++; break;
     case 'd': debugging = 1; break;
+    case 'D': debugging = 1; debugpath = optarg; break;
     case 256: quirk_reverse_symlink = 1; break;
+    case 257: stoponerror = 1; break;
+    case 258: stoponerror = 0; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;
@@ -2031,9 +2047,6 @@ int main(int argc, char **argv) {
       cmdline[ncmdline++] = subsystem ? subsystem : "sftp";
     }
     cmdline[ncmdline] = 0;
-    for(n = 0; n < ncmdline; ++n)
-      fprintf(stderr, " %s", cmdline[n]);
-    fputc('\n',  stderr);
     xpipe(ip);
     xpipe(op);
     if(!(pid = xfork())) {

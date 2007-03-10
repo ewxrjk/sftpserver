@@ -16,10 +16,9 @@ stamp-h1
 Makefile.in
 config.log
 INSTALL
-,commit
-,commit~
 sftpclient
 COPYING
 gesftpserver
 gesftpserver-debug
 gesftpserverro
+,*
