@@ -1,0 +1,4 @@
+put /dev/null file
+ls -1 file
+rm file
+ls -1 file

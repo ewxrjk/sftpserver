@@ -1,0 +1,10 @@
+put /dev/null file
+ls -1 file
+mv file newname
+ls -1 file
+ls -1 newname
+put /dev/null otherfile
+mv newname otherfile
+mv -o newname otherfile
+ls -1 newname
+ls -1 otherfile

@@ -23,6 +23,7 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
     for proto in ['3', '4', '5', '6']:
         if ('.' in test
             or not proto in test
+            or '#' in test
             or '~' in test):
             continue
         sys.stderr.write("Testing %s protocol %s ... " % (test, proto))
