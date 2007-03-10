@@ -1,0 +1,21 @@
+!mkdir dir
+!ln -s dir link
+!touch dir/file
+cd dir
+pwd
+#.*/dir
+ls -1
+#file
+cd ..
+ls -1
+#dir
+#link
+cd link
+pwd
+#.*/dir
+ls -1
+#file
+cd ..
+ls -1
+#dir
+#link

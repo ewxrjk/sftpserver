@@ -59,6 +59,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
         else
           strcpy(result, "/");          /* /.. = / */
       } else {
+        const size_t oldresultlen = strlen(result);
         /* Append the new path element */
         if(result[1])
           result = append(a, result, nresultp, "/");
@@ -72,6 +73,9 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
             if(target[0] == '/')
               /* Absolute symlink, go back to the root */
               strcpy(result, "/");
+            else
+              /* Relative symlink, lose the last path element */
+              result[oldresultlen] = 0;
             /* Process all! the elements of the link target */
             result = process_path(a, result, nresultp, target, flags);
           } else if(errno != EINVAL && !(flags & RP_MAY_NOT_EXIST))
