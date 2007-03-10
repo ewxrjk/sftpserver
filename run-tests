@@ -42,6 +42,10 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
         for expected in file(os.path.join(srcdir, 'tests',
                                           '%s.expect' % test)):
             expected = expected[:-1]    # strip newline
+	    if n >= len(output):
+                errors.append("EXPECTED: %s" % expected)
+                errors.append("     GOT: EOF")
+                break
             got = output[n]
             n += 1
             try:

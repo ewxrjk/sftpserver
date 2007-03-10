@@ -1628,10 +1628,10 @@ static int cmd_version(int attribute((unused)) ac,
                        char attribute((unused)) **av) {
   xprintf("Protocol version: %d\n", protocol->version);
   if(servername)
-    xprintf("Sever vendor:     %s\n"
+    xprintf("Server vendor:    %s\n"
             "Server name:      %s\n"
             "Server version:   %s\n"
-            "Sevrer build:     %"PRIu64"\n",
+            "Server build:     %"PRIu64"\n",
             vendorname, servername, serverversion, serverbuild);
   if(serverversions)
     xprintf("Server supports:  %s\n", serverversions);
