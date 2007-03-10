@@ -25,7 +25,7 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
             or not proto in test
             or '~' in test):
             continue
-        print "Testing %s protocol %s ... " % (test, proto),
+        sys.stderr.write("Testing %s protocol %s ... " % (test, proto))
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         rmrf(root)
         os.makedirs(root)
@@ -58,11 +58,12 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
         if n < len(output):
             errors.append("   EXTRA: %s" % output[n])
         if len(errors) > 0:
-            print "FAILED"
-            print string.join(errors, '\n')
+            sys.stderr.write("FAILED\n")
+            sys.stderr.write(string.join(errors, '\n'))
+            sys.stderr.write("\n")
             failed += 1
         else:
-            print "passed"
+            sys.stderr.write("passed\n")
 
 if errors:
     print "%d test failed" % failed
