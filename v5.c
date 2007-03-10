@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <sys/statvfs.h>
 
-void sftp_v56_open(struct sftpjob *job) {
+uint32_t sftp_v56_open(struct sftpjob *job) {
   char *path;
   uint32_t desired_access, flags;
   struct sftpattr attrs;
@@ -25,12 +25,12 @@ void sftp_v56_open(struct sftpjob *job) {
   pcheck(parse_uint32(job, &flags));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_v56_open %s %#"PRIx32" %#"PRIx32, path, desired_access, flags));
-  generic_open(job, path, desired_access, flags, &attrs);
+  return generic_open(job, path, desired_access, flags, &attrs);
 }
 
-void generic_open(struct sftpjob *job, const char *path,
-                  uint32_t desired_access, uint32_t flags,
-                  struct sftpattr *attrs) {
+uint32_t generic_open(struct sftpjob *job, const char *path,
+                      uint32_t desired_access, uint32_t flags,
+                      struct sftpattr *attrs) {
   mode_t initial_permissions;
   int created, open_flags = 0, fd;
   struct stat sb;
@@ -50,17 +50,11 @@ void generic_open(struct sftpjob *job, const char *path,
     open_flags |= O_RDONLY;
     break;
   case ACE4_WRITE_DATA:
-    if(readonly) {
-      send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
-      return;
-    }
+    if(readonly) return SSH_FX_PERMISSION_DENIED;
     open_flags |= O_WRONLY;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
-    if(readonly) {
-      send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
-      return;
-    }
+    if(readonly) return SSH_FX_PERMISSION_DENIED;
     open_flags |= O_RDWR;
     break;
   }
@@ -71,11 +65,8 @@ void generic_open(struct sftpjob *job, const char *path,
   }
   if(flags & SSH_FXF_TEXT_MODE)
     handle_flags |= HANDLE_TEXT;
-  if(flags & (SSH_FXF_BLOCK_READ|SSH_FXF_BLOCK_WRITE|SSH_FXF_BLOCK_DELETE)) {
-    send_status(job, SSH_FX_OP_UNSUPPORTED,
-                "SSH_FXP_OPEN locking not supported");
-    return;
-  }
+  if(flags & (SSH_FXF_BLOCK_READ|SSH_FXF_BLOCK_WRITE|SSH_FXF_BLOCK_DELETE))
+    return SSH_FX_OP_UNSUPPORTED;
   if(flags & SSH_FXF_NOFOLLOW) {
 #ifdef O_NOFOLLOW
     /* We have a built-in way of avoiding following links */
@@ -83,8 +74,7 @@ void generic_open(struct sftpjob *job, const char *path,
 #else
     /* We avoid following links in a racy steam-driven way */
     if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
-      send_status(job, SSH_FX_LINK_LOOP,
-                  "file is a symbolic link");
+      return SSH_FX_LINK_LOOP;
     return;
 #endif
   }
@@ -100,8 +90,7 @@ void generic_open(struct sftpjob *job, const char *path,
   if(readonly
      && ((flags & SSH_FXF_ACCESS_DISPOSITION) != SSH_FXF_OPEN_EXISTING
          || (flags & SSH_FXF_DELETE_ON_CLOSE))) {
-    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
-    return;
+    return SSH_FX_PERMISSION_DENIED;
   }
   switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
   case SSH_FXF_CREATE_NEW:
@@ -113,10 +102,8 @@ void generic_open(struct sftpjob *job, const char *path,
     } else {
       /* O_EXCL will refuse to follow links so that's no good here.  We do a
        * racy test and open since that's the best available. */
-      if(stat(path, &sb)) {
-        send_status(job, SSH_FX_FILE_ALREADY_EXISTS, 0);
-        return;
-      }
+      if(stat(path, &sb)) 
+        return SSH_FX_FILE_ALREADY_EXISTS;
       fd = open(path, open_flags|O_CREAT, initial_permissions);
       created = 1;
     }
@@ -166,19 +153,17 @@ void generic_open(struct sftpjob *job, const char *path,
     created = 0;
     break;
   default:
-    send_status(job, SSH_FX_OP_UNSUPPORTED, "unknown flags to SSH_FXP_OPEN");
-    return;
+    return SSH_FX_OP_UNSUPPORTED;
   }
-  if(fd < 0) {
-    send_errno_status(job);
-    return;
-  }
+  if(fd < 0)
+    return HANDLER_ERRNO;
   /* Set initial attributrs if we created the file */
   if(created && attrs->valid && set_fstatus(job->a, fd, attrs)) { 
-    send_errno_status(job);
+    const int save_errno = errno;
     close(fd);
     unlink(path);
-    return;
+    errno = save_errno;
+    return HANDLER_ERRNO;
   }
   /* The draft says "It is implementation specific whether the directory entry
    * is removed immediately or when the handle is closed".  I interpret
@@ -192,16 +177,14 @@ void generic_open(struct sftpjob *job, const char *path,
   send_uint32(job->worker, job->id);
   send_handle(job->worker, &id);
   send_end(job->worker);
+  return HANDLER_RESPONDED;
 }
 
-void sftp_v56_rename(struct sftpjob *job) {
+uint32_t sftp_v56_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
   uint32_t flags;
 
-  if(readonly) {
-    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
-    return;
-  }
+  if(readonly) return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   pcheck(parse_uint32(job, &flags));
@@ -215,29 +198,32 @@ void sftp_v56_rename(struct sftpjob *job) {
      * operation and refer either to the file referred to by new or old before
      * the operation began.") so we don't bother checking the atomic bit. */
     if(rename(oldpath, newpath) < 0)
-      send_errno_status(job);
+      return HANDLER_ERRNO;
     else
-      send_ok(job);
+      return SSH_FX_OK;
   } else {
     /* We want a non-overwriting rename.  We use the same strategy as
      * in v3.c. */
     if(link(oldpath, newpath) < 0) {
       if(errno != EEXIST) {
 	if(rename(oldpath, newpath) < 0)
-	  send_errno_status(job);
+	  return HANDLER_ERRNO;
 	else
-	  send_ok(job);
+	  return SSH_FX_OK;
       } else
-	send_status(job, SSH_FX_FILE_ALREADY_EXISTS, 0);
+	return SSH_FX_FILE_ALREADY_EXISTS;
     } else if(unlink(oldpath) < 0) {
-      send_errno_status(job);
+      const int save_errno = errno;
+
       unlink(newpath);
+      errno = save_errno;
+      return HANDLER_ERRNO;
     } else
-      send_ok(job);
+      return SSH_FX_OK;
   }
 }
 
-void sftp_text_seek(struct sftpjob *job) {
+uint32_t sftp_text_seek(struct sftpjob *job) {
   struct handleid id;
   uint64_t line;
   int fd;
@@ -247,21 +233,16 @@ void sftp_text_seek(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &line));
-  if((rc = handle_get_fd(&id, &fd, 0, 0))) {
-    send_status(job, rc, "invalid file handle");
-    return;
-  }
+  if((rc = handle_get_fd(&id, &fd, 0, 0)))
+    return rc;
   /* Seek back to line 0 */
-  if(lseek(fd, 0, SEEK_SET) < 0) {
-    send_errno_status(job);
-    return;
-  }
+  if(lseek(fd, 0, SEEK_SET) < 0)
+    return HANDLER_ERRNO;
   /* TODO currently if we ask for the line 'just beyond' the end of the file we
    * succeed.  We should actually return SSH_FX_EOF in this case. */
   if(line == 0) {
     /* If we're after line 0 then we're already in the right place */
-    send_status(job, SSH_FX_OK, 0);
-    return;
+    return SSH_FX_OK;
   }
   /* Look for the right line */
   i = 0;
@@ -274,29 +255,25 @@ void sftp_text_seek(struct sftpjob *job) {
     }
   }
   if(n < 0)
-    send_errno_status(job);
+    return HANDLER_ERRNO;
   else if(n == 0)
-    send_status(job, SSH_FX_EOF, 0);
+    return SSH_FX_EOF;
   else {
     /* Seek back to the start of the line */
-    if(lseek(fd, n - i, SEEK_CUR) < 0) {
-      send_errno_status(job);
-      return;
-    }
-    send_status(job, SSH_FX_OK, 0);
+    if(lseek(fd, n - i, SEEK_CUR) < 0)
+      return HANDLER_ERRNO;
+    return SSH_FX_OK;
   }
 }
 
-void sftp_space_available(struct sftpjob *job) {
+uint32_t sftp_space_available(struct sftpjob *job) {
   char *path;
   struct statvfs fs;
 
   pcheck(parse_string(job, &path, 0));
   D(("sftp_space_available %s", path));
-  if(statvfs(path, &fs) < 0) {
-    send_errno_status(job);
-    return;
-  }
+  if(statvfs(path, &fs) < 0)
+    return HANDLER_ERRNO;
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
   send_uint32(job->worker, job->id);
@@ -311,9 +288,10 @@ void sftp_space_available(struct sftpjob *job) {
   /* bytes-per-allocation-unit */
   send_uint32(job->worker, fs.f_frsize);
   send_end(job->worker);
+  return HANDLER_RESPONDED;
 }
 
-void sftp_extended(struct sftpjob *job) {
+uint32_t sftp_extended(struct sftpjob *job) {
   char *name;
   int n;
 
@@ -325,10 +303,9 @@ void sftp_extended(struct sftpjob *job) {
 	      && strcmp(name, protocol->extensions[n].name)); ++n)
     ;
   if(n >= protocol->nextensions)
-    send_status(job, SSH_FX_OP_UNSUPPORTED,
-                "extension not supported");
+    return SSH_FX_OP_UNSUPPORTED;
   else
-    protocol->extensions[n].handler(job);
+    return protocol->extensions[n].handler(job);
 }
 
 static const struct sftpcmd sftpv5tab[] = {

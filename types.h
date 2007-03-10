@@ -60,13 +60,16 @@ struct sftpjob {
 
 struct sftpcmd {
   uint8_t type;                         /* message type */
-  void (*handler)(struct sftpjob *job);
+  uint32_t (*handler)(struct sftpjob *job);
 };
 
 struct sftpextension {
   const char *name;
-  void (*handler)(struct sftpjob *job);
+  uint32_t (*handler)(struct sftpjob *job);
 };
+
+#define HANDLER_RESPONDED ((uint32_t)-1) /* already responded */
+#define HANDLER_ERRNO ((uint32_t)-2)     /* send an errno status */
 
 struct sftpprotocol {
   int ncommands;

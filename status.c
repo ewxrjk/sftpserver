@@ -48,7 +48,7 @@ const char *status_to_string(uint32_t status) {
 void send_status(struct sftpjob *job, 
                  uint32_t status,
                  const char *msg) {
-  if(status == (uint32_t)-1) {
+  if(status == HANDLER_ERRNO) {
     /* Bodge to allow us to treat -1 as a magical status meaning 'consult
      * errno'.  This goes back via the protocol-specific status callback, so
      * statuses out of range for the current protocol version get properly
@@ -101,10 +101,6 @@ void send_errno_status(struct sftpjob *job) {
       ++n)
     ;
   send_status(job, errnotab[n].status_value, strerror(errno_value));
-}
-
-void send_ok(struct sftpjob *job) {
-  send_status(job, SSH_FX_OK, 0);
 }
 
 /*

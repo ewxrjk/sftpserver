@@ -12,7 +12,7 @@
 #include <string.h>
 #include <errno.h>
 
-void sftp_v6_realpath(struct sftpjob *job) {
+uint32_t sftp_v6_realpath(struct sftpjob *job) {
   char *path, *compose;
   struct sftpattr attr;
   uint8_t control_byte = SSH_FXP_REALPATH_NO_CHECK;
@@ -52,15 +52,11 @@ void sftp_v6_realpath(struct sftpjob *job) {
     rpflags = RP_READLINK;
     break;
   default:
-    send_status(job, SSH_FX_BAD_MESSAGE,
-                "unknown SSH_FXP_REALPATH control-byte value");
-    return;
+    return SSH_FX_BAD_MESSAGE;
   }
   memset(&attr, 0, sizeof attr);
-  if(!(attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST))) {
-    send_errno_status(job);
-    return;
-  }
+  if(!(attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST)))
+    return HANDLER_ERRNO;
   D(("...real path is %s", attr.name));
   switch(control_byte) {
   case SSH_FXP_REALPATH_NO_CHECK:
@@ -75,10 +71,8 @@ void sftp_v6_realpath(struct sftpjob *job) {
     /* stat and error on failure */
     if(stat(path, &sb) >= 0)
       stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, 0);
-    else {
-      send_errno_status(job);
-      return;
-    }
+    else
+      return HANDLER_ERRNO;
     break;
   }
   send_begin(job->worker);
@@ -86,16 +80,14 @@ void sftp_v6_realpath(struct sftpjob *job) {
   send_uint32(job->worker, job->id);
   protocol->sendnames(job, 1, &attr);
   send_end(job->worker);
+  return HANDLER_RESPONDED;
 }
 
-void sftp_link(struct sftpjob *job) {
+uint32_t sftp_link(struct sftpjob *job) {
   char *oldpath, *newpath;
   uint8_t symbolic;
 
-  if(readonly) {
-    send_status(job, SSH_FX_PERMISSION_DENIED, "read only mode");
-    return;
-  }
+  if(readonly) return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &newpath));    /* aka new-link-path */
   pcheck(parse_path(job, &oldpath));    /* aka existing-path/target-paths */
   pcheck(parse_uint8(job, &symbolic));
@@ -103,11 +95,11 @@ void sftp_link(struct sftpjob *job) {
   if((symbolic ? symlink : link)(oldpath, newpath) < 0) {
     /* e.g. Linux returns EPERM for symlink or link on a FAT32 fs */
     if(errno == EPERM)
-      send_status(job, SSH_FX_OP_UNSUPPORTED, 0);
+      return SSH_FX_OP_UNSUPPORTED;
     else
-      send_errno_status(job);
+      return HANDLER_ERRNO;
   } else
-    send_ok(job);
+    return SSH_FX_OK;
 }
 
 static const struct sftpcmd sftpv6tab[] = {

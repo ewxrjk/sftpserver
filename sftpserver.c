@@ -95,24 +95,17 @@ static void version(void) {
 
 /* Initialization */
 
-static void sftp_init(struct sftpjob *job) {
+static uint32_t sftp_init(struct sftpjob *job) {
   uint32_t version;
   size_t offset;
 
-  if(protocol != &sftppreinit) {
-    /* Cannot initialize more than once */
-    send_status(job, SSH_FX_FAILURE, "already initialized");
-    return;
-  }
-  if(parse_uint32(job, &version)) {
-    send_status(job, SSH_FX_BAD_MESSAGE, "no version found in SSH_FXP_INIT");
-    return;
-  }
+  /* Cannot initialize more than once */
+  if(protocol != &sftppreinit)
+    return SSH_FX_FAILURE;
+  pcheck(parse_uint32(job, &version));
   switch(version) {
   case 0: case 1: case 2:
-    send_status(job, SSH_FX_OP_UNSUPPORTED,
-                "client protocol version is too old (need at least 3)");
-    return;
+    return SSH_FX_OP_UNSUPPORTED;
   case 3:
     protocol = &sftpv3;
     break;
@@ -213,6 +206,7 @@ static void sftp_init(struct sftpjob *job) {
   /* Now we are initialized we can safely process other jobs in the
    * background. */
   queue_init(&workqueue, &workqueue_details, 4);
+  return HANDLER_RESPONDED;
 }
 
 static const struct sftpcmd sftppreinittab[] = {
@@ -265,6 +259,7 @@ static void worker_cleanup(void *wdv) {
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   struct sftpjob *const job = jv;
   int l, r, type;
+  uint32_t status;
   
   job->a = a;
   job->id = 0;
@@ -298,7 +293,12 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
       /* Serialize */
       serialize(job);
       /* Run the handler */
-      protocol->commands[m].handler(job);
+      status = protocol->commands[m].handler(job);
+      /* Send a response if necessary */
+      switch(status) {
+      case HANDLER_RESPONDED: break;
+      default: send_status(job, status, 0); break;
+      }
       goto done;
     }
   }

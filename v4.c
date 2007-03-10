@@ -141,8 +141,8 @@ int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
     if(parse_uint32(job, &n)) return -1;
     while(n-- > 0) {
-      parse_string(job, 0, 0);
-      parse_string(job, 0, 0);
+      if(parse_string(job, 0, 0)) return -1;
+      if(parse_string(job, 0, 0)) return -1;
     }
   }
   return 0;
@@ -164,8 +164,8 @@ void v456_sendnames(struct sftpjob *job,
 
 /* Command code for the various _*STAT calls.  rc is the return value
  * from *stat() and SB is the buffer. */
-static void sftp_v456_stat_core(struct sftpjob *job, int rc, 
-				const struct stat *sb, const char *path) {
+static uint32_t sftp_v456_stat_core(struct sftpjob *job, int rc, 
+                                    const struct stat *sb, const char *path) {
   struct sftpattr attrs;
   uint32_t flags;
 
@@ -177,29 +177,30 @@ static void sftp_v456_stat_core(struct sftpjob *job, int rc,
     send_uint32(job->worker, job->id);
     protocol->sendattrs(job, &attrs);
     send_end(job->worker);
+    return HANDLER_RESPONDED;
   } else
-    send_errno_status(job);
+    return HANDLER_ERRNO;
 }
 
-void sftp_v456_lstat(struct sftpjob *job) {
+uint32_t sftp_v456_lstat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
   pcheck(parse_path(job, &path));
   D(("sftp_lstat %s", path));
-  sftp_v456_stat_core(job, lstat(path, &sb), &sb, path);
+  return sftp_v456_stat_core(job, lstat(path, &sb), &sb, path);
 }
 
-void sftp_v456_stat(struct sftpjob *job) {
+uint32_t sftp_v456_stat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
   pcheck(parse_path(job, &path));
   D(("sftp_stat %s", path));
-  sftp_v456_stat_core(job, stat(path, &sb), &sb, path);
+  return sftp_v456_stat_core(job, stat(path, &sb), &sb, path);
 }
 
-void sftp_v456_fstat(struct sftpjob *job) {
+uint32_t sftp_v456_fstat(struct sftpjob *job) {
   int fd;
   struct handleid id;
   struct stat sb;
@@ -207,11 +208,9 @@ void sftp_v456_fstat(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0, 0))) {
-    send_status(job, rc, "invalid file handle");
-    return;
-  }
-  sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
+  if((rc = handle_get_fd(&id, &fd, 0, 0)))
+    return rc;
+  return sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
 }
 
 static const struct sftpcmd sftpv4tab[] = {

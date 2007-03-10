@@ -35,20 +35,20 @@ void send_status(struct sftpjob *job,
                  const char *msg);
 /* Send an SSH_FXP_STATUS */
 
-void sftp_already_init(struct sftpjob *job);
-void sftp_remove(struct sftpjob *job);
-void sftp_rmdir(struct sftpjob *job);
-void sftp_symlink(struct sftpjob *job);
-void sftp_readlink(struct sftpjob *job);
-void sftp_close(struct sftpjob *job);
-void sftp_read(struct sftpjob *job);
-void sftp_write(struct sftpjob *job);
-void sftp_setstat(struct sftpjob *job);
-void sftp_fsetstat(struct sftpjob *job);
-void sftp_opendir(struct sftpjob *job);
-void sftp_readdir(struct sftpjob *job);
-void sftp_mkdir(struct sftpjob *job);
-void sftp_extended(struct sftpjob *job);
+uint32_t sftp_already_init(struct sftpjob *job);
+uint32_t sftp_remove(struct sftpjob *job);
+uint32_t sftp_rmdir(struct sftpjob *job);
+uint32_t sftp_symlink(struct sftpjob *job);
+uint32_t sftp_readlink(struct sftpjob *job);
+uint32_t sftp_close(struct sftpjob *job);
+uint32_t sftp_read(struct sftpjob *job);
+uint32_t sftp_write(struct sftpjob *job);
+uint32_t sftp_setstat(struct sftpjob *job);
+uint32_t sftp_fsetstat(struct sftpjob *job);
+uint32_t sftp_opendir(struct sftpjob *job);
+uint32_t sftp_readdir(struct sftpjob *job);
+uint32_t sftp_mkdir(struct sftpjob *job);
+uint32_t sftp_extended(struct sftpjob *job);
 
 void v456_sendnames(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
@@ -57,27 +57,24 @@ void v456_sendattrs(struct sftpjob *job,
 int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
 int v456_encode(struct sftpjob *job, char **path);
 int v456_decode(struct sftpjob *job, char **path);
-void sftp_v34_rename(struct sftpjob *job);
-void sftp_v34_open(struct sftpjob *job);
-void sftp_v456_lstat(struct sftpjob *job);
-void sftp_v456_stat(struct sftpjob *job);
-void sftp_v456_fstat(struct sftpjob *job);
-void sftp_v345_realpath(struct sftpjob *job);
-void sftp_v56_open(struct sftpjob *job);
-void sftp_v56_rename(struct sftpjob *job);
-void sftp_v6_realpath(struct sftpjob *job);
-void sftp_link(struct sftpjob *job);
-void sftp_text_seek(struct sftpjob *job);
-void generic_open(struct sftpjob *job, const char *path,
+uint32_t sftp_v34_rename(struct sftpjob *job);
+uint32_t sftp_v34_open(struct sftpjob *job);
+uint32_t sftp_v456_lstat(struct sftpjob *job);
+uint32_t sftp_v456_stat(struct sftpjob *job);
+uint32_t sftp_v456_fstat(struct sftpjob *job);
+uint32_t sftp_v345_realpath(struct sftpjob *job);
+uint32_t sftp_v56_open(struct sftpjob *job);
+uint32_t sftp_v56_rename(struct sftpjob *job);
+uint32_t sftp_v6_realpath(struct sftpjob *job);
+uint32_t sftp_link(struct sftpjob *job);
+uint32_t sftp_text_seek(struct sftpjob *job);
+uint32_t generic_open(struct sftpjob *job, const char *path,
                   uint32_t desired_access, uint32_t flags,
                   struct sftpattr *attrs);
-void sftp_space_available(struct sftpjob *job);
+uint32_t sftp_space_available(struct sftpjob *job);
 
 void send_errno_status(struct sftpjob *job);
 /* Call send_status based on errno */
-
-void send_ok(struct sftpjob *job);
-/* Send an OK */
 
 #endif /* SFTPSERVER_H */
 

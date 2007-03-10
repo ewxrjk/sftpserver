@@ -4,6 +4,7 @@
 #include "sftp.h"
 #include "handle.h"
 #include "thread.h"
+#include "types.h"
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
@@ -108,13 +109,13 @@ uint32_t handle_close(const struct handleid *id) {
     switch(handles[id->id].type) {
     case SSH_FXP_OPEN:
       if(close(handles[id->id].u.fd) < 0)
-        rc = (uint32_t)-1;
+        rc = HANDLER_ERRNO;
       else
         rc = 0;
       break;
     case SSH_FXP_OPENDIR:
       if(closedir(handles[id->id].u.dir) < 0)
-        rc = (uint32_t)-1;
+        rc = HANDLER_ERRNO;
       else
         rc = 0;
       break;
