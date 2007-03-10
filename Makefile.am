@@ -19,4 +19,4 @@ users.c users.h utils.c utils.h v3.c xfns.c xfns.h stat.c charset.c	\
 charset.h serialize.h serialize.c v4.c realpath.c readlink.c v5.c v6.c
 
 check: all
-	srcdir=${srcdir} ./run-tests
+	srcdir=${srcdir} ${srcdir}/run-tests
