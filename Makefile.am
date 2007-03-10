@@ -1,4 +1,6 @@
+# Programs
 noinst_PROGRAMS=sftpclient
+noinst_SCRIPTS=run-tests
 libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
 
@@ -14,5 +16,23 @@ sftpclient.h sftpcommon.h sftpserver.h status.c thread.h types.h	\
 users.c users.h utils.c utils.h v3.c xfns.c xfns.h stat.c charset.c	\
 charset.h serialize.h serialize.c v4.c realpath.c readlink.c v5.c v6.c
 
+# Documentation
+SEDINPUTS=gesftpserver.8.in
+SEDOUTPUTS=$(SEDINPUTS:.in=)
+
+man_MANS=${SEDOUTPUTS}
+DISTCLEANFILES=${SEDOIUTPUTS}
+
+${SEDOUTPUTS}: %: %.in config.status
+	sed < $< > $@.new \
+		-e "s,__libexecdir__,${libexecdir},g"
+	mv $@.new $@
+
+# Build and test
+all: ${SEDOUTPUTS}
+
 check: all
 	srcdir=${srcdir} ${srcdir}/run-tests
+
+# Distribution
+EXTRA_DIST=${SEDINPUTS} testing.txt tests/*[^~]

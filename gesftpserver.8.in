@@ -1,0 +1,52 @@
+.TH gesftpserver 8
+.SH NAME
+gesftpserver - Green End SFTP Server
+.SH SYNOPSIS
+.B __libexecdir__/gesftpserver
+.RI [OPTIONS]
+.SH DESCRIPTION
+.B gesftpserver
+implements the SFTP protocol.  It is normally run as an SSH subsystem
+but can be run in other contexts if necessary.
+.SH "CONFIGURING OPENSSH"
+By default, OpenSSH will use its native SFTP server in response to
+requests for the SFTP subsystem.  To use gesftpserver instead, add a
+suitable
+.B Subsystem
+command to
+.I sshd_config
+(and remove the existing one if present).  For example:
+.PP
+.nf
+Subsystem  sftp __libexecdir__/gesftpserver
+.fi
+.SH "IMPLEMENTATION DETAILS"
+.B gesftpserver
+supports up to version 6 of the SFTP protocol and the following
+extensions:
+.TP
+.B newline
+Reports the server's newline convention to the client.
+.TP
+.B space-available
+Equivalent to
+.BR df (1).
+.TP
+.B supported
+v5 capability details
+.TP
+.B supported2
+v6 capability details
+.TP
+.B text-seek
+Used for resuming text file downloads.
+.TP
+.B vendor-id
+Reports server name and version to client.
+.B gesftpserver
+reports a vendor of "Green End" and a server name of "Green End SFTP Server".
+.TP
+.B versions
+Lists available versions.
+.SH "SEE ALSO"
+.BR sshd_config (5)
