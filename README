@@ -1,0 +1,64 @@
+Green End SFTP Server
+=====================
+
+  This is an SFTP server supporting up to protocol version 6.  It is
+  possible to use it as a drop-in replacement for the OpenSSH server.
+
+Requirements
+------------
+
+  This software runs under Linux and Mac OS X.  It may work on other
+  UNIX platforms.
+
+Installation
+------------
+
+  See INSTALL for generic instructions.  The general procedure is:
+
+     ./configure
+     make
+     make install     # probably as root
+
+Online Resources
+----------------
+
+  Mailing lists:
+    http://www.chiark.greenend.org.uk/mailman/listinfo/sgo-software-discuss
+     - discussion of the server (and others), bug reports, etc
+    http://www.chiark.greenend.org.uk/mailman/listinfo/sgo-software-announce
+     - announcements of new versions
+
+  Home page:
+    http://www.greenend.org.uk/rjk/sftpserver
+
+  To get the latest source (to within 24 hours):
+    bzr branch http://www.greenend.org.uk/rjk/bzr/sftpserver/mainline/
+
+Bugs, Patches, etc
+------------------
+
+  Please send bug reports, improvements, etc either to
+  sgo-software-discuss or if you would prefer to:
+    Richard Kettlewell <richard+sftp@sfere.greenend.org.uk>
+
+  If you send patches, please use "diff -u" format.
+
+Licence
+-------
+
+Copyright (C) 2007 Richard Kettlewell
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
+USA

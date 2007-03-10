@@ -23,3 +23,5 @@ gesftpserver-debug
 gesftpserverro
 ,*
 build-*
+*.tar.gz
+gesftpserver.8
