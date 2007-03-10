@@ -162,9 +162,11 @@ const char *format_attr(struct allocator *a,
   /* Format the result */
   formatted = alloc(a, 80 + strlen(attrs->name));
   /* The draft is pretty specific about field widths */
-  sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s",
+  sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s%s%s",
 	  perms, linkcount, owner, group,
-	  size, date, attrs->name);
+	  size, date, attrs->name,
+          attrs->target ? " -> " : "",
+          attrs->target ? attrs->target : "");
   return formatted;
 }
 

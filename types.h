@@ -1,3 +1,4 @@
+
 #ifndef TYPES_H
 #define TYPES_H
 
@@ -35,6 +36,7 @@ struct sftpattr {
   const char *name;                     /* still in local encoding */
   const char *longname;
   const wchar_t *wname;                 /* name converted to wide chars */
+  const char *target;                   /* link target or 0 */
 };
 /* SFTP-style file attributes */
 

@@ -604,6 +604,23 @@ static int sftp_mkdir(const char *path, mode_t mode) {
   return status();
 }
 
+static char *sftp_readlink(const char *path) {
+  char *resolved;
+  uint32_t u32, id;
+
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READLINK);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, path);
+  send_end(&fakeworker);
+  if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
+    return 0;
+  cpcheck(parse_uint32(&fakejob, &u32));
+  if(u32 != 1) fatal("wrong count in SSH_FXP_READLINK reply");
+  cpcheck(parse_path(&fakejob, &resolved));
+  return resolved;
+}
+
 /* Command line operations */
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -774,9 +791,19 @@ static int cmd_ls(int ac,
     /* We'd like to know what year we're in for dates in longname */
     time(&now);
     gmtime_r(&now, &nowtime);
-    for(n = 0; n < nallattrs; ++n)
-      xprintf("%s\n", format_attr(fakejob.a, &allattrs[n], nowtime.tm_year,
-                                  flags));
+    for(n = 0; n < nallattrs; ++n) {
+      struct sftpattr *const attrs = &allattrs[n];
+      if(attrs->type == SSH_FILEXFER_TYPE_SYMLINK
+         && !attrs->target) {
+        char *const fullname = alloc(fakejob.a,
+                                     strlen(path) + strlen(attrs->name) + 2);
+        strcpy(fullname, path);
+        strcat(fullname, "/");
+        strcat(fullname, attrs->name);
+        attrs->target = sftp_readlink(fullname);
+      }
+      xprintf("%s\n", format_attr(fakejob.a, attrs, nowtime.tm_year, flags));
+    }
   } else if(strchr(options, '1')) {
     /* single-column listing */
     for(n = 0; n < nallattrs; ++n)
