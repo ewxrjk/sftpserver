@@ -1,4 +1,5 @@
-!while echo 'spong\n'; do :; done | dd of=original bs=1024 count=1024 2>/dev/null
+text
+!while echo 'spong\n'; do :; done | dd of=original bs=10 count=10 2>/dev/null
 put original uploaded
 !diff -u original uploaded
 get uploaded downloaded

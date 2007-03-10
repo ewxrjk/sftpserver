@@ -1,0 +1,13 @@
+!touch empty
+!echo spong > small
+!dd if=/dev/zero of=large bs=1024 count=1024 2>/dev/null
+!ln -s a b
+!ln small wibble
+ls -la
+#drwxr.xr.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.
+#drwxr.xr.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.\.
+#lrwxr.xr.x +1 +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ b -> a
+#-rw-r--r-- +1 +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d+ empty
+#-rw-r--r-- +1 +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
+#-rw-r--r-- +2 +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ small
+#-rw-r--r-- +2 +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ wibble

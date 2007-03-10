@@ -1,0 +1,5 @@
+df
+#Bytes on device: +\d+ [GMK]?bytes
+#Unused bytes on device: +\d+ [GMK]?bytes
+#Unused available bytes on device: \d+ [GMK]?bytes
+#Bytes per allocation unit: +\d+ [GMK]?bytes

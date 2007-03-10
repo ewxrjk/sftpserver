@@ -77,5 +77,6 @@ if errors:
     print "%d test failed" % failed
     sys.exit(1)
 else:
+    rmrf(os.path.join(builddir, ',testroot'))
     print "OK"
 
