@@ -1,0 +1,57 @@
+* Built-in Tests
+
+'make check' will use the Python script run-tests to run the built-in
+tests which all in the tests/ directory.  These test the server
+against a separate though not very independent client implementation.
+
+** Interface To Tests
+
+Each of these scripts is an input to the sftpclient program.  They are
+invoked with both the client and the server sitting in the same
+(initially empty) directory; if your test requires separate
+directories then use !mkdir and cd/lcd.
+
+Any line in the script starting with a "#" is a regular expression.
+The script is expected to produce output matching the regexp at this
+point.  For example, mkdir3456 starts off as follows:
+
+  mkdir defperms
+  ls -ld defperms
+  #drwxr-[xs]r-x +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ defperms
+
+Here we create a directory with default permissions and then list.
+The regexp matches the expected ls output.
+
+** Per-Protocol Tests
+
+The filename of the scripts is significant.  It should contain the
+protocol version numbers it applies to.  For instance mkdir3456
+applies to all four known protocol versions.  Similarly ls3, ls45 and
+ls6 provide similar tests against different protocol versions.
+
+ls3, ls45 and ls6 are testing stat and attributes in detail so it is
+worth producing separate scripts for each of them.  mkdir3456 however
+compares more about the mkdir and rmdir operations so there is not
+much point in having separate versions for each protocol; therefore
+its regexps will match the output produced in all the different
+versions.
+
+The other reason for having protocol-specific tests is of course to
+test facilities that only exist in a subset of the protocols.
+
+* Interoperability Tests
+
+** Programmable Clients
+
+It is possible in principle to do something similar to the above for
+command line clients such as lftp, psftp and the OpenSSH client,
+though I have not done so yet.  Similarly it should be possible to
+write mechanical tests for libraries such as Paramiko or even to
+repurpose their own tests, where they exist.
+
+** Graphical Clients
+
+Graphical clients such as WinSCP less convenient to test this way;
+instead it is necessary to build up a library of activities which
+tests as many protocol features as possible in the minimum number of
+user actions.  This hasn't been done yet l-)
