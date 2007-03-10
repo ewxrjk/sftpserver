@@ -53,6 +53,8 @@ void fatal(const char *msg, ...)
 pid_t xfork(void);
 void forked(void);
 
+extern int log_syslog;
+
 #endif /* UTILS_H */
 
 /*

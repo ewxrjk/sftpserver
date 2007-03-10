@@ -26,6 +26,7 @@
 #include <netdb.h>
 #include <sys/wait.h>
 #include <stdio.h>
+#include <syslog.h>
 
 /* Forward declarations */
 
@@ -459,10 +460,12 @@ int main(int argc, char **argv) {
       fatal("setuid(0) unexpectedly succeeded");
   }
   
-  if(daemonize)
+  if(daemonize) {
+    openlog(bn, LOG_PID, LOG_FTP);
+    log_syslog = 1;
     if(daemon(0, 0) < 0)
       fatal("error calling daemon: %s", strerror(errno));
-  /* TODO logging */
+  }
 
   if(!port) {
     sftp_service();

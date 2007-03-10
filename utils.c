@@ -8,6 +8,9 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <syslog.h>
+
+int log_syslog;
 
 int do_read(int fd, void *buffer, size_t size) {
   size_t sofar = 0;
@@ -82,11 +85,15 @@ static void (*exitfn)(int) attribute((noreturn)) = exit;
 void fatal(const char *msg, ...) {
   va_list ap;
 
-  fprintf(stderr, "FATAL: ");
   va_start(ap, msg);
-  vfprintf(stderr, msg, ap);
+  if(log_syslog)
+    vsyslog(LOG_ERR, msg, ap);
+  else {
+    fprintf(stderr, "FATAL: ");
+    vfprintf(stderr, msg, ap);
+    fputc('\n', stderr);
+  }
   va_end(ap);
-  fputc('\n', stderr);
   exitfn(-1);
 }
 
