@@ -1,6 +1,6 @@
 mkdir defperms
 ls -ld defperms
-#drwxr-xr-x +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ defperms
+#drwxr-[xs]r-x +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ defperms
 mkdir defperms
 #.*File exists.*
 mkdir 2700 fixedperms
