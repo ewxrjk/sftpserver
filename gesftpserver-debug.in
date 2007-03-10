@@ -1,6 +1,0 @@
-#! /bin/bash
-set -e
-prefix="@prefix@"
-exec_prefix="@exec_prefix@"
-libexecdir="@libexecdir@"
-exec ${libexecdir}/gesftpserver --debug-file $HOME/.gesftpserver.$$ "$@"

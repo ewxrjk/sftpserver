@@ -327,11 +327,28 @@ int main(int argc, char **argv) {
   int daemonize = 0;
   struct addrinfo hints;
   iconv_t cd;
+  const char *bn;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_flags = AI_PASSIVE;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+
+  /* Find basename of executable */
+  if(!(bn = strrchr(argv[0], '/')))
+    bn = argv[0];
+  /* Run in debug mode */
+  if(strstr(bn, "-debug")) {
+    const char *home = getenv("HOME");
+
+    debugpath = xmalloc(strlen(home) + 40);
+    sprintf((char *)debugpath, "%s/.gesftpserver.%ju", 
+            home, (uintmax_t)getpid());
+    debugging = 1;
+  }
+  /* Run in readonly mode */
+  if(strstr(bn, "-ro"))
+    readonly = 1;
 
   /* We need I18N support for filename encoding */
   setlocale(LC_CTYPE, "");
@@ -374,10 +391,6 @@ int main(int argc, char **argv) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
-
-  /* Enable debugging */
-  if(getenv("SFTPSERVER_DEBUGGING"))
-    debugging = 1;
 
   if(user) {
     /* Look up the user */

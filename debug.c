@@ -32,22 +32,29 @@ static void opendebug(void) {
 void hexdump(const void *ptr, size_t n) {
   const unsigned char *p = ptr;
   size_t i, j;
+  char buffer[80], *output;
 
   opendebug();
   for(i = 0; i < n; i += 16) {
-    fprintf(debugfp, "%4lx ", (unsigned long)i);
+    output = buffer;
+    output += sprintf(output, "%4lx ", (unsigned long)i);
     for(j = 0; j < 16; ++j)
       if(i + j < n)
-	fprintf(debugfp, " %02x", p[i + j]);
-      else
-	fprintf(debugfp, "   ");
-    fputs("  ", debugfp);
+	output += sprintf(output, " %02x", p[i + j]);
+      else {
+        strcpy(output, "   ");
+        output += 3;
+      }
+    strcpy(output, "  ");
+    output += 2;
     for(j = 0; j < 16; ++j)
       if(i + j < n)
-	fputc(isprint(p[i + j]) ? p[i+j] : '.', debugfp);
-    fputc('\n', debugfp);
-    fflush(debugfp);
+        *output++ = isprint(p[i + j]) ? p[i+j] : '.';
+    *output++ = '\n';
+    *output = 0;
+    fputs(buffer, debugfp);
   }
+  fflush(debugfp);
 }
 
 void debug_printf(const char *fmt, ...) {

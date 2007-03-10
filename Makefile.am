@@ -1,13 +1,9 @@
 noinst_PROGRAMS=sftpclient
-noinst_SCRIPTS=gesftpserver-debug
 libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
 
 gesftpserver_SOURCES=sftpserver.c readwrite.c
 gesftpserver_LDADD=libsftp.a
-
-#gesftpserverro_SOURCES=sftpserver.c readonly.c
-#gesftpserverro_LDADD=libsftp.a
 
 sftpclient_SOURCES=sftpclient.c readwrite.c
 sftpclient_LDADD=libsftp.a $(LIBREADLINE)

@@ -1,1 +1,0 @@
-int readonly = 1;
