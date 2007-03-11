@@ -41,6 +41,7 @@
 #include <time.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/statvfs.h>
 
 int reverse_symlink;
 
@@ -669,6 +670,30 @@ uint32_t sftp_posix_rename(struct sftpjob *job) {
     return SSH_FX_OK;
 }
 
+uint32_t sftp_statfs(struct sftpjob *job) {
+  char *path;
+  struct statvfs fs;
+
+  pcheck(parse_path(job, &path));
+  D(("sftp_statfs %s", path));
+  if(statvfs(path, &fs) < 0)
+    return HANDLER_ERRNO;
+  send_begin(job->worker);
+  send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
+  send_uint32(job->worker, job->id);
+  /* FUSE's version uses 'struct statfs', we use 'struct statvfs'.  So some of
+   * the names are a little different.  However the overall semantics should be
+   * the same. */
+  send_uint32(job->worker, fs.f_frsize);
+  send_uint64(job->worker, fs.f_blocks);
+  send_uint64(job->worker, fs.f_bfree);
+  send_uint64(job->worker, fs.f_bavail);
+  send_uint64(job->worker, fs.f_files);
+  send_uint64(job->worker, fs.f_ffree);
+  send_end(job->worker);
+  return HANDLER_RESPONDED;
+}
+
 static const struct sftpcmd sftpv3tab[] = {
   { SSH_FXP_INIT, sftp_already_init },
   { SSH_FXP_OPEN, sftp_v34_open },
@@ -694,7 +719,8 @@ static const struct sftpcmd sftpv3tab[] = {
 
 static const struct sftpextension v3_extensions[] = {
   { "posix-rename@openssh.org", sftp_posix_rename },
-  { "space-available", sftp_space_available }
+  { "space-available", sftp_space_available },
+  { "statfs@openssh.org", sftp_statfs },
 };
 
 const struct sftpprotocol sftpv3 = {
