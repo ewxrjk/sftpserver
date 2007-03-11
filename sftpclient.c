@@ -2166,7 +2166,7 @@ int main(int argc, char **argv) {
       else if(!strcmp(xdata, "linkpath-targetpath"))
         quirk_reverse_symlink = 0;
       else
-        fprintf(stderr, "WARNING: unknown %s value '%s'\n", xdata);
+        fprintf(stderr, "WARNING: unknown %s value '%s'\n", xname, xdata);
     }
     /* TODO supported and supported2 */
   }
