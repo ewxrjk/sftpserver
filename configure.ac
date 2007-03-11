@@ -47,5 +47,22 @@ RJK_GCC_WARNINGS
 RJK_GCC_ATTRS
 RJK_STAT_TIMESPEC
 
+dnl See commentary in v3.c for what's going on here
+AC_MSG_CHECKING([whether to reverse SSH_FXP_SYMLINK arguments])
+AC_ARG_ENABLE([reversed-symlink],
+              [AS_HELP_STRING([--enable-reversed-symlink],
+                              [Reverse SSH_FXP_SYMLINK arguments])],
+              [revlink="$enableval"],
+              [revlink=no])
+AC_MSG_RESULT([$revlink])
+if test $revlink = yes; then
+  AC_DEFINE([REVERSE_SYMLINK],[1],[define to reverse SSH_FXP_SYMLINK args])
+fi
+
+
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
+
+dnl Local Variables:
+dnl indent-tabs-mode:nil
+dnl End:

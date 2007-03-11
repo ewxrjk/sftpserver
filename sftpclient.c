@@ -502,7 +502,7 @@ static int sftp_link(const char *targetpath, const char *linkpath,
                            ? SSH_FXP_LINK
                            : SSH_FXP_SYMLINK));
   send_uint32(&fakeworker, id = newid());
-  if(quirk_reverse_symlink && protocol->version == 3) {
+  if(quirk_reverse_symlink) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
     send_path(&fakejob, &fakeworker, targetpath);
@@ -2159,6 +2159,15 @@ int main(int argc, char **argv) {
       serverversion = xstrdup(serverversion);
     } else if(!strcmp(xname, "versions"))
       serverversions = xstrdup(xdata);
+    else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
+      /* See commentary in v3.c */
+      if(!strcmp(xdata,  "targetpath-linkpath"))
+        quirk_reverse_symlink = 1;
+      else if(!strcmp(xdata, "linkpath-targetpath"))
+        quirk_reverse_symlink = 0;
+      else
+        fprintf(stderr, "WARNING: unknown %s value '%s'\n", xdata);
+    }
     /* TODO supported and supported2 */
   }
   /* Make sure outbound translation will actually work */

@@ -13,11 +13,22 @@ Requirements
 Installation
 ------------
 
-  See INSTALL for generic instructions.  The general procedure is:
+  The general procedure is:
 
      ./configure
      make
      make install     # probably as root
+
+  See INSTALL for generic instructions.  Local configure options are:
+     --enable-reversed-symlink
+       Some (but annoyingly not all) SFTP clients get the arguments to
+       the symlink operation the wrong way round.  This option
+       reverses the server's interpretation of the arguments so that
+       such clients can be made to work (while breaking correctly
+       written clients).
+     --enable-warnings-as-errors
+       Enable treatment of warnings-as-errors.  Developers should use
+       this but end users probably don't care.
 
 Online Resources
 ----------------

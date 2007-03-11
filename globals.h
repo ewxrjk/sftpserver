@@ -28,6 +28,7 @@ extern const struct sftpprotocol sftpv6, sftpv5, sftpv4, sftpv3, sftppreinit;
 extern const struct sftpprotocol *protocol;
 extern const char sendtype[];
 extern int readonly;
+extern int reverse_symlink;
 
 #endif /* GLOBALS_H */
 

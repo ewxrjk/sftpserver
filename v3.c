@@ -42,9 +42,11 @@
 #include <sys/stat.h>
 #include <sys/time.h>
 
+int reverse_symlink;
+
 /* Callbacks */
 
-/* Encode/decode path names.  v3 does not know what encoding filenames use.  We
+/* Encode/decode path names.  v3 does not know what encoding filenames use.  I
  * assume that the client and the server use the same encoding and so don't
  * perform any translation. */
 static int v3_encode(struct sftpjob attribute((unused)) *job,
@@ -237,13 +239,59 @@ uint32_t sftp_v34_rename(struct sftpjob *job) {
 }
 
 uint32_t sftp_symlink(struct sftpjob *job) {
-  char *oldpath, *newpath;
+  char *targetpath, *linkpath;
 
   if(readonly) return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &newpath));    /* aka linkpath */
-  pcheck(parse_path(job, &oldpath));    /* aka targetpath */
-  D(("sftp_symlink %s %s", oldpath, newpath));
-  if(symlink(oldpath, newpath) < 0) return HANDLER_ERRNO;
+  /* The spec is fairly clear.  linkpath is first, targetpath is second.
+   * linkpath is the name of the symlink to be created and targetpath is the
+   * contents.  This is the reverse of the symlink() call and the ln command,
+   * where the first argument is the contents and the second argument the path
+   * of the symlink to be created.
+   *
+   *
+   * Implementations that get it right:
+   * - Gnome's Nautilus gets the arguments the right way round.
+   * - The sshtools.com Java SFTP talks the talk but obviously depends on its
+   *   caller getting the arguments in the right order.  CyberDuck (the client I
+   *   have to hand that uses it) doesn't seem to have a way to make links.
+   *
+   * Implementations that get it wrong:
+   * - The OpenSSH server and client both this wrong (at the time of writing)
+   *   and don't seem to be immediately interested in fixing it - see
+   *   http://bugzilla.mindrot.org/show_bug.cgi?id=861 for further details.
+   * - WinSCP knows the right way round but if it thinks it's talking to an
+   *   OpenSSH SSH server (NB not necessarily the OpenSSH SFTP server) then it
+   *   reverses them as a workaround.
+   * - Paramiko's client symlink command sends source then dest, which
+   *   is the wrong way around (at least as of revno 434/Feb 07).
+   * - Paramiko's server also gets it wrong.
+   *
+   * Implementations that apparently can't make links:
+   * - lftp and Konqueror don't seem to be able to create remote symlinks.
+   *
+   *
+   * So what to do?  There's a configure option to select the desired
+   * behaviour, and an extension to report to clients what was chosen, but we
+   * need to pick a default.  The option of "follow the implementation" doesn't
+   * yield a definitive answer as some implementations get it right and some
+   * wrong.
+   *
+   * I go with the specification for the time being but this may be revisited
+   * in the light of experience.
+   *
+   * Currently I assume that any v6 implementations (which has a different link
+   * command) will follow the spec but of course I may yet be disappointed.  An
+   * extension documenting server behaviour is sent in that case too.
+   */
+  if(reverse_symlink) {
+    pcheck(parse_path(job, &targetpath));
+    pcheck(parse_path(job, &linkpath));
+  } else {
+    pcheck(parse_path(job, &linkpath));
+    pcheck(parse_path(job, &targetpath));
+  }
+  D(("sftp_symlink %s %s", targetpath, linkpath));
+  if(symlink(targetpath, linkpath) < 0) return HANDLER_ERRNO;
   else return SSH_FX_OK;
 }
 

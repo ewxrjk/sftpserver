@@ -104,15 +104,17 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
 }
 
 uint32_t sftp_link(struct sftpjob *job) {
-  char *oldpath, *newpath;
+  char *oldpath, *newlinkpath;
   uint8_t symbolic;
 
+  /* See also comment in v3.c for SSH_FXP_SYMLINK */
   if(readonly) return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &newpath));    /* aka new-link-path */
+  pcheck(parse_path(job, &newlinkpath));
   pcheck(parse_path(job, &oldpath));    /* aka existing-path/target-paths */
   pcheck(parse_uint8(job, &symbolic));
-  D(("sftp_link %s %s [%s]", oldpath, newpath, symbolic ? "symbolic" : "hard"));
-  if((symbolic ? symlink : link)(oldpath, newpath) < 0) {
+  D(("sftp_link %s %s [%s]", oldpath, newlinkpath,
+     symbolic ? "symbolic" : "hard"));
+  if((symbolic ? symlink : link)(oldpath, newlinkpath) < 0) {
     /* e.g. Linux returns EPERM for symlink or link on a FAT32 fs */
     if(errno == EPERM)
       return SSH_FX_OP_UNSUPPORTED;

@@ -128,6 +128,9 @@ static uint32_t sftp_init(struct sftpjob *job) {
     return SSH_FX_OP_UNSUPPORTED;
   case 3:
     protocol = &sftpv3;
+#if REVERSE_SYMLINK
+    reverse_symlink = 1;
+#endif
     break;
   case 4:
     protocol = &sftpv4;
@@ -221,6 +224,19 @@ static uint32_t sftp_init(struct sftpjob *job) {
     send_string(job->worker, VERSION);
     send_uint64(job->worker, 0);
     send_sub_end(job->worker, offset);
+  }
+  if(version < 6) {
+    /* This simple extension documents the order we expect for SSH_FXP_SYMLINK
+     * args.  See the comment in v3.c for further details. */
+    send_string(job->worker, "symlink-order@rjk.greenend.org.uk");
+    if(reverse_symlink)
+      send_string(job->worker, "targetpath-linkpath");
+    else
+      send_string(job->worker, "linkpath-targetpath");
+  } else {
+    /* Just in case l-) */
+    send_string(job->worker, "link-order@rjk.greenend.org.uk");
+    send_string(job->worker, "linkpath-targetpath");
   }
   send_end(job->worker);
   /* Now we are initialized we can safely process other jobs in the

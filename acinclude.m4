@@ -10,16 +10,6 @@ AC_DEFUN([RJK_BUILDSYS_FINK],[
 ])
 
 AC_DEFUN([RJK_GCC_WARNINGS],[
-  AC_ARG_ENABLE([warnings],
-		[AS_HELP_STRING([--disable-warnings],
-				[Disable compiler warnings])],
-		[warnings="$enableval"],
-		[warnings=yes])
-  AC_ARG_ENABLE([errors],
-                [AS_HELP_STRING([--disable-errors],
-                                [Don't treat compiler warnings as errors])],
-		[warnings_as_errors="$enableval"],
-		[warnings_as_errors=yes])
   AC_CACHE_CHECK([for ${CC} warning options],[rjk_cv_ccwarnings],[
     if test "$GCC" = yes; then
       rjk_cv_ccwarnings="-Wall -W -Wpointer-arith -Wbad-function-cast \
@@ -37,6 +27,20 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
       rjk_cv_ccwerror="unknown"
     fi
   ])
+  AC_MSG_CHECKING([whether to enable compiler warnings])
+  AC_ARG_ENABLE([warnings],
+		[AS_HELP_STRING([--disable-warnings],
+				[Disable compiler warnings])],
+		[warnings="$enableval"],
+		[warnings=yes])
+  AC_MSG_RESULT([$warnings])
+  AC_MSG_CHECKING([whether to treat warnings as errors])
+  AC_ARG_ENABLE([warnings-as-errors],
+                [AS_HELP_STRING([--enable-warnings-as-errors],
+                                [Treat compiler warnings as errors])],
+		[warnings_as_errors="$enableval"],
+		[warnings_as_errors=no])
+  AC_MSG_RESULT([$warnings_as_errors])
   if test "$warnings" = yes && test "$rjk_cv_ccwarnings" != unknown; then
     CC="${CC} $rjk_cv_ccwarnings"
   fi
