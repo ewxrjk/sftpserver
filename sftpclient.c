@@ -638,7 +638,8 @@ static int sftp_open(const char *path,
     case SSH_FXF_OPEN_EXISTING:
       break;
     case SSH_FXF_TRUNCATE_EXISTING:
-      return error("SSH_FXF_TRUNCATE_EXISTING cannot be emulated");
+      pflags |= SSH_FXF_TRUNC;
+      break;
     default:
       return error("unknown SSH_FXF_ACCESS_DISPOSITION %#"PRIx32,
                    flags);

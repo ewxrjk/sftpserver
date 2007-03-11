@@ -1,5 +1,7 @@
 !touch input
-!chmod 600 input
+chmod 600 input
+ls -l input
+#-rw------- +1 +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d\d input
 put -P input output
 ls -l output
 #-rw------- +1 +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d\d output
