@@ -35,11 +35,29 @@ def rmrf(path):
         else:
             os.remove(path)
 
+def fatal(msg):
+    sys.stderr.write("%s\n" % msg)
+    sys.exit(1)
+
 os.umask(022)                           # for consistent permissions
 failed = 0
+protocols = ['3', '4', '5', '6']
 
-for test in os.listdir(os.path.join(srcdir, 'tests')):
-    for proto in ['3', '4', '5', '6']:
+args = sys.argv[1:]
+while args[0][0] == '-':
+    if args[0] == "--protocols":
+        protocols = args[1].split(',')
+        args = args[2:]
+    else:
+        fatal("unknown option '%s'" % args[0])
+
+if len(args) > 0:
+    tests = args
+else:
+    tests = os.listdir(os.path.join(srcdir, 'tests'))
+
+for test in tests:
+    for proto in protocols:
         if ('.' in test
             or not proto in test
             or '#' in test
