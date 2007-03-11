@@ -1223,8 +1223,10 @@ static int cmd_get(int ac,
   /* we'll write to a temporary file */
   tmp = alloc(fakejob.a, strlen(local) + 5);
   sprintf(tmp, "%s.new", local);
-  if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0)
+  if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0) {
+    fprintf(stderr, "error opening %s: %s\n", tmp, strerror(errno));
     goto error;
+  }
   if(textmode) {
     if(write_translated_init(fd))
       goto error;
