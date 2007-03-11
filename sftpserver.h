@@ -93,6 +93,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
                   struct sftpattr *attrs);
 uint32_t sftp_space_available(struct sftpjob *job);
 uint32_t sftp_version_select(struct sftpjob *job);
+uint32_t sftp_posix_rename(struct sftpjob *job);
 
 void send_errno_status(struct sftpjob *job);
 /* Call send_status based on errno */

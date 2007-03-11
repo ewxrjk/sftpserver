@@ -48,5 +48,11 @@ reports a vendor of "Green End" and a server name of "Green End SFTP Server".
 .TP
 .B versions
 Lists available versions.
+.TP
+.B version-select
+Select version.
+.TP
+.B posix-rename@openssh.org
+Provides POSIX rename semantics even in pre-v5 SFTP.
 .SH "SEE ALSO"
 .BR sshd_config (5)

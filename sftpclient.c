@@ -491,6 +491,20 @@ static int sftp_rename(const char *oldpath, const char *newpath,
   return status();
 }
 
+static int sftp_prename(const char *oldpath, const char *newpath) {
+  uint32_t id;
+  
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  send_uint32(&fakeworker, id = newid());
+  send_string(&fakeworker, "posix-rename@openssh.org");
+  send_path(&fakejob, &fakeworker, resolvepath(oldpath));
+  send_path(&fakejob, &fakeworker, resolvepath(newpath));
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, id);
+  return status();
+}
+
 static int sftp_link(const char *targetpath, const char *linkpath,
                      int send_symlink) {
   uint32_t id;
@@ -1018,6 +1032,7 @@ static int cmd_mv(int attribute((unused)) ac,
     const char *ptr = av[0];
     int c;
     unsigned flags = 0;
+    int posixrename = 0;
 
     if(*ptr++ != '-')
       return error("invalid options '%s'", av[0]);
@@ -1026,10 +1041,14 @@ static int cmd_mv(int attribute((unused)) ac,
       case 'n': flags |= SSH_FXF_RENAME_NATIVE; break;
       case 'a': flags |= SSH_FXF_RENAME_ATOMIC; break;
       case 'o': flags |= SSH_FXF_RENAME_OVERWRITE; break;
+      case 'p': posixrename = 1; break;
       default: return error("invalid options '%s'", av[0]);
       }
     }
-    return sftp_rename(av[1], av[2], flags);
+    if(posixrename)
+      return sftp_prename(av[1], av[2]);
+    else
+      return sftp_rename(av[1], av[2], flags);
   } else
     return sftp_rename(av[0], av[1], 0);
 }
@@ -1816,7 +1835,7 @@ static const struct command commands[] = {
   },
   {
     "mv", 2, 3, cmd_mv,
-    "[-nao] OLDPATH NEWPATH",
+    "[-naop] OLDPATH NEWPATH",
     "rename a remote file"
   },
   {

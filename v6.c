@@ -167,8 +167,9 @@ static const struct sftpcmd sftpv6tab[] = {
 /* TODO: file locking */
 
 static const struct sftpextension sftp_v6_extensions[] = {
-  { "text-seek", sftp_text_seek },
+  { "posix-rename@openssh.org", sftp_posix_rename },
   { "space-available", sftp_space_available },
+  { "text-seek", sftp_text_seek },
   { "version-select", sftp_version_select },
 };
 

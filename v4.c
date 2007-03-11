@@ -257,7 +257,9 @@ static const struct sftpcmd sftpv4tab[] = {
 };
 
 static const struct sftpextension v4_extensions[] = {
-  { "space-available", sftp_space_available }
+  { "posix-rename@openssh.org", sftp_posix_rename },
+  { "space-available", sftp_space_available },
+  { "text-seek", sftp_text_seek },
 };
 
 const struct sftpprotocol sftpv4 = {

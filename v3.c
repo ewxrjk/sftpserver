@@ -656,6 +656,19 @@ uint32_t sftp_write(struct sftpjob *job) {
   return SSH_FX_OK;
 }
 
+uint32_t sftp_posix_rename(struct sftpjob *job) {
+  char *oldpath, *newpath;
+
+  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  pcheck(parse_path(job, &oldpath));
+  pcheck(parse_path(job, &newpath));
+  D(("sftp_posix_rename %s %s", oldpath, newpath));
+  if(rename(oldpath, newpath) < 0) 
+    return HANDLER_ERRNO;
+  else
+    return SSH_FX_OK;
+}
+
 static const struct sftpcmd sftpv3tab[] = {
   { SSH_FXP_INIT, sftp_already_init },
   { SSH_FXP_OPEN, sftp_v34_open },
@@ -680,6 +693,7 @@ static const struct sftpcmd sftpv3tab[] = {
 };
 
 static const struct sftpextension v3_extensions[] = {
+  { "posix-rename@openssh.org", sftp_posix_rename },
   { "space-available", sftp_space_available }
 };
 
