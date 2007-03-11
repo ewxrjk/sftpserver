@@ -1916,6 +1916,17 @@ static int cmd_readlink(int attribute((unused)) ac,
     return -1;
 }
 
+static int cmd_realpath(int attribute((unused)) ac,
+                        char **av) {
+  char *r = sftp_realpath(av[0]);
+
+  if(r) {
+    xprintf("%s\n", r);
+    return 0;
+  } else
+    return -1;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -2051,6 +2062,11 @@ static const struct command commands[] = {
     "readlink", 1, 1, cmd_readlink,
     "PATH",
     "inspect a symlink"
+  },
+  {
+    "realpath", 1, 1, cmd_realpath,
+    "PATH",
+    "expand a path name"
   },
   {
     "rename", 2, 2, cmd_mv,

@@ -581,13 +581,36 @@ uint32_t sftp_v34_open(struct sftpjob *job) {
   uint32_t pflags;
   struct sftpattr attrs;
   uint32_t desired_access = 0;
-  uint32_t flags = 0;
+  uint32_t flags;
 
   pcheck(parse_path(job, &path));
   pcheck(parse_uint32(job, &pflags));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_v34_open %s %#"PRIx32, path, pflags));
   /* Translate to v5/6 bits */
+  switch(pflags & (SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL)) {
+  case 0:
+    flags = SSH_FXF_OPEN_EXISTING;
+    break;
+  case SSH_FXF_TRUNC:
+    /* The drafts demand that SSH_FXF_CREAT also be sent making this formally
+     * invalid, though there doesn't seem any good reason for them to do so:
+     * the client intent seems clear.*/
+    flags = SSH_FXF_TRUNCATE_EXISTING;
+    break;
+  case SSH_FXF_CREAT:
+    flags = SSH_FXF_OPEN_OR_CREATE;
+    break;
+  case SSH_FXF_CREAT|SSH_FXF_TRUNC:
+    flags = SSH_FXF_CREATE_TRUNCATE;
+    break;
+  case SSH_FXF_CREAT|SSH_FXF_EXCL:
+  case SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL: /* nonsensical */
+    flags = SSH_FXF_CREATE_NEW;
+    break;
+  default:
+    return SSH_FX_BAD_MESSAGE;
+  }
   if(pflags & SSH_FXF_READ)
     desired_access |= ACE4_READ_DATA|ACE4_READ_ATTRIBUTES;
   if(pflags & SSH_FXF_WRITE)
@@ -595,29 +618,6 @@ uint32_t sftp_v34_open(struct sftpjob *job) {
   if(pflags & SSH_FXF_APPEND) {
     flags |= SSH_FXF_APPEND_DATA;
     desired_access |= ACE4_APPEND_DATA;
-  }
-  switch(pflags & (SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL)) {
-  case 0:
-    flags |= SSH_FXF_OPEN_EXISTING;
-    break;
-  case SSH_FXF_TRUNC:
-    /* The drafts demand that SSH_FXF_CREAT also be sent making this formally
-     * invalid, though there doesn't seem any good reason for them to do so:
-     * the client intent seems clear.*/
-    flags |= SSH_FXF_TRUNCATE_EXISTING;
-    break;
-  case SSH_FXF_CREAT:
-    flags |= SSH_FXF_OPEN_OR_CREATE;
-    break;
-  case SSH_FXF_CREAT|SSH_FXF_TRUNC:
-    flags |= SSH_FXF_CREATE_TRUNCATE;
-    break;
-  case SSH_FXF_CREAT|SSH_FXF_EXCL:
-  case SSH_FXF_CREAT|SSH_FXF_TRUNC|SSH_FXF_EXCL: /* nonsensical */
-    flags |= SSH_FXF_CREATE_NEW;
-    break;
-  default:
-    return SSH_FX_BAD_MESSAGE;
   }
   return generic_open(job, path, desired_access, flags, &attrs);
 }

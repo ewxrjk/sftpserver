@@ -149,6 +149,19 @@ AC_DEFUN([RJK_ICONV],[
   AC_CHECK_LIB([iconv],[libiconv_open])
 ])
 
+AC_DEFUN([RJK_GCOV],[
+  GCOV=${GCOV:-true}
+  AC_ARG_WITH([gcov],
+              [AS_HELP_STRING([--with-gcov],
+                              [Enable coverage testing])],
+              [if test $withval = yes; then
+                 CFLAGS="${CFLAGS} -O0 -fprofile-arcs -ftest-coverage"
+                 GCOV=`echo $CC | sed s'/gcc/gcov/;s/ .*$//'`;
+               fi])
+  AC_SUBST([GCOV],[$GCOV])
+])
+
 dnl Local Variables:
 dnl mode:autoconf
+dnl indent-tabs-mode:nil
 dnl End:

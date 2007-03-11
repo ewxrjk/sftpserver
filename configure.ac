@@ -60,6 +60,7 @@ if test $revlink = yes; then
   AC_DEFINE([REVERSE_SYMLINK],[1],[define to reverse SSH_FXP_SYMLINK args])
 fi
 
+RJK_GCOV
 
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
