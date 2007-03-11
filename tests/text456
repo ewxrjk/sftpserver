@@ -2,7 +2,7 @@
 !ls -l > 2
 !echo wibble > 3
 !printf nofinalnewline >> 3
-!seq 999 2>/dev/null > 4 || jot 999 2>/dev/null >> 4
+!if type seq 2>/dev/null; then seq 999; else jot 999; fi > 4
 text
 get 1 1dl
 !diff 1 1dl
