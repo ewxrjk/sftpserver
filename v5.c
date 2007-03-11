@@ -285,6 +285,14 @@ uint32_t sftp_v56_rename(struct sftpjob *job) {
      * in v3.c. */
     if(link(oldpath, newpath) < 0) {
       if(errno != EEXIST) {
+#ifndef __linux__
+        {
+          struct stat sb;
+          
+          if(lstat(newpath, &sb) == 0)
+            return SSH_FX_FILE_ALREADY_EXISTS;
+        }
+#endif
 	if(rename(oldpath, newpath) < 0)
 	  return HANDLER_ERRNO;
 	else

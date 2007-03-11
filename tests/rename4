@@ -8,16 +8,9 @@ ls -1 newname
 #newname
 put /dev/null otherfile
 mv newname otherfile
-#.*File exists.*
+#.*file already exists.*
 !mkdir dir
 mv dir anotherdir
 !mkdir dir2
 mv dir2 anotherdir
-#.*File exists.*
-!mkdir nowritedir
-!touch nowritedir/file
-!chmod 555 nowritedir
-mv dir2 nowritedir/spong
-#.*permission denied.*
-mv nowritedir/file cant_rm_source
-#.*permission denied.*
+#.*file already exists.*

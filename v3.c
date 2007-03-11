@@ -227,10 +227,16 @@ uint32_t sftp_v34_rename(struct sftpjob *job) {
      to link() from oldpath to newpath and unlinking oldpath if it succeeds. */
   if(link(oldpath, newpath) < 0) {
     if(errno != EEXIST) {
-      /* newpath does not exist but something stopped us renaming.  Two
-       * important cases are where oldpath is a directory, which link() cannot
-       * support but the v3/v4 drafts say we should, or where both paths are on
-       * a filesystem incapable of hard links.
+      /* On Linux we always get EEXIST if the destination already exists.  We
+       * get EPERM if we're trying to link a directory (and the destination
+       * doesn't exist) or we're trying to use a non-link-capable filesytem
+       * (and the destination doesn't exist).
+       *
+       * On BSD we get EPERM if we're trying to link a directory even if the
+       * destination does exist.
+       *
+       * So all we can be sure is that EEXIST means the destination definitely
+       * exists.  Other errors don't mean it doesn't exist.
        *
        * We give up on atomicity for such cases (v3/v4 drafts do not state a
        * requirement for it) and have other useful semantics instead.
@@ -238,7 +244,17 @@ uint32_t sftp_v34_rename(struct sftpjob *job) {
        * This has the slightly odd effect of giving rename(2) semantics only
        * for directories and on primitive filesystems.  If you want such
        * semantics reliably you need SFTP v5 or better.
+       *
+       * TODO: do a configure check for the local link() semantics.
        */
+#ifndef __linux__
+      {
+        struct stat sb;
+
+        if(lstat(newpath, &sb) == 0)
+          return SSH_FX_FILE_ALREADY_EXISTS;
+      }
+#endif
       if(rename(oldpath, newpath) < 0) 
         return HANDLER_ERRNO;
       else

@@ -1,0 +1,16 @@
+put /dev/null file
+ls -1 file
+#file
+mv file newname
+ls -1 file
+#.*file does not exist.*
+ls -1 newname
+#newname
+put /dev/null otherfile
+mv newname otherfile
+#.*File exists.*
+!mkdir dir
+mv dir anotherdir
+!mkdir dir2
+mv dir2 anotherdir
+#.*file already exists.*
