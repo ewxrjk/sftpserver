@@ -1,11 +1,50 @@
 AC_DEFUN([RJK_BUILDSYS_FINK],[
+  AC_CANONICAL_BUILD
+  AC_CANONICAL_HOST
   AC_PATH_PROG([FINK],[fink],[none],[$PATH:/sw/bin])
-  if test "x$FINK" != xnone; then
+  if test "x$FINK" != xnone && test "$host" = "$build"; then
     AC_CACHE_CHECK([fink install directory],[rjk_cv_finkprefix],[
       rjk_cv_finkprefix="`echo "$FINK" | sed 's,/bin/fink$,,'`"
     ])
     CPPFLAGS="${CPPFLAGS} -isystem /usr/include -isystem ${rjk_cv_finkprefix}/include"
     LDFLAGS="${LDFLAGS} -L/usr/lib -L${rjk_cv_finkprefix}/lib"
+  fi
+])
+
+AC_DEFUN([RJK_BUILDSYS_MISC],[
+  AC_CANONICAL_BUILD
+  AC_CANONICAL_HOST
+  AC_CACHE_CHECK([for extra include directories],[rjk_cv_extraincludes],[
+    rjk_cv_extraincludes=none
+    # If we're cross-compiling then we've no idea where to look for
+    # extra includes
+    if test "$host" = "$build"; then
+      case $host_os in
+      freebsd* ) 
+        rjk_cv_extraincludes=/usr/local/include
+        ;;
+      esac
+    fi
+  ])
+  if test $rjk_cv_extraincludes != none; then
+    if test $GCC = yes; then
+      CPPFLAGS="-isystem $rjk_cv_extraincludes"
+    else
+      CPPFLAGS="-I$rjk_cv_extraincludes"
+    fi
+  fi
+  AC_CACHE_CHECK([for extra library directories],[rjk_cv_extralibs],[
+    rjk_cv_extralibs=none
+    if test "$host" = "$build"; then
+      case $host_os in
+      freebsd* ) 
+        rjk_cv_extralibs=/usr/local/lib
+        ;;
+      esac
+    fi
+  ])
+  if test $rjk_cv_extralibs != none; then
+    LDFLAGS="-L$rjk_cv_extralibs"
   fi
 ])
 

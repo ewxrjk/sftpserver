@@ -112,10 +112,11 @@ void send_end(struct worker *w) {
   }
   /* Write the whole buffer, coping with short writes */
   written = 0;
-  while((n = write(sftpout, w->buffer + written, w->bufused - written)) > 0)
-    written += n;
-  if(n < 0)
-    fatal("error sending response: %s", strerror(errno));
+  while((size_t)written < w->bufused)
+    if((n = write(sftpout, w->buffer + written, w->bufused - written)) > 0)
+      written += n;
+    else if(n < 0)
+      fatal("error sending response: %s", strerror(errno));
   ferrcheck(pthread_mutex_unlock(&output_lock));
   w->bufused = 0x80000000;
 }

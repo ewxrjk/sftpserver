@@ -53,6 +53,7 @@ for test in os.listdir(os.path.join(srcdir, 'tests')):
         output = Popen([client, "-S", proto, "-P", server,
                         "-b", os.path.join(srcdir, 'tests', test),
                         '--echo',
+			'--fix-sigpipe',   # stupid Python
                         '--no-stop-on-error'],
                        stdout=PIPE,
                        stderr=STDOUT).communicate()[0].split('\n')

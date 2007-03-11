@@ -47,6 +47,7 @@
 #include <sys/wait.h>
 #include <stdio.h>
 #include <syslog.h>
+#include <netinet/in.h>
 
 /* Forward declarations */
 

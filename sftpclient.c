@@ -116,6 +116,7 @@ static const struct option options[] = {
   { "progress", no_argument, 0, 259 },
   { "no-progress", no_argument, 0, 260 },
   { "echo", no_argument, 0, 261 },
+  { "fix-sigpipe", no_argument, 0, 262 },
   { "debug", no_argument, 0, 'd' },
   { "debug-path", required_argument, 0, 'D' },
   { "host", required_argument, 0, 'H' },
@@ -2018,6 +2019,7 @@ int main(int argc, char **argv) {
     case 259: progress_indicators = 1; break;
     case 260: progress_indicators = 0; break;
     case 261: echo = 1; break;
+    case 262: signal(SIGPIPE, SIG_DFL); break; /* stupid python */
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;
