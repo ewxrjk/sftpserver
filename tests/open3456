@@ -4,9 +4,9 @@ put -t one two
 #.*file already exists.*
 put -A one two
 !wc -l < two
-#2
+# *2
 put -a one two
 !wc -l < two
-#3
+# *3
 put -A one nonesuch
 #.*file does not exist.*
