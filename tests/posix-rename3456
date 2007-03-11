@@ -12,3 +12,5 @@ ls -1 newname
 #.*file does not exist.*
 ls -1 otherfile
 #otherfile
+mv -p nosuchfile anything
+#.*file does not exist.*
