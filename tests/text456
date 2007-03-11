@@ -1,0 +1,22 @@
+!echo spong > 1
+!ls -l > 2
+!echo wibble > 3
+!printf nofinalnewline >> 3
+!seq 999 2>/dev/null > 4 || jot 999 2>/dev/null >> 4
+text
+get 1 1dl
+!diff 1 1dl
+get 2 2dl
+!diff 2 2dl
+get 3 3dl
+!diff 3 3dl
+get 4 4dl
+!diff 4 4dl
+put 1 1ul
+!diff 1 1ul
+put 2 2ul
+!diff 2 2ul
+put 3 3ul
+!diff 3 3ul
+put 4 4ul
+!diff 4 4ul
