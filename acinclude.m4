@@ -51,9 +51,8 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
                  [rjk_cv_inttypeswarnings],[
     AC_TRY_COMPILE([#include <stddef.h>
 #include <stdio.h>
-#if HAVE_INTTYPES_H
-  #include <inttypes.h>
-#endif],[uint64_t x=0;size_t sz=0;printf("%"PRIu64" %zu\n", x, sz);],
+#include <inttypes.h>],
+                   [uint64_t x=0;size_t sz=0;printf("%"PRIu64" %zu\n", x, sz);],
                    [rjk_cv_inttypeswarnings=no],
                    [rjk_cv_inttypeswarnings=yes])
   ])
