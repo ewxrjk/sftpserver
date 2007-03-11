@@ -192,7 +192,13 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     created = 0;
     break;
   case SSH_FXF_TRUNCATE_EXISTING:
-    /* Again the file has to exist already so this is also simple. */
+    /* Again the file has to exist already so this is also simple - except that
+     * O_NOFOLLOW doesn't inhibit following in this case. */
+#ifdef O_NOFOLLOW
+    D(("emulating O_NOFOLLOW"));
+    if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
+      return SSH_FX_LINK_LOOP;
+#endif
     D(("SSH_FXF_TRUNCATE_EXISTING -> O_TRUNC"));
     fd = open(path, open_flags|O_TRUNC, initial_permissions);
     created = 0;
@@ -200,8 +206,21 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   default:
     return SSH_FX_OP_UNSUPPORTED;
   }
-  if(fd < 0)
+  if(fd < 0) {
+#ifdef O_NOFOLLOW
+    /* If we couldn't open the file because we declined to follow a symlink
+     * then we need an unusual error code.  (But if we had to emulate
+     * O_NOFOLLOW then the test already happened long ago.) */
+    if((flags & SSH_FXF_NOFOLLOW)
+       && (errno == ENOENT || errno == EEXIST)) {
+      if(lstat(path, &sb) < 0)
+        return HANDLER_ERRNO;
+      if(S_ISLNK(sb.st_mode))
+        return SSH_FX_LINK_LOOP;
+    }
+#endif
     return HANDLER_ERRNO;
+  }
   /* Set initial attributrs if we created the file */
   if(created && attrs->valid && set_fstatus(job->a, fd, attrs)) { 
     const int save_errno = errno;

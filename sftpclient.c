@@ -175,6 +175,7 @@ static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
   vfprintf(stderr, fmt, ap);
   va_end(ap);
   fputc('\n',  stderr);
+  fflush(stderr);
   return -1;
 }
 
@@ -1225,7 +1226,7 @@ static int cmd_get(int ac,
   tmp = alloc(fakejob.a, strlen(local) + 5);
   sprintf(tmp, "%s.new", local);
   if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0) {
-    fprintf(stderr, "error opening %s: %s\n", tmp, strerror(errno));
+    error("error opening %s: %s", tmp, strerror(errno));
     goto error;
   }
   if(textmode) {
@@ -1244,8 +1245,8 @@ static int cmd_get(int ac,
   if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {
     /* We know how big the file is.  Check we can fit it! */
     if((uint64_t)(off_t)attrs.size != attrs.size) {
-      fprintf(stderr, "remote file %s is too large (%"PRIu64" bytes)\n",
-              remote, attrs.size);
+      error("remote file %s is too large (%"PRIu64" bytes)",
+            remote, attrs.size);
       goto error;
     }
     r.size = attrs.size;
@@ -1311,7 +1312,7 @@ static int cmd_get(int ac,
       } else
         rc = pwrite(fd, fakejob.ptr, len, r.reqs[n].offset);
       if(rc < 0) {
-        fprintf(stderr, "error writing to %s: %s\n", tmp, strerror(errno));
+        error("error writing to %s: %s", tmp, strerror(errno));
         r.failed = 1;
       }
       written += len;
@@ -2219,7 +2220,7 @@ int main(int argc, char **argv) {
       else if(!strcmp(xdata, "linkpath-targetpath"))
         quirk_reverse_symlink = 0;
       else
-        fprintf(stderr, "WARNING: unknown %s value '%s'\n", xname, xdata);
+        error("unknown %s value '%s'", xname, xdata);
     }
     /* TODO supported and supported2 */
   }
