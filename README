@@ -7,8 +7,8 @@ Green End SFTP Server
 Requirements
 ------------
 
-  This software runs under Linux and Mac OS X.  It may work on other
-  UNIX platforms.
+  This software runs under Linux, Mac OS X and FreeBSD.  It may work
+  on other UNIX platforms.
 
 Installation
 ------------
@@ -16,10 +16,10 @@ Installation
   The general procedure is:
 
      ./configure
-     make
+     make check       # builds software and runs tests
      make install     # probably as root
 
-  See INSTALL for generic instructions.  Local configure options are:
+  See INSTALL for generic instructions.  Local configure options include:
      --enable-reversed-symlink
        Some (but annoyingly not all) SFTP clients get the arguments to
        the symlink operation the wrong way round.  This option
@@ -29,6 +29,31 @@ Installation
      --enable-warnings-as-errors
        Enable treatment of warnings-as-errors.  Developers should use
        this but end users probably don't care.
+
+  You will need iconv and readline libraries.
+
+Status
+------
+
+  This server is currently experimental and still under development.
+  Don't trust your critical data to it.  The code has an extensive and
+  growing test suite (invoke 'make check' to run it) but bugs may yet
+  remain.
+
+  The code is written to be secure against malicious clients but not
+  currently tested against malicious clients.  In the typical usage
+  pattern for an SFTP server this is academic: why bother exploiting a
+  SFTP server bug when you can log in as the same user?
+
+  However it is also possible to arrange for the SFTP server to run on
+  a security boundary, for instance listening directly on a TCP port
+  or running under a login that is only allowed to run the SFTP
+  server.
+
+  Until such time as the test suite is expanded to include actively
+  hostile clients, it is not recommended that this server be used in
+  such configurations without some additional form of protection
+  against malicious use.
 
 Online Resources
 ----------------
