@@ -29,6 +29,7 @@ server = os.path.abspath("gesftpserver")
 def rmrf(path):
     if os.path.lexists(path):
         if os.path.isdir(path):
+            os.chmod(path, 0700)
             for name in os.listdir(path):
                 rmrf(os.path.join(path,name))
             os.rmdir(path)

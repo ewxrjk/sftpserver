@@ -14,3 +14,15 @@ ls -1 newname
 #.*file does not exist.*
 ls -1 otherfile
 #otherfile
+!mkdir dir
+mv dir anotherdir
+!mkdir dir2
+mv dir2 anotherdir
+#.*file already exists.*
+!mkdir nowritedir
+!touch nowritedir/file
+!chmod 555 nowritedir
+mv dir2 nowritedir/spong
+#.*permission denied.*
+mv nowritedir/file cant_rm_source
+#.*permission denied.*
