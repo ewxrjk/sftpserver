@@ -6,6 +6,7 @@ mkdir defperms
 mkdir 2700 fixedperms
 mkdir 2700 fixedperms
 #.*File exists.*
+mkdir 700 fixedsimpleperms
 ls -ld fixedperms
 #drwx--S--- +[\?\d] +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ fixedperms
 rmdir defperms
