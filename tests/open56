@@ -16,3 +16,7 @@ put -fe one link
 #.*too many symbolic links.*
 put -fe one dangling
 #.*too many symbolic links.*
+get link two-dl
+!diff two two-dl
+get -f link two-dont
+#.*too many symbolic links.*

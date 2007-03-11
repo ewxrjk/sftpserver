@@ -1207,12 +1207,25 @@ static int cmd_get(int ac,
   uint64_t written = 0;
   struct timeval started, finished;
   double elapsed;
+  uint32_t flags = 0;
 
   memset(&attrs, 0, sizeof attrs);
   memset(&r, 0, sizeof r);
-  if(!strcmp(*av, "-P")) {
-    preserve = 1;
-    ++av;
+  if(av[0][0] == '-') {
+    const char *s = *av++;
+    ++s;
+    while(*s) {
+      switch(*s++) {
+      case 'P':
+        preserve = 1;
+        break;
+      case 'f':
+        flags |= SSH_FXF_NOFOLLOW; 
+        break;
+      default:
+        return error("unknown get option -%c'", s[-1]);
+      }
+    }
     --ac;
   }
   remote = *av++;
@@ -1230,13 +1243,14 @@ static int cmd_get(int ac,
     goto error;
   }
   if(textmode) {
+    flags |= SSH_FXF_TEXT_MODE;
     if(write_translated_init(fd))
       goto error;
     fd = -1;
   }
   /* open the remote file */
   if(sftp_open(remote, ACE4_READ_DATA|ACE4_READ_ATTRIBUTES,
-               SSH_FXF_OPEN_EXISTING|(textmode ? SSH_FXF_TEXT_MODE : 0),
+               SSH_FXF_OPEN_EXISTING|flags,
                &attrs, &r.h))
     goto error;
   /* stat the file */
@@ -1818,7 +1832,7 @@ static const struct command commands[] = {
   },
   {
     "get", 1, 3, cmd_get,
-    "[-P] REMOTE-PATH [LOCAL-PATH]",
+    "[-Pf] REMOTE-PATH [LOCAL-PATH]",
     "retrieve a remote file"
   },
   {

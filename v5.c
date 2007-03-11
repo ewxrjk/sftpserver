@@ -186,7 +186,15 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     }
     break;
   case SSH_FXF_OPEN_EXISTING:
-    /* The file has to exist already so this case is simple. */
+    /* The file has to exist already so this case is simple.  O_NOFOLLOW
+     * doesn't work reliably in this case. */
+#ifdef O_NOFOLLOW
+    if(flags & SSH_FXF_NOFOLLOW) {
+      D(("emulating O_NOFOLLOW"));
+      if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
+        return SSH_FX_LINK_LOOP;
+    }
+#endif
     D(("SSH_FXF_OPEN_EXISTING -> open"));
     fd = open(path, open_flags, initial_permissions);
     created = 0;
@@ -195,9 +203,11 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     /* Again the file has to exist already so this is also simple - except that
      * O_NOFOLLOW doesn't inhibit following in this case. */
 #ifdef O_NOFOLLOW
-    D(("emulating O_NOFOLLOW"));
-    if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
-      return SSH_FX_LINK_LOOP;
+    if(flags & SSH_FXF_NOFOLLOW) {
+      D(("emulating O_NOFOLLOW"));
+      if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
+        return SSH_FX_LINK_LOOP;
+    }
 #endif
     D(("SSH_FXF_TRUNCATE_EXISTING -> O_TRUNC"));
     fd = open(path, open_flags|O_TRUNC, initial_permissions);
