@@ -238,7 +238,7 @@ static int split(char *line, char **av) {
       continue;
     }
     if(*line == '"') {
-      arg = av[ac++] = line;
+      arg = av[ac++] = line++;
       while(*line && *line != '"') {
 	if(*line == '\\' && line[1])
 	  ++line;

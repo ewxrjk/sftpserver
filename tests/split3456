@@ -1,0 +1,6 @@
+!mkdir 'My Downloads'
+ls -1
+#My Downloads
+cd "My Downloads"
+pwd
+#.*/My Downloads
