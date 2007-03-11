@@ -1,4 +1,7 @@
 !echo 1 > one
 !echo 2 > two
+!ln -s two link
 put -e one nonesuch
 #.*file does not exist.*
+put -f one link
+#.*too many symbolic links.*

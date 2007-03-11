@@ -145,7 +145,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
       D(("SSH_FXF_CREATE_TRUNCATE -> O_TRUNC"));
       open_flags |= O_TRUNC;
     } else
-      D(("SSH_FXF_OPEN_OR_TRUNCATE -> O_TRUNC"));
+      D(("SSH_FXF_OPEN_OR_TRUNCATE -> not O_TRUNC"));
     if(flags & SSH_FXF_NOFOLLOW) {
       D(("SSH_FXF_*|SSH_FXF_NOFOLLOW -> O_CREAT|O_EXCL"));
       fd = open(path, open_flags|O_CREAT|O_EXCL, initial_permissions);
@@ -153,9 +153,14 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
         /* The file did not exist before */
         created = 1;
       else if(errno == EEXIST) {
-        /* The file already exists.  Open and maybe truncate.  If it got
-         * deleted in the meantime then you get an error. */
+        /* The file already exists.  If it's not a link then open and maybe
+         * truncate.  If it got deleted in the meantime then you get an
+         * error. */
         D(("SSH_FXF_*|SSH_FXF_NOFOLLOW -> EEXIST"));
+        if(lstat(path, &sb) < 0)
+          return HANDLER_ERRNO;
+        if(S_ISLNK(sb.st_mode))
+          return SSH_FX_LINK_LOOP;
         fd = open(path, open_flags, initial_permissions);
         created = 0;
       } else
