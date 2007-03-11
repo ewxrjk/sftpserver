@@ -1892,12 +1892,28 @@ static int cmd_init(int attribute((unused)) ac,
   return sftp_init();
 }
 
+static int cmd_unsupported(int attribute((unused)) ac,
+                           char attribute((unused)) **av) {
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, 0xFFFFFFFF);
+  send_uint32(&fakeworker, 0);          /* id */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0);
+  status();
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
     "_init", 0, 0, cmd_init,
     0,
     "resend SSH_FXP_INIT"
+  },
+  {
+    "_unsupported", 0, 0, cmd_unsupported,
+    0,
+    "send an unsupported command"
   },
   {
     "binary", 0, 0, cmd_binary,

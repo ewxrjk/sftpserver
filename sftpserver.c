@@ -341,7 +341,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
     }
   }
   /* We did not find a handler */
-  send_status(job, SSH_FX_OP_UNSUPPORTED, "operation not supported");
+  send_status(job, SSH_FX_OP_UNSUPPORTED, 0);
 done:
   serialize_remove_job(job);
   free(job->data);
