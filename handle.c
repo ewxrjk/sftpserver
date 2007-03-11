@@ -59,7 +59,8 @@ static void find_free_handle(struct handleid *id, int type) {
     handles = xrecalloc(handles, nhandles, sizeof (*handles));
     memset(handles + n, 0, (nhandles - n) * sizeof (*handles));
   }
-  while(!sequence) ++sequence;          /* never have a tag of 0 */
+  while(!sequence)
+    ++sequence;                         /* never have a tag of 0 */
   handles[n].tag = sequence++;
   handles[n].type = type;
   id->id = n;
@@ -93,8 +94,10 @@ uint32_t handle_get_fd(const struct handleid *id,
      && id->tag == handles[id->id].tag
      && handles[id->id].type == SSH_FXP_OPEN) {
     *fd = handles[id->id].u.fd;
-    if(pathp) *pathp = handles[id->id].path;
-    if(flagsp) *flagsp = handles[id->id].flags;
+    if(pathp)
+      *pathp = handles[id->id].path;
+    if(flagsp)
+      *flagsp = handles[id->id].flags;
     rc = 0;
   } else
     rc = SSH_FX_INVALID_HANDLE;
@@ -111,7 +114,8 @@ uint32_t handle_get_dir(const struct handleid *id,
      && id->tag == handles[id->id].tag
      && handles[id->id].type == SSH_FXP_OPENDIR) {
     *dp = handles[id->id].u.dir;
-    if(pathp) *pathp = handles[id->id].path;
+    if(pathp)
+      *pathp = handles[id->id].path;
     rc = 0;
   } else
     rc = SSH_FX_INVALID_HANDLE;

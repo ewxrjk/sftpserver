@@ -85,8 +85,10 @@ static int ranges_overlap(const struct sqnode *a,
     const uint64_t aend = a->offset + a->len - 1;
     const uint64_t bend = b->offset + b->len - 1;
     
-    if(aend >= b->offset && aend <= bend) return 1;
-    if(bend >= a->offset && bend <= aend) return 1;
+    if(aend >= b->offset && aend <= bend)
+      return 1;
+    if(bend >= a->offset && bend <= aend)
+      return 1;
   }
   return 0;
 }

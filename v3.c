@@ -129,20 +129,25 @@ static int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n;
 
   memset(attrs, 0, sizeof *attrs);
-  if(parse_uint32(job, &attrs->valid)) return -1;
+  if(parse_uint32(job, &attrs->valid))
+    return -1;
   /* Translate v3 bits t v4+ bits */
   if(attrs->valid & SSH_FILEXFER_ACMODTIME)
     attrs->valid |= (SSH_FILEXFER_ATTR_ACCESSTIME
                      |SSH_FILEXFER_ATTR_MODIFYTIME);
   /* Read the v3 fields */
   if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
-    if(parse_uint64(job, &attrs->size)) return -1;
+    if(parse_uint64(job, &attrs->size))
+      return -1;
   if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {
-    if(parse_uint32(job, &attrs->uid)) return -1;
-    if(parse_uint32(job, &attrs->gid)) return -1;
+    if(parse_uint32(job, &attrs->uid))
+      return -1;
+    if(parse_uint32(job, &attrs->gid))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    if(parse_uint32(job, &attrs->permissions)) return -1;
+    if(parse_uint32(job, &attrs->permissions))
+      return -1;
     /* Fake up type field */
     switch(attrs->permissions & S_IFMT) {
     case S_IFIFO: attrs->type = SSH_FILEXFER_TYPE_FIFO; break;
@@ -157,15 +162,18 @@ static int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   } else
     attrs->type = SSH_FILEXFER_TYPE_UNKNOWN;
   if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    if(parse_uint32(job, &n)) return -1;
+    if(parse_uint32(job, &n))
+      return -1;
     attrs->atime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if(parse_uint32(job, &n)) return -1;
+    if(parse_uint32(job, &n))
+      return -1;
     attrs->mtime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
-    if(parse_uint32(job, &n)) return -1;
+    if(parse_uint32(job, &n))
+      return -1;
     while(n-- > 0) {
       parse_string(job, 0, 0);
       parse_string(job, 0, 0);
@@ -184,27 +192,34 @@ uint32_t sftp_already_init(struct sftpjob attribute((unused)) *job) {
 uint32_t sftp_remove(struct sftpjob *job) {
   char *path;
   
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   D(("sftp_remove %s", path));
-  if(unlink(path) < 0) return HANDLER_ERRNO;
-  else return SSH_FX_OK;
+  if(unlink(path) < 0)
+    return HANDLER_ERRNO;
+  else
+    return SSH_FX_OK;
 }
 
 uint32_t sftp_rmdir(struct sftpjob *job) {
   char *path;
   
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   D(("sftp_rmdir %s", path));
-  if(rmdir(path) < 0) return HANDLER_ERRNO;
-  else return SSH_FX_OK;
+  if(rmdir(path) < 0)
+    return HANDLER_ERRNO;
+  else
+    return SSH_FX_OK;
 }
 
 uint32_t sftp_v34_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   D(("sftp_v34_rename %s %s", oldpath, newpath));
@@ -242,7 +257,8 @@ uint32_t sftp_v34_rename(struct sftpjob *job) {
 uint32_t sftp_symlink(struct sftpjob *job) {
   char *targetpath, *linkpath;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   /* The spec is fairly clear.  linkpath is first, targetpath is second.
    * linkpath is the name of the symlink to be created and targetpath is the
    * contents.  This is the reverse of the symlink() call and the ln command,
@@ -292,8 +308,10 @@ uint32_t sftp_symlink(struct sftpjob *job) {
     pcheck(parse_path(job, &targetpath));
   }
   D(("sftp_symlink %s %s", targetpath, linkpath));
-  if(symlink(targetpath, linkpath) < 0) return HANDLER_ERRNO;
-  else return SSH_FX_OK;
+  if(symlink(targetpath, linkpath) < 0)
+    return HANDLER_ERRNO;
+  else
+    return SSH_FX_OK;
 }
 
 uint32_t sftp_readlink(struct sftpjob *job) {
@@ -326,7 +344,8 @@ uint32_t sftp_opendir(struct sftpjob *job) {
 
   pcheck(parse_path(job, &path));
   D(("sftp_opendir %s", path));
-  if(!(dp = opendir(path))) return HANDLER_ERRNO;
+  if(!(dp = opendir(path)))
+    return HANDLER_ERRNO;
   handle_new_dir(&id, dp, path);
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
   send_begin(job->worker);
@@ -370,7 +389,8 @@ uint32_t sftp_readdir(struct sftpjob *job) {
     strcpy(fullpath, path);
     strcat(fullpath, "/");
     strcat(fullpath, childpath);
-    if(lstat(fullpath, &sb)) return HANDLER_ERRNO;
+    if(lstat(fullpath, &sb))
+      return HANDLER_ERRNO;
     stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF, childpath);
     d[n].name = childpath;
     ++n;
@@ -378,7 +398,8 @@ uint32_t sftp_readdir(struct sftpjob *job) {
                                          * e.g. getpwuid() failure */
   }
   
-  if(errno) return HANDLER_ERRNO;
+  if(errno)
+    return HANDLER_ERRNO;
   if(n) {
     send_begin(job->worker);
     send_uint8(job->worker, SSH_FXP_NAME);
@@ -474,7 +495,8 @@ uint32_t sftp_setstat(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
@@ -490,7 +512,8 @@ uint32_t sftp_fsetstat(struct sftpjob *job) {
   int fd;
   uint32_t rc;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_handle(job, &id));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
@@ -506,7 +529,8 @@ uint32_t sftp_mkdir(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_mkdir %s", path));
@@ -595,7 +619,8 @@ uint32_t sftp_read(struct sftpjob *job) {
   pcheck(parse_uint32(job, &len));
   D(("sftp_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
-  if(len > MAXREAD) len = MAXREAD;
+  if(len > MAXREAD)
+    len = MAXREAD;
   if((rc = handle_get_fd(&id, &fd, 0, &flags)))
     return rc;
   /* We read straight into our own output buffer to save a copy. */
@@ -631,7 +656,8 @@ uint32_t sftp_write(struct sftpjob *job) {
   int fd;
   unsigned flags;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &offset));
   pcheck(parse_uint32(job, &len));
@@ -660,7 +686,8 @@ uint32_t sftp_write(struct sftpjob *job) {
 uint32_t sftp_posix_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   D(("sftp_posix_rename %s %s", oldpath, newpath));

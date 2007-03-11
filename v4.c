@@ -105,64 +105,88 @@ int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n;
 
   memset(attrs, 0, sizeof *attrs);
-  if(parse_uint32(job, &attrs->valid)) return -1;
-  if(parse_uint8(job, &attrs->type)) return -1;
+  if(parse_uint32(job, &attrs->valid))
+    return -1;
+  if(parse_uint8(job, &attrs->type))
+    return -1;
   if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
-    if(parse_uint64(job, &attrs->size)) return -1;
+    if(parse_uint64(job, &attrs->size))
+      return -1;
   if(attrs->valid & SSH_FILEXFER_ATTR_OWNERGROUP) {
-    if(parse_path(job, &attrs->owner)) return -1;
-    if(parse_path(job, &attrs->group)) return -1;
+    if(parse_path(job, &attrs->owner))
+      return -1;
+    if(parse_path(job, &attrs->group))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    if(parse_uint32(job, &attrs->permissions)) return -1;
+    if(parse_uint32(job, &attrs->permissions))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    if(parse_uint64(job, (uint64_t *)&attrs->atime.seconds)) return -1;
+    if(parse_uint64(job, (uint64_t *)&attrs->atime.seconds))
+      return -1;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if(parse_uint32(job, &attrs->atime.nanoseconds)) return -1;
+      if(parse_uint32(job, &attrs->atime.nanoseconds))
+        return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_CREATETIME) {
-    if(parse_uint64(job, (uint64_t *)&attrs->createtime.seconds)) return -1;
+    if(parse_uint64(job, (uint64_t *)&attrs->createtime.seconds))
+      return -1;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if(parse_uint32(job, &attrs->createtime.nanoseconds)) return -1;
+      if(parse_uint32(job, &attrs->createtime.nanoseconds))
+        return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if(parse_uint64(job, (uint64_t *)&attrs->mtime.seconds)) return -1;
+    if(parse_uint64(job, (uint64_t *)&attrs->mtime.seconds))
+      return -1;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if(parse_uint32(job, &attrs->mtime.nanoseconds)) return -1;
+      if(parse_uint32(job, &attrs->mtime.nanoseconds))
+        return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_CTIME) {
-    if(parse_uint64(job, (uint64_t *)&attrs->ctime.seconds)) return -1;
+    if(parse_uint64(job, (uint64_t *)&attrs->ctime.seconds))
+      return -1;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if(parse_uint32(job, &attrs->ctime.nanoseconds)) return -1;
+      if(parse_uint32(job, &attrs->ctime.nanoseconds))
+        return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_ACL) {
-    if(parse_string(job, &attrs->acl, 0)) return -1;
+    if(parse_string(job, &attrs->acl, 0))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_BITS) {
-    if(parse_uint32(job, &attrs->attrib_bits)) return -1;
+    if(parse_uint32(job, &attrs->attrib_bits))
+      return -1;
     if(protocol->version >= 6) {
-      if(parse_uint32(job, &attrs->attrib_bits_valid)) return -1;
+      if(parse_uint32(job, &attrs->attrib_bits_valid))
+        return -1;
     } else
       attrs->attrib_bits_valid = 0x7ff; /* -05 s5.8 */
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_TEXT_HINT) {
-    if(parse_uint8(job, &attrs->text_hint)) return -1;
+    if(parse_uint8(job, &attrs->text_hint))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MIME_TYPE) {
-    if(parse_string(job, &attrs->mime_type, 0)) return -1;
+    if(parse_string(job, &attrs->mime_type, 0))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_LINK_COUNT) {
-    if(parse_uint32(job, &attrs->link_count)) return -1;
+    if(parse_uint32(job, &attrs->link_count))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_UNTRANSLATED_NAME) {
-    if(parse_string(job, &attrs->mime_type, 0)) return -1;
+    if(parse_string(job, &attrs->mime_type, 0))
+      return -1;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
-    if(parse_uint32(job, &n)) return -1;
+    if(parse_uint32(job, &n))
+      return -1;
     while(n-- > 0) {
-      if(parse_string(job, 0, 0)) return -1;
-      if(parse_string(job, 0, 0)) return -1;
+      if(parse_string(job, 0, 0))
+        return -1;
+      if(parse_string(job, 0, 0))
+        return -1;
     }
   }
   return 0;

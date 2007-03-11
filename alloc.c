@@ -62,7 +62,8 @@ void *alloc(struct allocator *a, size_t n) {
   const size_t m = blocks(n);
   struct chunk *c;
 
-  if(!m) return 0;
+  if(!m)
+    return 0;
   assert(a != 0);
   /* See if there's enough room */
   if(!(c = a->chunks) || c->left < m) {
@@ -71,7 +72,8 @@ void *alloc(struct allocator *a, size_t n) {
     /* xcalloc -> calloc which 0-fills */
     union block *nb;
 
-    if(!cs) fatal("out of memory");
+    if(!cs)
+      fatal("out of memory");
     nb = xcalloc(cs, sizeof (union block));
     c = &nb->c;
     c->next = a->chunks;

@@ -108,7 +108,8 @@ uint32_t sftp_link(struct sftpjob *job) {
   uint8_t symbolic;
 
   /* See also comment in v3.c for SSH_FXP_SYMLINK */
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &newlinkpath));
   pcheck(parse_path(job, &oldpath));    /* aka existing-path/target-paths */
   pcheck(parse_uint8(job, &symbolic));

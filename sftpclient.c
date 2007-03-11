@@ -276,7 +276,8 @@ static uint32_t newid(void) {
 static const char *resolvepath(const char *name) {
   char *resolved;
 
-  if(name[0] == '/') return name;
+  if(name[0] == '/')
+    return name;
   resolved = alloc(fakejob.a, strlen(cwd) + strlen(name) + 2);
   sprintf(resolved, "%s/%s", cwd, name);
   return resolved;
@@ -298,6 +299,81 @@ static void progress(const char *path, uint64_t sofar, uint64_t total) {
 
 /* SFTP operation stubs */
 
+static int sftp_init(void) {
+  uint32_t version;
+  
+  /* Send SSH_FXP_INIT */
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_INIT);
+  send_uint32(&fakeworker, sftpversion);
+  send_end(&fakeworker);
+  
+  /* Parse the version reponse */
+  if(getresponse(SSH_FXP_VERSION, 0) != SSH_FXP_VERSION)
+    return -1;
+  cpcheck(parse_uint32(&fakejob, &version));
+  switch(version) {
+  case 3:
+    protocol = &sftpv3;
+    break;
+  case 4:
+    protocol = &sftpv4;
+    break;
+  case 5:
+    protocol = &sftpv5;
+    break;
+  case 6:
+    protocol = &sftpv6;
+    break;
+  default:
+    return error("server wanted protocol version %"PRIu32, version);
+  }
+  /* Extension data */
+  while(fakejob.left) {
+    char *xname, *xdata;
+    size_t xdatalen;
+
+    cpcheck(parse_string(&fakejob, &xname, 0));
+    cpcheck(parse_string(&fakejob, &xdata, &xdatalen));
+    D(("server sent extension '%s'", xname));
+    /* TODO table-driven extension parsing */
+    if(!strcmp(xname, "newline")) {
+      newline = xstrdup(xdata);
+      if(!*newline)
+        return error("cannot cope with empty newline sequence");
+      /* TODO check newline sequence doesn't contain repeats */
+    } else if(!strcmp(xname, "vendor-id")) {
+      struct sftpjob xjob;
+      
+      xjob.a = &allocator;
+      xjob.ptr = (void *)xdata;
+      xjob.left = xdatalen;
+      cpcheck(parse_string(&xjob, (char **)&vendorname, 0));
+      cpcheck(parse_string(&xjob, (char **)&servername, 0));
+      cpcheck(parse_string(&xjob, (char **)&serverversion, 0));
+      cpcheck(parse_uint64(&xjob, &serverbuild));
+      vendorname = xstrdup(vendorname);
+      servername = xstrdup(servername);
+      serverversion = xstrdup(serverversion);
+    } else if(!strcmp(xname, "versions"))
+      serverversions = xstrdup(xdata);
+    else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
+      /* See commentary in v3.c */
+      if(!strcmp(xdata,  "targetpath-linkpath"))
+        quirk_reverse_symlink = 1;
+      else if(!strcmp(xdata, "linkpath-targetpath"))
+        quirk_reverse_symlink = 0;
+      else
+        error("unknown %s value '%s'", xname, xdata);
+    }
+    /* TODO supported and supported2 */
+  }
+  /* Make sure outbound translation will actually work */
+  if(buffersize < strlen(newline))
+    buffersize = strlen(newline);
+  return 0;
+}
+
 static char *sftp_realpath(const char *path) {
   char *resolved;
   uint32_t u32, id;
@@ -310,7 +386,8 @@ static char *sftp_realpath(const char *path) {
   if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
     return 0;
   cpcheck(parse_uint32(&fakejob, &u32));
-  if(u32 != 1) fatal("wrong count in SSH_FXP_REALPATH reply");
+  if(u32 != 1)
+    fatal("wrong count in SSH_FXP_REALPATH reply");
   cpcheck(parse_path(&fakejob, &resolved));
   return resolved;
 }
@@ -544,8 +621,10 @@ static int sftp_open(const char *path,
 
   if(protocol->version <= 4) {
     /* We must translate the v5/6 style parameters back down to v3/4 */
-    if(desired_access & ACE4_READ_DATA) pflags |= SSH_FXF_READ;
-    if(desired_access & ACE4_WRITE_DATA) pflags |= SSH_FXF_WRITE;
+    if(desired_access & ACE4_READ_DATA)
+      pflags |= SSH_FXF_READ;
+    if(desired_access & ACE4_WRITE_DATA)
+      pflags |= SSH_FXF_WRITE;
     switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
     case SSH_FXF_CREATE_NEW:
       pflags |= SSH_FXF_CREAT|SSH_FXF_EXCL;
@@ -662,7 +741,8 @@ static char *sftp_readlink(const char *path) {
   if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
     return 0;
   cpcheck(parse_uint32(&fakejob, &u32));
-  if(u32 != 1) fatal("wrong count in SSH_FXP_READLINK reply");
+  if(u32 != 1)
+    fatal("wrong count in SSH_FXP_READLINK reply");
   cpcheck(parse_path(&fakejob, &resolved));
   return resolved;
 }
@@ -681,9 +761,11 @@ static int cmd_cd(int attribute((unused)) ac,
   struct sftpattr attrs;
 
   newcwd = sftp_realpath(resolvepath(av[0]));
-  if(!newcwd) return -1;
+  if(!newcwd)
+    return -1;
   /* Check it's really a directory */
-  if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT)) return -1;
+  if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT))
+    return -1;
   if(attrs.type != SSH_FILEXFER_TYPE_DIRECTORY) {
     error("%s is not a directory", av[0]);
     return -1;
@@ -731,8 +813,10 @@ static int sort_by_size(const void *av, const void *bv) {
   const struct sftpattr *const a = av, *const b = bv;
 
   if(a->valid & b->valid & SSH_FILEXFER_ATTR_SIZE) {
-    if(a->size < b->size) return -1;
-    else if(a->size > b->size) return 1;
+    if(a->size < b->size)
+      return -1;
+    else if(a->size > b->size)
+      return 1;
   }
   return sort_by_name(av, bv);
 }
@@ -741,11 +825,15 @@ static int sort_by_mtime(const void *av, const void *bv) {
   const struct sftpattr *const a = av, *const b = bv;
 
   if(a->valid & b->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if(a->mtime.seconds < b->mtime.seconds) return -1;
-    else if(a->mtime.seconds > b->mtime.seconds) return 1;
+    if(a->mtime.seconds < b->mtime.seconds)
+      return -1;
+    else if(a->mtime.seconds > b->mtime.seconds)
+      return 1;
     if(a->valid & b->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
-      if(a->mtime.nanoseconds < b->mtime.nanoseconds) return -1;
-      else if(a->mtime.nanoseconds > b->mtime.nanoseconds) return 1;
+      if(a->mtime.nanoseconds < b->mtime.nanoseconds)
+        return -1;
+      else if(a->mtime.nanoseconds > b->mtime.nanoseconds)
+        return 1;
     }
   }
   return sort_by_name(av, bv);
@@ -784,7 +872,8 @@ static int cmd_ls(int ac,
     options = "";
   path = ac > 0 ? av[0] : cwd;
   /* See what type the file is */
-  if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT)) return -1;
+  if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT))
+    return -1;
   if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY
      || strchr(options, 'd')) {
     /* The file is not a directory, or we used -d */
@@ -796,14 +885,16 @@ static int cmd_ls(int ac,
 
     /* The file is a directory and we did not use -d */
     singlefile = 0;
-    if(sftp_opendir(path, &h)) return -1;
+    if(sftp_opendir(path, &h))
+      return -1;
     for(;;) {
       if(sftp_readdir(&h, &attrs, &nattrs)) {
         sftp_close(&h);
         free(allattrs);
         return -1;
       }
-      if(!nattrs) break;                  /* eof */
+      if(!nattrs)
+        break;                          /* eof */
       allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
       for(n = 0; n < nattrs; ++n) {
         const size_t w = wcswidth(attrs[n].wname, SIZE_MAX);
@@ -885,7 +976,8 @@ static int cmd_ls(int ac,
      * overflow.
      */
     cols = (terminal_width + 1) / (maxnamewidth + 1);
-    if(!cols) cols = 1;
+    if(!cols)
+      cols = 1;
     /* Now we have the number of columns.  The N files are conventionally
      * listed down the columns, in this sort of order:
      *
@@ -976,7 +1068,8 @@ static int cmd_chown(int attribute((unused)) ac,
                      char **av) {
   struct sftpattr attrs;
   
-  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
+  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
+    return -1;
   if(protocol->version >= 4) {
     if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
       return error("cannot determine former owner/group");
@@ -993,7 +1086,8 @@ static int cmd_chgrp(int attribute((unused)) ac,
                      char **av) {
   struct sftpattr attrs;
   
-  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT)) return -1;
+  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
+    return -1;
   if(protocol->version >= 4) {
     if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
       return error("cannot determine former owner/group");
@@ -1148,7 +1242,8 @@ static int write_translated(const void *vptr, size_t bytes) {
       ++translated_state;
       if(!newline[translated_state]) {
         /* We must have seen a whole newline */
-        if(putc('\n', translated_fp) < 0) return -1;
+        if(putc('\n', translated_fp) < 0)
+          return -1;
         translated_state = 0;
       } else {
         /* We're part way thru something that might be a newline.  Keep
@@ -1168,7 +1263,8 @@ static int write_translated(const void *vptr, size_t bytes) {
          * machine here. */
         continue;
       } else {
-        if(putc(c, translated_fp) < 0) return -1;
+        if(putc(c, translated_fp) < 0)
+          return -1;
       }
     }
   }
@@ -1389,9 +1485,12 @@ static int cmd_get(int ac,
   return 0;
 error:
   write_translated_done();              /* ok to call if not initialized */
-  if(fd >= 0) close(fd);
-  if(tmp) unlink(tmp);
-  if(r.h.len) sftp_close(&r.h);
+  if(fd >= 0)
+    close(fd);
+  if(tmp)
+    unlink(tmp);
+  if(r.h.len)
+    sftp_close(&r.h);
   return -1;
 }
 
@@ -1598,7 +1697,8 @@ static int cmd_put(int ac,
             left -= newline_len;
           } else {
             /* Whoops, we cannot fit a translated newline in. */
-            if(ungetc(c, fp) < 0) fatal("ungetc: %s", strerror(errno));
+            if(ungetc(c, fp) < 0)
+              fatal("ungetc: %s", strerror(errno));
           }
         } else {
           /* This character is not a newline. */
@@ -1652,7 +1752,8 @@ static int cmd_put(int ac,
   ferrcheck(pthread_mutex_destroy(&w.m));
   ferrcheck(pthread_cond_destroy(&w.c1));
   ferrcheck(pthread_cond_destroy(&w.c2));
-  if(failed || w.failed) goto error;
+  if(failed || w.failed)
+    goto error;
   gettimeofday(&finished, 0);
   if(progress_indicators) {
     elapsed = ((finished.tv_sec - started.tv_sec)
@@ -1672,13 +1773,16 @@ static int cmd_put(int ac,
   }
   if(preserve) {
     /* mtime at least will be nadgered */
-    if(sftp_fsetstat(&h, &attrs)) goto error;
+    if(sftp_fsetstat(&h, &attrs))
+      goto error;
   }
   sftp_close(&h);
   return 0;
 error:
-  if(fp) fclose(fp);
-  if(fd >= 0) close(fd);
+  if(fp)
+    fclose(fp);
+  if(fd >= 0)
+    close(fd);
   if(h.len) {
     sftp_close(&h);
     sftp_remove(remote);                /* tidy up our mess */
@@ -1783,8 +1887,18 @@ static int cmd_mkdir(int ac,
   return sftp_mkdir(path, mode);
 }
 
+static int cmd_init(int attribute((unused)) ac,
+                    char attribute((unused)) **av) {
+  return sftp_init();
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
+  {
+    "_init", 0, 0, cmd_init,
+    0,
+    "resend SSH_FXP_INIT"
+  },
   {
     "binary", 0, 0, cmd_binary,
     0,
@@ -1943,6 +2057,8 @@ static int cmd_help(int attribute((unused)) ac,
   size_t max = 0, len = 0;
 
   for(n = 0; commands[n].name; ++n) {
+    if(commands[n].name[0] == '_')
+      continue;
     len = strlen(commands[n].name);
     if(commands[n].args)
       len += strlen(commands[n].args) + 1;
@@ -1950,6 +2066,8 @@ static int cmd_help(int attribute((unused)) ac,
       max = len;
   }
   for(n = 0; commands[n].name; ++n) {
+    if(commands[n].name[0] == '_')
+      continue;
     len = strlen(commands[n].name);
     xprintf("%s", commands[n].name);
     if(commands[n].args) {
@@ -1991,10 +2109,12 @@ static void process(const char *prompt, FILE *fp) {
  
   while((line = input(prompt, fp))) {
     ++inputline;
-    if(line[0] == '#') goto next;
+    if(line[0] == '#')
+      goto next;
     if(echo) {
       xprintf("%s", line);
-      if(fflush(stdout) < 0) fatal("error calling fflush: %s", strerror(errno));
+      if(fflush(stdout) < 0)
+        fatal("error calling fflush: %s", strerror(errno));
     }
     if(line[0] == '!') {
       if(line[1] != '\n')
@@ -2005,19 +2125,22 @@ static void process(const char *prompt, FILE *fp) {
     }
     if((ac = split(line, av = avbuf)) < 0 && stoponerror)
       fatal("stopping on error");
-    if(!ac) goto next;
+    if(!ac)
+      goto next;
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
       ;
     if(!commands[n].name) {
       error("unknown command: '%s'", av[0]);
-      if(stoponerror) fatal("stopping on error");
+      if(stoponerror)
+        fatal("stopping on error");
       goto next;
     }
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
       error("wrong number of arguments");
-      if(stoponerror) fatal("stopping on error");
+      if(stoponerror)
+        fatal("stopping on error");
       goto next;
     }
     if(commands[n].handler(ac, av) && stoponerror)
@@ -2036,7 +2159,6 @@ next:
 
 int main(int argc, char **argv) {
   int n;
-  uint32_t u32;
   struct addrinfo hints;
   const char *host = 0, *port = 0;
 
@@ -2095,10 +2217,14 @@ int main(int argc, char **argv) {
   }
 
   /* sanity checking */
-  if(nrequests <= 0) nrequests = 1;
-  if(nrequests > 128) nrequests = 128;
-  if(buffersize < 64) buffersize = 64;
-  if(buffersize > 1048576) buffersize = 1048576;
+  if(nrequests <= 0)
+    nrequests = 1;
+  if(nrequests > 128)
+    nrequests = 128;
+  if(buffersize < 64)
+    buffersize = 64;
+  if(buffersize > 1048576)
+    buffersize = 1048576;
 
   if(sftpversion < 3 || sftpversion > 6)
     fatal("unknown SFTP version %d", sftpversion);
@@ -2131,9 +2257,12 @@ int main(int argc, char **argv) {
       cmdline[ncmdline++] = "ssh";
       if(optind >= argc)
         fatal("missing USER@HOST argument");
-      if(sshversion == 1) cmdline[ncmdline++] = "-1";
-      if(sshversion == 2) cmdline[ncmdline++] = "-2";
-      if(compress) cmdline[ncmdline++] = "-C";
+      if(sshversion == 1)
+        cmdline[ncmdline++] = "-1";
+      if(sshversion == 2)
+        cmdline[ncmdline++] = "-2";
+      if(compress)
+        cmdline[ncmdline++] = "-C";
       if(sshconf) {
         cmdline[ncmdline++] = "-F";
         cmdline[ncmdline++] = sshconf;
@@ -2173,77 +2302,12 @@ int main(int argc, char **argv) {
      == (iconv_t)-1)
     fatal("error calling iconv_open: %s", strerror(errno));
 
-  /* Send SSH_FXP_INIT */
-  send_begin(&fakeworker);
-  send_uint8(&fakeworker, SSH_FXP_INIT);
-  send_uint32(&fakeworker, sftpversion);
-  send_end(&fakeworker);
+  if(sftp_init())
+    return 1;
   
-  /* Parse the version reponse */
-  getresponse(SSH_FXP_VERSION, 0);
-  cpcheck(parse_uint32(&fakejob, &u32));
-  switch(u32) {
-  case 3:
-    protocol = &sftpv3;
-    break;
-  case 4:
-    protocol = &sftpv4;
-    break;
-  case 5:
-    protocol = &sftpv5;
-    break;
-  case 6:
-    protocol = &sftpv6;
-    break;
-  default:
-    fatal("server wanted protocol version %"PRIu32, u32);
-  }
-  /* Extension data */
-  while(fakejob.left) {
-    char *xname, *xdata;
-    size_t xdatalen;
-
-    cpcheck(parse_string(&fakejob, &xname, 0));
-    cpcheck(parse_string(&fakejob, &xdata, &xdatalen));
-    D(("server sent extension '%s'", xname));
-    /* TODO table-driven extension parsing */
-    if(!strcmp(xname, "newline")) {
-      newline = xstrdup(xdata);
-      if(!*newline)
-        fatal("cannot cope with empty newline sequence");
-      /* TODO check newline sequence doesn't contain repeats */
-    } else if(!strcmp(xname, "vendor-id")) {
-      struct sftpjob xjob;
-      
-      xjob.a = &allocator;
-      xjob.ptr = (void *)xdata;
-      xjob.left = xdatalen;
-      cpcheck(parse_string(&xjob, (char **)&vendorname, 0));
-      cpcheck(parse_string(&xjob, (char **)&servername, 0));
-      cpcheck(parse_string(&xjob, (char **)&serverversion, 0));
-      cpcheck(parse_uint64(&xjob, &serverbuild));
-      vendorname = xstrdup(vendorname);
-      servername = xstrdup(servername);
-      serverversion = xstrdup(serverversion);
-    } else if(!strcmp(xname, "versions"))
-      serverversions = xstrdup(xdata);
-    else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
-      /* See commentary in v3.c */
-      if(!strcmp(xdata,  "targetpath-linkpath"))
-        quirk_reverse_symlink = 1;
-      else if(!strcmp(xdata, "linkpath-targetpath"))
-        quirk_reverse_symlink = 0;
-      else
-        error("unknown %s value '%s'", xname, xdata);
-    }
-    /* TODO supported and supported2 */
-  }
-  /* Make sure outbound translation will actually work */
-  if(buffersize < strlen(newline))
-    buffersize = strlen(newline);
-
   /* Find path to current directory */
-  if(!(cwd = sftp_realpath("."))) exit(1);
+  if(!(cwd = sftp_realpath(".")))
+    exit(1);
   cwd = xstrdup(cwd);
 
   if(batchfile) {

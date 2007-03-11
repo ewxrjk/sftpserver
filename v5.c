@@ -72,12 +72,14 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     open_flags |= O_RDONLY;
     break;
   case ACE4_WRITE_DATA:
-    if(readonly) return SSH_FX_PERMISSION_DENIED;
+    if(readonly)
+      return SSH_FX_PERMISSION_DENIED;
     D(("O_WRONLY"));
     open_flags |= O_WRONLY;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
-    if(readonly) return SSH_FX_PERMISSION_DENIED;
+    if(readonly)
+      return SSH_FX_PERMISSION_DENIED;
     D(("O_RDWR"));
     open_flags |= O_RDWR;
     break;
@@ -260,7 +262,8 @@ uint32_t sftp_v56_rename(struct sftpjob *job) {
   char *oldpath, *newpath;
   uint32_t flags;
 
-  if(readonly) return SSH_FX_PERMISSION_DENIED;
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &oldpath));
   pcheck(parse_path(job, &newpath));
   pcheck(parse_uint32(job, &flags));

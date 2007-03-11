@@ -29,14 +29,16 @@
 #include <arpa/inet.h>
 
 int parse_uint8(struct sftpjob *job, uint8_t *ur) {
-  if(job->left < 1) return -1;
+  if(job->left < 1)
+    return -1;
   *ur = *job->ptr++;
   --job->left;
   return 0;
 }
 
 int parse_uint32(struct sftpjob *job, uint32_t *ur) {
-  if(job->left < 4) return -1;
+  if(job->left < 4)
+    return -1;
 #if UNALIGNED_WRITES
   *ur = ntohl(*(uint32_t *)job->ptr);
   job->ptr += 4;
@@ -56,7 +58,8 @@ int parse_uint32(struct sftpjob *job, uint32_t *ur) {
 int parse_uint64(struct sftpjob *job, uint64_t *ur) {
   uint64_t u;
 
-  if(job->left < 8) return -1;
+  if(job->left < 8)
+    return -1;
   u = *job->ptr++;
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
@@ -74,11 +77,14 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
   uint32_t len;
   char *str;
 
-  if(parse_uint32(job, &len)) return -1;
-  if(!(len + 1)) return -1;             /* overflow */
-  if(lenp) *lenp = len;
+  if(parse_uint32(job, &len))
+    return -1;
+  if(!(len + 1))
+    return -1;                          /* overflow */
+  if(lenp)
+    *lenp = len;
   if(strp) {
-    str = alloc(job->a, len + 1);         /* 0-fills */
+    str = alloc(job->a, len + 1);       /* 0-fills */
     memcpy(str, job->ptr, len);
     *strp = str;
   }
@@ -88,7 +94,8 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
 }
 
 int parse_path(struct sftpjob *job, char **strp) {
-  if(parse_string(job, strp, 0)) return -1;
+  if(parse_string(job, strp, 0))
+    return -1;
   return protocol->decode(job, strp);
 }
 

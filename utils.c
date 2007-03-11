@@ -140,7 +140,8 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
 
     while(need > newsize && newsize)
       newsize *= 2;
-    if(!newsize) fatal("out of memory");
+    if(!newsize)
+      fatal("out of memory");
     s = allocmore(a, s, *ns, newsize);
     *ns = newsize;
   }

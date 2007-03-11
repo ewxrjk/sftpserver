@@ -86,7 +86,8 @@ void send_need(struct worker *w, size_t n) {
     size_t newsize = w->bufsize ? w->bufsize : 64;
     while(newsize && newsize < w->bufsize + n)
       newsize <<= 1;
-    if(!newsize) fatal("out of memory");
+    if(!newsize)
+      fatal("out of memory");
     w->buffer = xrealloc(w->buffer, w->bufsize = newsize);
   }
 }

@@ -41,7 +41,8 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
 
   /* Convert relative paths to absolute paths */
   if(path[0] != '/') {
-    if(!(cwd = getcwd(0, 0))) return 0;
+    if(!(cwd = getcwd(0, 0)))
+      return 0;
     assert(cwd[0] == '/');
     abspath = alloc(a, strlen(cwd) + strlen(path) + 2);
     strcpy(abspath, cwd);

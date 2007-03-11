@@ -39,7 +39,6 @@ SEDINPUTS=gesftpserver.8.in
 SEDOUTPUTS=$(SEDINPUTS:.in=)
 
 man_MANS=${SEDOUTPUTS}
-DISTCLEANFILES=${SEDOIUTPUTS}
 
 ${SEDOUTPUTS}: %: %.in config.status
 	sed < $< > $@.new \
@@ -50,7 +49,12 @@ ${SEDOUTPUTS}: %: %.in config.status
 all: ${SEDOUTPUTS}
 
 check: all
+	rm -f *.gcda *.gcov
 	srcdir=${srcdir} ${srcdir}/run-tests
+
+# Cleaning
+DISTCLEANFILES=${SEDOUTPUTS}
+CLEANFILES=*.gcno *.gcda *.gcov
 
 # Distribution
 EXTRA_DIST=${SEDINPUTS} testing.txt tests/*[^~] README

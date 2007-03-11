@@ -323,8 +323,10 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
     const int m = (l + r) / 2;
     const int mtype = protocol->commands[m].type;
     
-    if(type < mtype) r = m - 1;
-    else if(type > mtype) l = m + 1;
+    if(type < mtype)
+      r = m - 1;
+    else if(type > mtype)
+      l = m + 1;
     else {
       /* Serialize */
       serialize(job);
