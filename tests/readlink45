@@ -1,3 +1,10 @@
 !ln -s a b
 ls -l b
 #lrwxr.xr.x +\? +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d\d b -> a
+readlink b
+#a
+!mkdir noreadperm
+!ln -s ../a noreadperm/b
+!chmod 000 noreadperm
+readlink noreadperm/b
+#.*permission denied.*

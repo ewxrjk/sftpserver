@@ -1903,6 +1903,17 @@ static int cmd_unsupported(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_readlink(int attribute((unused)) ac,
+                        char **av) {
+  char *r = sftp_readlink(av[0]);
+
+  if(r) {
+    xprintf("%s\n", r);
+    return 0;
+  } else
+    return -1;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -2033,6 +2044,11 @@ static const struct command commands[] = {
     "quit", 0, 0, cmd_quit,
     0,
     "quit"
+  },
+  {
+    "readlink", 1, 1, cmd_readlink,
+    "PATH",
+    "inspect a symlink"
   },
   {
     "rename", 2, 2, cmd_mv,

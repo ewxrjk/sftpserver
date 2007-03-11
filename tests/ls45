@@ -11,3 +11,7 @@ ls -la
 #-rw-r--r-- +\? +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
 #-rw-r--r-- +\? +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ small
 #-rw-r--r-- +\? +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ wibble
+!mkdir noreadperm
+!chmod 000 noreadperm
+ls noreadperm
+#.*permission denied.*
