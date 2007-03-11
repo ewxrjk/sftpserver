@@ -1461,11 +1461,26 @@ static int cmd_put(int ac,
     ++s;
     while(*s) {
       switch(*s++) {
-      case 'P': preserve = 1; break;
-      case 'a': flags |= SSH_FXF_APPEND_DATA; break;
-      case 'f': flags |= SSH_FXF_NOFOLLOW; break;
-      case 't': disp = SSH_FXF_CREATE_NEW; break;
-      case 'e': disp = SSH_FXF_TRUNCATE_EXISTING; break;
+      case 'P':
+        preserve = 1;
+        break;
+      case 'a': 
+        disp = SSH_FXF_OPEN_OR_CREATE;
+        flags |= SSH_FXF_APPEND_DATA; 
+        break;
+      case 'A': 
+        disp = SSH_FXF_OPEN_EXISTING;
+        flags |= SSH_FXF_APPEND_DATA; 
+        break;
+      case 'f':
+        flags |= SSH_FXF_NOFOLLOW; 
+        break;
+      case 't':
+        disp = SSH_FXF_CREATE_NEW;
+        break;
+      case 'e':
+        disp = SSH_FXF_TRUNCATE_EXISTING;
+        break;
       default:
         return error("unknown put option -%c'", s[-1]);
       }
