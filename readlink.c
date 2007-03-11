@@ -26,7 +26,7 @@
 #include <errno.h>
 
 char *my_readlink(struct allocator *a, const char *path) {
-  size_t nresult = 256, oldnresult = 0;
+  size_t nresult = 32, oldnresult = 0;
   char *result = 0;
   int n;
 
@@ -40,6 +40,7 @@ char *my_readlink(struct allocator *a, const char *path) {
       result[n] = 0;
       return result;
     }
+    oldnresult = nresult;
     nresult *= 2;
   }
   /* We should have wasted at most about 128Kbyte if we get here,

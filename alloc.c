@@ -95,6 +95,9 @@ void *allocmore(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
   void *newptr;
 
   if(ptr) {
+    assert(a->chunks != 0);
+    D(("ptr=%p oldm=%zu a->chunks->ptr=%p blocksize=%zu",
+       ptr, oldm, a->chunks->ptr, sizeof(union block)));
     if((union block *)ptr + oldm == a->chunks->ptr) {
       /* ptr is the most recently allocated block.  We could do better and
        * search all the chunks for it. */
@@ -123,7 +126,7 @@ void *allocmore(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
     /* We have no choice but to allocate new space */
     newptr = alloc(a, newn);
     memcpy(newptr, ptr, oldn);
-    return ptr;
+    return newptr;
   } else
     /* There was no old allocation, just create a new one the easy way */
     return alloc(a, newn);

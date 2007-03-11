@@ -8,3 +8,6 @@ readlink b
 !chmod 000 noreadperm
 readlink noreadperm/b
 #.*permission denied.*
+!ln -s afairlylonglinkbutwerestillgoingtohavetomakethebufferartificiallysmall t
+readlink t
+#afairlylonglinkbutwerestillgoingtohavetomakethebufferartificiallysmall
