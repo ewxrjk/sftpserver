@@ -124,6 +124,23 @@ uint32_t sftp_link(struct sftpjob *job) {
     return SSH_FX_OK;
 }
 
+uint32_t sftp_version_select(struct sftpjob *job) {
+  char *newversion;
+
+  pcheck(parse_path(job, &newversion));
+  if(newversion[0] && !newversion[1]) {
+    switch(newversion[0]) {
+    case 3: protocol = &sftpv3; break;
+    case 4: protocol = &sftpv4; break;
+    case 5: protocol = &sftpv5; break;
+    case 6: protocol = &sftpv6; break;
+    }
+  }
+  /* We're allowed to not send a response and we MUST close the channel.  (-13,
+   * s5.5). */
+  fatal("invalid version '%s'", newversion);
+}
+
 static const struct sftpcmd sftpv6tab[] = {
   { SSH_FXP_INIT, sftp_already_init },
   { SSH_FXP_OPEN, sftp_v56_open },
@@ -151,7 +168,8 @@ static const struct sftpcmd sftpv6tab[] = {
 
 static const struct sftpextension sftp_v6_extensions[] = {
   { "text-seek", sftp_text_seek },
-  { "space-available", sftp_space_available }
+  { "space-available", sftp_space_available },
+  { "version-select", sftp_version_select },
 };
 
 const struct sftpprotocol sftpv6 = {
