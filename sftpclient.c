@@ -1,4 +1,3 @@
-
 /*
  * This file is part of the Green End SFTP Server.
  * Copyright (C) 2007 Richard Kettlewell
@@ -1196,7 +1195,7 @@ static void *reader_thread(void *arg) {
       send_uint32(&fakeworker, id);
       send_bytes(&fakeworker, r->h.data, r->h.len);
       send_uint64(&fakeworker, r->next_offset);
-      if(r->size - r->next_offset > buffersize)
+      if(r->size == (uint64_t)-1 || r->size - r->next_offset > buffersize)
         len = buffersize;
       else {
         len = (uint32_t)(r->size - r->next_offset);
@@ -1353,7 +1352,7 @@ static int cmd_get(int ac,
   /* stat the file */
   if(sftp_fstat(&r.h, &attrs))
     goto error;
-  if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {
+  if(!textmode && (attrs.valid & SSH_FILEXFER_ATTR_SIZE)) {
     /* We know how big the file is.  Check we can fit it! */
     if((uint64_t)(off_t)attrs.size != attrs.size) {
       error("remote file %s is too large (%"PRIu64" bytes)",
@@ -1363,7 +1362,8 @@ static int cmd_get(int ac,
     r.size = attrs.size;
   } else
     /* We don't know how big the file is.  We'll just keep on reading until we
-     * get an EOF. */
+     * get an EOF.  This includes text files where translation may make the
+     * size read back with fstat a lie. */
     r.size = (uint64_t)-1;
   gettimeofday(&started,  0);
   ferrcheck(pthread_mutex_init(&r.m, 0));
