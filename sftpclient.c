@@ -1183,6 +1183,9 @@ static void *reader_thread(void *arg) {
   
   ferrcheck(pthread_mutex_lock(&r->m));
   while(!r->eof && !r->failed) {
+    /* Wait for a job to be reaped */
+    while(r->outstanding == nrequests && !r->eof)
+      ferrcheck(pthread_cond_wait(&r->c1, &r->m));
     /* Send as many jobs as we can */
     while(r->outstanding < nrequests && !r->eof) {
       /* Find a spare slot */
@@ -1214,8 +1217,6 @@ static void *reader_thread(void *arg) {
       /* Notify the main threader that we set off a request */
       ferrcheck(pthread_cond_signal(&r->c2));
     }
-    /* Wait for a job to be reaped */
-    ferrcheck(pthread_cond_wait(&r->c1, &r->m));
   }
   ferrcheck(pthread_mutex_unlock(&r->m));
   return 0;
