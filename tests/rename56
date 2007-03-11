@@ -24,5 +24,7 @@ mv dir2 anotherdir
 !chmod 555 nowritedir
 mv dir2 nowritedir/spong
 #.*permission denied.*
+mv -o dir2 nowritedir/spong
+#.*permission denied.*
 mv nowritedir/file cant_rm_source
 #.*permission denied.*

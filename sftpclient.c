@@ -1598,6 +1598,9 @@ static int cmd_put(int ac,
       case 'e':
         disp = SSH_FXF_TRUNCATE_EXISTING;
         break;
+      case 'd':
+        flags |= SSH_FXF_DELETE_ON_CLOSE;
+        break;
       default:
         return error("unknown put option -%c'", s[-1]);
       }

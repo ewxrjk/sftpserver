@@ -2,6 +2,8 @@
 !echo 2 > two
 put -t one two
 #.*file already exists.*
+put -t one three
+!diff -u one three
 put -A one two
 !wc -l < two
 # *2

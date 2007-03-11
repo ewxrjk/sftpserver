@@ -28,6 +28,7 @@
 #include "handle.h"
 #include "globals.h"
 #include "stat.h"
+#include "utils.h"
 #include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -52,7 +53,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
                       uint32_t desired_access, uint32_t flags,
                       struct sftpattr *attrs) {
   mode_t initial_permissions;
-  int created, open_flags = 0, fd;
+  int created, open_flags, fd;
   struct stat sb;
   struct handleid id;
   unsigned handle_flags = 0;
@@ -61,29 +62,31 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   /* For opens, the size indicates the planned total size, and doesn't affect
    * the file creation. */
   attrs->valid &= ~(uint32_t)SSH_FILEXFER_ATTR_SIZE;
-#ifdef O_NOCTTY
-  /* We don't want to accidentally acquire a controlling terminal. */
-  open_flags |= O_NOCTTY;
-#endif
   switch(desired_access & (ACE4_READ_DATA|ACE4_WRITE_DATA)) {
   case 0:                               /* probably a broken client */
   case ACE4_READ_DATA:
     D(("O_RDONLY"));
-    open_flags |= O_RDONLY;
+    open_flags = O_RDONLY;
     break;
   case ACE4_WRITE_DATA:
     if(readonly)
       return SSH_FX_PERMISSION_DENIED;
     D(("O_WRONLY"));
-    open_flags |= O_WRONLY;
+    open_flags = O_WRONLY;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
     if(readonly)
       return SSH_FX_PERMISSION_DENIED;
     D(("O_RDWR"));
-    open_flags |= O_RDWR;
+    open_flags = O_RDWR;
     break;
+  default:
+    fatal("bitwise operators have broken");
   }
+#ifdef O_NOCTTY
+  /* We don't want to accidentally acquire a controlling terminal. */
+  open_flags |= O_NOCTTY;
+#endif
   if(flags & (SSH_FXF_APPEND_DATA|SSH_FXF_APPEND_DATA_ATOMIC)) {
     /* We always use O_APPEND for appending so we always give atomic append. */
     D(("O_APPEND"));
