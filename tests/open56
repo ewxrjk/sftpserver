@@ -1,0 +1,4 @@
+!echo 1 > one
+!echo 2 > two
+put -e one nonesuch
+#.*file does not exist.*

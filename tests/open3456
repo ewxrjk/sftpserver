@@ -1,0 +1,7 @@
+!echo 1 > one
+!echo 2 > two
+put -t one two
+#.*file already exists.*
+put -a one two
+!wc -l < two
+#2

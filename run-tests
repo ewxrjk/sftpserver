@@ -44,7 +44,7 @@ failed = 0
 protocols = ['3', '4', '5', '6']
 
 args = sys.argv[1:]
-while args[0][0] == '-':
+while len(args) > 0 and args[0][0] == '-':
     if args[0] == "--protocols":
         protocols = args[1].split(',')
         args = args[2:]
@@ -111,8 +111,8 @@ for test in tests:
         else:
             sys.stderr.write("passed\n")
 
-if errors:
-    print "%d test failed" % failed
+if failed:
+    print "%d tests failed" % failed
     sys.exit(1)
 else:
     rmrf(os.path.join(builddir, ',testroot'))

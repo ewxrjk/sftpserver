@@ -1441,7 +1441,7 @@ static int cmd_put(int ac,
   const char *remote;
   struct sftpattr attrs;
   struct stat sb;
-  int fd = -1, i, preserve = 0, failed = 0,  eof = 0;
+  int fd = -1, i, preserve = 0, failed = 0, eof = 0;
   struct handle h;
   off_t offset;
   ssize_t n;
@@ -1451,13 +1451,25 @@ static int cmd_put(int ac,
   double elapsed;
   uint32_t id;
   FILE *fp = 0;
+  uint32_t disp = SSH_FXF_CREATE_TRUNCATE, flags = 0;
 
   memset(&h, 0, sizeof h);
   memset(&attrs, 0, sizeof attrs);
   memset(&w, 0, sizeof w);
-  if(!strcmp(*av, "-P")) {
-    preserve = 1;
-    ++av;
+  if(av[0][0] == '-') {
+    const char *s = *av++;
+    ++s;
+    while(*s) {
+      switch(*s++) {
+      case 'P': preserve = 1; break;
+      case 'a': flags |= SSH_FXF_APPEND_DATA; break;
+      case 'f': flags |= SSH_FXF_NOFOLLOW; break;
+      case 't': disp = SSH_FXF_CREATE_NEW; break;
+      case 'e': disp = SSH_FXF_TRUNCATE_EXISTING; break;
+      default:
+        return error("unknown put option -%c'", s[-1]);
+      }
+    }
     --ac;
   }
   local = *av++;
@@ -1467,7 +1479,7 @@ static int cmd_put(int ac,
     --ac;
   } else
     remote = basename(local);
-  if((fd = open(local, O_RDONLY)) < 0) {
+ if((fd = open(local, O_RDONLY)) < 0) {
     error("cannot open %s: %s", local, strerror(errno));
     goto error;
   }
@@ -1497,8 +1509,10 @@ static int cmd_put(int ac,
                      |SSH_FILEXFER_ATTR_UIDGID);
     attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
   }
+  if(textmode)
+    flags |= SSH_FXF_TEXT_MODE;
   if(sftp_open(remote, ACE4_WRITE_DATA|ACE4_WRITE_ATTRIBUTES,
-               SSH_FXF_CREATE_TRUNCATE|(textmode ? SSH_FXF_TEXT_MODE : 0),
+               disp | flags,
                &attrs, &h))
     goto error;
   if(textmode) {
@@ -1846,7 +1860,7 @@ static const struct command commands[] = {
     "set or toggle progress indicators"
   },
   {
-    "put", 1, 3, cmd_put, "[-P] LOCAL-PATH [REMOTE-PATH]",
+    "put", 1, 3, cmd_put, "[-Pafte] LOCAL-PATH [REMOTE-PATH]",
     "upload a file"
   },
   {
