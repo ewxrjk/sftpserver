@@ -29,7 +29,7 @@ AC_SET_MAKE
 #AC_PROG_LIBTOOL
 #AC_LIBTOOL_DLOPEN
 #AC_DISABLE_STATIC
-RJK_BUILDSYS_FINK
+#RJK_BUILDSYS_FINK
 #RJK_GTKFLAGS
 AC_PROG_RANLIB
 
@@ -38,9 +38,7 @@ AC_CHECK_LIB([readline],[readline],
              [AC_SUBST([LIBREADLINE],[-lreadline])],
              [AC_MSG_ERROR([need a Readline library])])
 RJK_ICONV
-AC_DEFINE(_GNU_SOURCE, 1, [required for e.g. strsignal])
-AC_C_CONST
-AC_TYPE_SIZE_T
+AC_DEFINE([_GNU_SOURCE], [1], [required for e.g. strsignal])
 AC_C_INLINE
 AC_SYS_LARGEFILE
 

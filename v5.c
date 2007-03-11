@@ -57,6 +57,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   struct handleid id;
   unsigned handle_flags = 0;
 
+  D(("generic_open %s %#"PRIx32" %#"PRIx32, path, desired_access, flags));
   /* For opens, the size indicates the planned total size, and doesn't affect
    * the file creation. */
   attrs->valid &= ~(uint32_t)SSH_FILEXFER_ATTR_SIZE;
@@ -67,19 +68,23 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   switch(desired_access & (ACE4_READ_DATA|ACE4_WRITE_DATA)) {
   case 0:                               /* probably a broken client */
   case ACE4_READ_DATA:
+    D(("O_RDONLY"));
     open_flags |= O_RDONLY;
     break;
   case ACE4_WRITE_DATA:
     if(readonly) return SSH_FX_PERMISSION_DENIED;
+    D(("O_WRONLY"));
     open_flags |= O_WRONLY;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
     if(readonly) return SSH_FX_PERMISSION_DENIED;
+    D(("O_RDWR"));
     open_flags |= O_RDWR;
     break;
   }
   if(flags & (SSH_FXF_APPEND_DATA|SSH_FXF_APPEND_DATA_ATOMIC)) {
     /* We always use O_APPEND for appending so we always give atomic append. */
+    D(("O_APPEND"));
     open_flags |= O_APPEND;
     handle_flags |= HANDLE_APPEND;
   }
@@ -91,11 +96,12 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
 #ifdef O_NOFOLLOW
     /* We have a built-in way of avoiding following links */
     open_flags |= O_NOFOLLOW;
+    D(("O_NOFOLLOW"));
 #else
     /* We avoid following links in a racy steam-driven way */
+    D(("emulating O_NOFOLLOW"));
     if(lstat(path, &sb) == 0 && S_ISLNK(sb.st_mode))
       return SSH_FX_LINK_LOOP;
-    return;
 #endif
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
@@ -104,6 +110,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     /* Don't modify permissions later unless necessary */
     if(attrs->permissions == (attrs->permissions & 0777))
       attrs->valid ^= SSH_FILEXFER_ATTR_PERMISSIONS;
+    D(("using initial permission %#o", (unsigned)initial_permissions));
   } else
     /* Otherwise be conservative */
     initial_permissions = DEFAULT_PERMISSIONS & 0666;
@@ -117,13 +124,16 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     /* We create the file anew and if it exists we return an error. */
     if(flags & SSH_FXF_NOFOLLOW) {
       /* O_EXCL is just right if we don't want to follow links. */
+      D(("SSH_FXF_CREATE_NEW|SSH_FXF_NOFOLLOW -> O_CREAT|O_EXCL"));
       fd = open(path, open_flags|O_CREAT|O_EXCL, initial_permissions);
       created = 1;
     } else {
       /* O_EXCL will refuse to follow links so that's no good here.  We do a
-       * racy test and open since that's the best available. */
-      if(stat(path, &sb)) 
+       * racy test and open since that's the best available. */ 
+      D(("SSH_FXF_CREATE_NEW -> test for existence"));
+      if(stat(path, &sb) == 0) 
         return SSH_FX_FILE_ALREADY_EXISTS;
+      D(("SSH_FXF_CREATE_NEW -> O_CREAT"));
       fd = open(path, open_flags|O_CREAT, initial_permissions);
       created = 1;
     }
@@ -131,9 +141,13 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   case SSH_FXF_CREATE_TRUNCATE:
   case SSH_FXF_OPEN_OR_CREATE:
     /* These cases differ only in whether existing files are truncated. */
-    if((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_CREATE_TRUNCATE)
+    if((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_CREATE_TRUNCATE) {
+      D(("SSH_FXF_CREATE_TRUNCATE -> O_TRUNC"));
       open_flags |= O_TRUNC;
+    } else
+      D(("SSH_FXF_OPEN_OR_TRUNCATE -> O_TRUNC"));
     if(flags & SSH_FXF_NOFOLLOW) {
+      D(("SSH_FXF_*|SSH_FXF_NOFOLLOW -> O_CREAT|O_EXCL"));
       fd = open(path, open_flags|O_CREAT|O_EXCL, initial_permissions);
       if(fd >= 0)
         /* The file did not exist before */
@@ -141,6 +155,7 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
       else if(errno == EEXIST) {
         /* The file already exists.  Open and maybe truncate.  If it got
          * deleted in the meantime then you get an error. */
+        D(("SSH_FXF_*|SSH_FXF_NOFOLLOW -> EEXIST"));
         fd = open(path, open_flags, initial_permissions);
         created = 0;
       } else
@@ -148,15 +163,18 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     } else {
       /* As above we cannot use O_EXCL in this case as it'll refuse to follow
        * symlinks. */
+      D(("SSH_FXF_* -> test for existence"));
       if(stat(path, &sb) == 0) {
         /* The file exists.  Open and maybe truncate.  If it got deleted in the
          * meantime then you get an error. */
+        D(("SSH_FXF_* -> open"));
         fd = open(path, open_flags, initial_permissions);
         created = 0;
       } else {
         /* The file does not exist yet.  If it was created in the meantime then
          * you get that file (perhaps truncated)!  We can't use O_EXCL here
          * because as observed so there is really no way round this. */
+        D(("SSH_FXF_* -> O_CREAT"));
         fd = open(path, open_flags|O_CREAT, initial_permissions);
         created = 0;
       }
@@ -164,11 +182,13 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     break;
   case SSH_FXF_OPEN_EXISTING:
     /* The file has to exist already so this case is simple. */
+    D(("SSH_FXF_OPEN_EXISTING -> open"));
     fd = open(path, open_flags, initial_permissions);
     created = 0;
     break;
   case SSH_FXF_TRUNCATE_EXISTING:
     /* Again the file has to exist already so this is also simple. */
+    D(("SSH_FXF_TRUNCATE_EXISTING -> O_TRUNC"));
     fd = open(path, open_flags|O_TRUNC, initial_permissions);
     created = 0;
     break;
@@ -188,8 +208,10 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   /* The draft says "It is implementation specific whether the directory entry
    * is removed immediately or when the handle is closed".  I interpret
    * 'immediately' to refer to the open operation. */
-  if(flags & SSH_FXF_DELETE_ON_CLOSE)
+  if(flags & SSH_FXF_DELETE_ON_CLOSE) {
+    D(("SSH_FXF_DELETE_ON_CLOSE"));
     unlink(path);
+  }
   handle_new_file(&id, fd, path, handle_flags);
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
   send_begin(job->worker);
