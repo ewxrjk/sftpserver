@@ -195,19 +195,20 @@ static int status(void) {
 }
 
 /* Get a response.  Picks out the type and ID. */
-static uint8_t getresponse(int expected, uint32_t expected_id) {
+static uint8_t getresponse(int expected, uint32_t expected_id,
+                           const char *what) {
   uint32_t len;
   uint8_t type;
 
   if(do_read(sftpin, &len, sizeof len))
-    fatal("unexpected EOF from server while reading length");
+    fatal("unexpected EOF from server while reading %s response length", what);
   free(fakejob.data);                   /* free last job */
   fakejob.len = ntohl(len);
   fakejob.data = xmalloc(fakejob.len);
   if(do_read(sftpin, fakejob.data, fakejob.len))
-    fatal("unexpected EOF from server while reading data");
+    fatal("unexpected EOF from server while reading %s response data", what);
   if(debugging) {
-    D(("response:"));
+    D(("%s response:", what));
     hexdump(fakejob.data, fakejob.len);
   }
   fakejob.left = fakejob.len;
@@ -216,14 +217,14 @@ static uint8_t getresponse(int expected, uint32_t expected_id) {
   if(type != SSH_FXP_VERSION) {
     cpcheck(parse_uint32(&fakejob, &fakejob.id));
     if(expected_id && fakejob.id != expected_id)
-      fatal("wrong ID in response (want %"PRIu32" got %"PRIu32,
-            expected_id, fakejob.id);
+      fatal("wrong ID in response to %s (want %"PRIu32" got %"PRIu32,
+            what,  expected_id, fakejob.id);
   }
   if(expected > 0 && type != expected) {
     if(type == SSH_FXP_STATUS)
       status();
     else
-      fatal("expected response %d got %d", expected, type);
+      fatal("expected %s response %d got %d", what, expected, type);
   }
   return type;
 }
@@ -308,7 +309,7 @@ static int sftp_init(void) {
   send_end(&fakeworker);
   
   /* Parse the version reponse */
-  if(getresponse(SSH_FXP_VERSION, 0) != SSH_FXP_VERSION)
+  if(getresponse(SSH_FXP_VERSION, 0, "SSH_FXP_INIT") != SSH_FXP_VERSION)
     return -1;
   cpcheck(parse_uint32(&fakejob, &version));
   switch(version) {
@@ -382,7 +383,7 @@ static char *sftp_realpath(const char *path) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, path);
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
+  if(getresponse(SSH_FXP_NAME, id, "SSH_FXP_REALPATH") != SSH_FXP_NAME)
     return 0;
   cpcheck(parse_uint32(&fakejob, &u32));
   if(u32 != 1)
@@ -402,7 +403,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   if(protocol->version > 3)
     send_uint32(&fakeworker, 0xFFFFFFFF);
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
+  if(getresponse(SSH_FXP_ATTRS, id, "SSH_FXP_*STAT") != SSH_FXP_ATTRS)
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
   attrs->name = path;
@@ -420,7 +421,7 @@ static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
   if(protocol->version > 3)
     send_uint32(&fakeworker, 0xFFFFFFFF);
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_ATTRS, id) != SSH_FXP_ATTRS)
+  if(getresponse(SSH_FXP_ATTRS, id, "SSH_FXP_FSTAT") != SSH_FXP_ATTRS)
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
   return 0;
@@ -434,7 +435,7 @@ static int sftp_opendir(const char *path, struct handle *hp) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
+  if(getresponse(SSH_FXP_HANDLE, id, "SSH_FXP_OPENDIR") != SSH_FXP_HANDLE)
     return -1;
   cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
   return 0;
@@ -452,7 +453,7 @@ static int sftp_readdir(const struct handle *hp,
   send_uint32(&fakeworker, id = newid());
   send_bytes(&fakeworker, hp->data, hp->len);
   send_end(&fakeworker);
-  switch(getresponse(-1, id)) {
+  switch(getresponse(-1, id, "SSH_FXP_READDIR")) {
   case SSH_FXP_NAME:
     cpcheck(parse_uint32(&fakejob, &n));
     if(n > SIZE_MAX / sizeof(struct sftpattr))
@@ -493,7 +494,7 @@ static int sftp_close(const struct handle *hp) {
   send_uint32(&fakeworker, id = newid());
   send_bytes(&fakeworker, hp->data, hp->len);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_CLOSE");
   return status();
 }
 
@@ -507,7 +508,7 @@ static int sftp_setstat(const char *path,
   send_path(&fakejob, &fakeworker, resolvepath(path));
   protocol->sendattrs(&fakejob, attrs);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_SETSTAT");
   return status();
 }
 
@@ -521,7 +522,7 @@ static int sftp_fsetstat(const struct handle *hp,
   send_bytes(&fakeworker, hp->data, hp->len);
   protocol->sendattrs(&fakejob, attrs);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_FSETSTAT");
   return status();
 }
 
@@ -533,7 +534,7 @@ static int sftp_rmdir(const char *path) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_RMDIR");
   return status();
 }
 
@@ -545,7 +546,7 @@ static int sftp_remove(const char *path) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_REMOVE");
   return status();
 }
 
@@ -565,7 +566,7 @@ static int sftp_rename(const char *oldpath, const char *newpath,
   if(protocol->version >= 5)
     send_uint32(&fakeworker, flags);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_RENAME");
   return status();
 }
 
@@ -579,7 +580,7 @@ static int sftp_prename(const char *oldpath, const char *newpath) {
   send_path(&fakejob, &fakeworker, resolvepath(oldpath));
   send_path(&fakejob, &fakeworker, resolvepath(newpath));
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "posix-rename@openssh.org");
   return status();
 }
 
@@ -608,7 +609,7 @@ static int sftp_link(const char *targetpath, const char *linkpath,
   if(protocol->version >= 6)
     send_uint8(&fakeworker, !!send_symlink);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_*LINK");
   return status();
 }
 
@@ -675,7 +676,7 @@ static int sftp_open(const char *path,
     protocol->sendattrs(&fakejob, attrs);
     send_end(&fakeworker);
   }
-  if(getresponse(SSH_FXP_HANDLE, id) != SSH_FXP_HANDLE)
+  if(getresponse(SSH_FXP_HANDLE, id, "SSH_FXP_OPEN") != SSH_FXP_HANDLE)
     return -1;
   cpcheck(parse_string(&fakejob, &hp->data, &hp->len));
   return 0;
@@ -699,7 +700,8 @@ static int sftp_space_available(const char *path,
   send_string(&fakeworker, "space-available");
   send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_EXTENDED_REPLY, id) != SSH_FXP_EXTENDED_REPLY)
+  if(getresponse(SSH_FXP_EXTENDED_REPLY,
+                 id, "space-available") != SSH_FXP_EXTENDED_REPLY)
     return -1;
   cpcheck(parse_uint64(&fakejob, &as->bytes_on_device));
   cpcheck(parse_uint64(&fakejob, &as->unused_bytes_on_device));
@@ -725,7 +727,7 @@ static int sftp_mkdir(const char *path, mode_t mode) {
   send_path(&fakejob, &fakeworker, resolvepath(path));
   protocol->sendattrs(&fakejob, &attrs);
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id);
+  getresponse(SSH_FXP_STATUS, id, "SSH_FXP_MKDIR");
   return status();
 }
 
@@ -738,7 +740,7 @@ static char *sftp_readlink(const char *path) {
   send_uint32(&fakeworker, id = newid());
   send_path(&fakejob, &fakeworker, resolvepath(path));
   send_end(&fakeworker);
-  if(getresponse(SSH_FXP_NAME, id) != SSH_FXP_NAME)
+  if(getresponse(SSH_FXP_NAME, id, "SSH_FXP_READLINK") != SSH_FXP_NAME)
     return 0;
   cpcheck(parse_uint32(&fakejob, &u32));
   if(u32 != 1)
@@ -1384,7 +1386,7 @@ static int cmd_get(int ac,
       ferrcheck(pthread_cond_wait(&r.c2, &r.m));
     /* Don't hold the lock while waiting for a response */
     ferrcheck(pthread_mutex_unlock(&r.m));
-    rtype = getresponse(-1, 0);
+    rtype = getresponse(-1, 0, "SSH_FXP_READ");
     ferrcheck(pthread_mutex_lock(&r.m));
     /* Count down the number of requests in flight */
     --r.outstanding;
@@ -1529,7 +1531,7 @@ static void *writer_thread(void *arg) {
       continue;
     }
     /* Await the incoming response */
-    getresponse(SSH_FXP_STATUS, 0/*don't care about id*/);
+    getresponse(SSH_FXP_STATUS, 0/*don't care about id*/, "SSH_FXP_WRITE");
     ferrcheck(pthread_cond_signal(&w->c2));
     /* Find the request ID */
     for(i = 0; i < nrequests && w->reqs[i].id != fakejob.id; ++i)
@@ -1903,7 +1905,7 @@ static int cmd_unsupported(int attribute((unused)) ac,
   send_uint8(&fakeworker, 0xFFFFFFFF);
   send_uint32(&fakeworker, 0);          /* id */
   send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, 0);
+  getresponse(SSH_FXP_STATUS, 0, "_unsupported");
   status();
   return 0;
 }
