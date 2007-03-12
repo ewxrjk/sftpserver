@@ -611,6 +611,8 @@ uint32_t sftp_v34_open(struct sftpjob *job) {
   default:
     return SSH_FX_BAD_MESSAGE;
   }
+  if(pflags & SSH_FXF_TEXT)
+    flags |= SSH_FXF_TEXT_MODE;
   if(pflags & SSH_FXF_READ)
     desired_access |= ACE4_READ_DATA|ACE4_READ_ATTRIBUTES;
   if(pflags & SSH_FXF_WRITE)

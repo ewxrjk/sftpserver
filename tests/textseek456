@@ -1,0 +1,15 @@
+!if type seq >/dev/null 2>&1; then seq 999; else jot 999; fi > input
+text
+get -L0 input output
+!wc -l < output
+# *999
+!diff -u input output
+get -L1 input output
+!wc -l < output
+# *998
+get -L10 input output
+!wc -l < output
+# *989
+get -L100 input output
+!wc -l < output
+# *899

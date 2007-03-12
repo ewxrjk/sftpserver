@@ -337,20 +337,23 @@ uint32_t sftp_text_seek(struct sftpjob *job) {
   /* Look for the right line */
   i = 0;
   n = 0;                                /* quieten compiler */
-  while(line > 0 && (n = read(fd, buffer, 0)) > 0) {
+  D(("on entry: line=%"PRIu64, line));
+  while(line > 0 && (n = read(fd, buffer, sizeof buffer)) > 0) {
+    D(("outer: line=%"PRIu64" n=%zd", line, n));
     i = 0;
     while(line > 0 && i < n) {
       if(buffer[i++] == '\n')
 	--line;
     }
   }
+  D(("exited:: line=%"PRIu64" n=%zd i=%zd", line, n, i));
   if(n < 0)
     return HANDLER_ERRNO;
   else if(n == 0)
     return SSH_FX_EOF;
   else {
     /* Seek back to the start of the line */
-    if(lseek(fd, n - i, SEEK_CUR) < 0)
+    if(lseek(fd, i - n, SEEK_CUR) < 0)
       return HANDLER_ERRNO;
     return SSH_FX_OK;
   }

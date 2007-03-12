@@ -28,7 +28,8 @@
 #define ferrcheck(E) do {                                       \
   const int frc = (E);                                          \
   if(frc) {                                                     \
-    fatal("%s: %s\n", #E, strerror(frc));                       \
+    fatal("%s:%d: %s: %s\n", __FILE__, __LINE__,                \
+          #E, strerror(frc));                                   \
     exit(1);                                                    \
   }                                                             \
 } while(0)

@@ -1,0 +1,10 @@
+realpath does/not/exist
+#.*/does/not/exist
+mkdir spong
+mkdir spong/wibble
+realpath spong/wibble/..
+#.*/spong
+realpath spong/./wibble/
+#.*/spong/wibble
+realpath spong/../wibble/
+#.*/wibble

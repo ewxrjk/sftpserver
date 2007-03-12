@@ -750,6 +750,20 @@ static char *sftp_readlink(const char *path) {
   return resolved;
 }
 
+static int sftp_text_seek(const struct handle *hp, uint64_t line) {
+  uint32_t id;
+
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  send_uint32(&fakeworker, id = newid());
+  send_string(&fakeworker, "text-seek");
+  send_bytes(&fakeworker, hp->data, hp->len);
+  send_uint64(&fakeworker, line);
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, id, "text-seek");
+  return status();
+}
+
 /* Command line operations */
 
 static int cmd_pwd(int attribute((unused)) ac,
@@ -1370,6 +1384,8 @@ static int cmd_get(int ac,
   struct timeval started, finished;
   double elapsed;
   uint32_t flags = 0;
+  int seek = 0;
+  uint64_t line = 0;
 
   memset(&attrs, 0, sizeof attrs);
   memset(&r, 0, sizeof r);
@@ -1384,6 +1400,11 @@ static int cmd_get(int ac,
         break;
       case 'f':
         flags |= SSH_FXF_NOFOLLOW; 
+        break;
+      case 'L':
+        seek = 1;
+        line = (uint64_t)strtoumax(s, 0, 10);
+        s = "";
         break;
       default:
         return error("unknown get option -%c'", s[-1]);
@@ -1432,6 +1453,10 @@ static int cmd_get(int ac,
      * get an EOF.  This includes text files where translation may make the
      * size read back with fstat a lie. */
     r.size = (uint64_t)-1;
+  if(textmode && seek) {
+    if(sftp_text_seek(&r.h, line))
+      goto error;
+  }
   gettimeofday(&started,  0);
   ferrcheck(pthread_mutex_init(&r.m, 0));
   ferrcheck(pthread_cond_init(&r.c1, 0));
@@ -1456,8 +1481,10 @@ static int cmd_get(int ac,
   /* Wait for the background thread to finish up */
   ferrcheck(pthread_join(tid, 0));
   /* Reap any remaining jobs */
+  ferrcheck(pthread_mutex_lock(&r.m));
   while(r.outstanding)
     reap_write_response(&r);
+  ferrcheck(pthread_mutex_unlock(&r.m));
   /* Tear all the thread objects down */
   ferrcheck(pthread_mutex_destroy(&r.m));
   ferrcheck(pthread_cond_destroy(&r.c1));
@@ -2010,7 +2037,7 @@ static const struct command commands[] = {
   },
   {
     "get", 1, 3, cmd_get,
-    "[-Pf] REMOTE-PATH [LOCAL-PATH]",
+    "[-PfL<line>] REMOTE-PATH [LOCAL-PATH]",
     "retrieve a remote file"
   },
   {
