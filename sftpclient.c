@@ -217,8 +217,9 @@ static uint8_t getresponse(int expected, uint32_t expected_id,
   if(type != SSH_FXP_VERSION) {
     cpcheck(parse_uint32(&fakejob, &fakejob.id));
     if(expected_id && fakejob.id != expected_id)
-      fatal("wrong ID in response to %s (want %"PRIu32" got %"PRIu32,
-            what,  expected_id, fakejob.id);
+      fatal("wrong ID in response to %s (want %"PRIu32
+            " got %"PRIu32" type was %d)",
+            what,  expected_id, fakejob.id, type);
   }
   if(expected > 0 && type != expected) {
     if(type == SSH_FXP_STATUS)
@@ -1176,6 +1177,12 @@ struct reader_data {
   uint64_t next_offset;                 /* next offset */
   int outstanding, eof, failed;
   uint64_t size;                        /* file size */
+  uint64_t written;                     /* byte written so far */
+  int fd;                               /* file to write to */
+  char *local, *tmp;                    /* output filename */
+  /* For text translation: */
+  FILE *translated_fp;                  /* file to write to (in stdio-speak) */
+  size_t translated_state;              /* how far thru newline we've seen */
 };
 
 static void *reader_thread(void *arg) {
@@ -1225,40 +1232,39 @@ static void *reader_thread(void *arg) {
 }
 
 /* Inbound text file translation */
-static FILE *translated_fp;
-static size_t translated_state;         /* how far thru newline we've seen */
 
-static int write_translated_init(int fd) {
-  if(!(translated_fp = fdopen(fd, "w")))
+static int write_translated_init(struct reader_data *r) {
+  if(!(r->translated_fp = fdopen(r->fd, "w")))
     return error("error calling fdopen: %s", strerror(errno));
-  translated_state = 0;
+  r->translated_state = 0;
   return 0;
 }
 
-static int write_translated(const void *vptr, size_t bytes) {
+static int write_translated(struct reader_data *r,
+                            const void *vptr, size_t bytes) {
   const char *ptr = vptr;
   while(bytes > 0) {
     const int c = (unsigned char)*ptr++;
     --bytes;
-    if(c == newline[translated_state]) {
+    if(c == newline[r->translated_state]) {
       /* We've seen part of a newline */
-      ++translated_state;
-      if(!newline[translated_state]) {
+      ++r->translated_state;
+      if(!newline[r->translated_state]) {
         /* We must have seen a whole newline */
-        if(putc('\n', translated_fp) < 0)
+        if(putc('\n', r->translated_fp) < 0)
           return -1;
-        translated_state = 0;
+        r->translated_state = 0;
       } else {
         /* We're part way thru something that might be a newline.  Keep
          * going. */
       }
     } else {
-      if(translated_state) {
+      if(r->translated_state) {
         /* We're part way thru something that turned out not to be a newline. */
-        if(fwrite(newline, 1, translated_state, translated_fp)
-           != translated_state)
+        if(fwrite(newline, 1, r->translated_state, r->translated_fp)
+           != r->translated_state)
           return -1;
-        translated_state = 0;
+        r->translated_state = 0;
         /* Try again from the current point. */
         /* Note that we assume that the newline sequence doesn't contain
          * repetitions.  If you have a (completely bonkers!) platform that
@@ -1266,7 +1272,7 @@ static int write_translated(const void *vptr, size_t bytes) {
          * machine here. */
         continue;
       } else {
-        if(putc(c, translated_fp) < 0)
+        if(putc(c, r->translated_fp) < 0)
           return -1;
       }
     }
@@ -1274,42 +1280,100 @@ static int write_translated(const void *vptr, size_t bytes) {
   return 0;
 }
 
-static int write_translated_done(void) {
+static int write_translated_done(struct reader_data *r) {
   int rc = 0;
 
-  if(translated_fp) {
-    if(translated_state) {
+  if(r->translated_fp) {
+    if(r->translated_state) {
       /* The file ends part way thru something that starts out like a newline
        * sequence but turns out not to be one. */
-      if(fwrite(newline, 1, translated_state, translated_fp) != translated_state)
+      if(fwrite(newline, 1, r->translated_state, r->translated_fp) != r->translated_state)
         rc = -1;
-      translated_state = 0;
+      r->translated_state = 0;
     }
-    if(fclose(translated_fp) < 0)
+    if(fclose(r->translated_fp) < 0)
       rc = -1;
-    translated_fp = 0;
+    r->translated_fp = 0;
   }
   return rc;
+}
+
+static void reap_write_response(struct reader_data *r) {
+  uint8_t rtype;
+  uint32_t st, len;
+  int n, rc;
+
+  /* Get the next response and count it down.  We don't hold the lock while
+   * were awaiting the response. */
+  ferrcheck(pthread_mutex_unlock(&r->m));
+  rtype = getresponse(-1, 0, "SSH_FXP_READ");
+  ferrcheck(pthread_mutex_lock(&r->m));
+  --r->outstanding;
+  /* If we've already failed then we don't care what the response was */
+  if(r->failed)
+    return;
+  switch(rtype) {
+  case SSH_FXP_STATUS:
+    cpcheck(parse_uint32(&fakejob, &st));
+    if(st == SSH_FX_EOF)
+      r->eof = 1;
+    else {
+      status();
+      r->failed = 1;
+    }
+    break;
+  case SSH_FXP_DATA:
+    /* Find the right request */
+    for(n = 0; n < nrequests && fakejob.id != r->reqs[n].id; ++n)
+      ;
+    assert(n < nrequests);
+    /* Free up this slot */
+    r->reqs[n].id = 0;
+    /* We don't fully parse the string but instead write it out from the
+     * input buffer it's sitting in. */
+    cpcheck(parse_uint32(&fakejob, &len));
+    /* We don't care what order the responses come in, we just write them to
+     * the right place in the file according to what we asked for.  There's
+     * not much point releasing the lock while doing the write - the
+     * background thread will have done all it wants while we were awaiting
+     * the response. 
+     *
+     * In text mode we can rely on the responses arriving in the correct
+     * order.
+     */
+    if(textmode) {
+      /* We must replace each instance of the newline string with \n */
+      rc = write_translated(r, fakejob.ptr, len);
+    } else
+      rc = pwrite(r->fd, fakejob.ptr, len, r->reqs[n].offset);
+    if(rc < 0) {
+      error("error writing to %s: %s", r->tmp, strerror(errno));
+      r->failed = 1;
+      return;
+    }
+    r->written += len;
+    progress(r->local, r->written, r->size);
+    break;
+  default:
+    fatal("unexpected response %d to SSH_FXP_READ", rtype);
+  }
 }
 
 static int cmd_get(int ac,
                    char **av) {
   int preserve = 0;
-  const char *local, *e;
-  char *remote, *tmp = 0;
+  const char *e;
+  char *remote;
   struct reader_data r;
   struct sftpattr attrs;
-  int fd = -1, n, rc;
-  uint8_t rtype;
-  uint32_t st, len;
   pthread_t tid;
-  uint64_t written = 0;
   struct timeval started, finished;
   double elapsed;
   uint32_t flags = 0;
 
   memset(&attrs, 0, sizeof attrs);
   memset(&r, 0, sizeof r);
+  r.fd = -1;
   if(av[0][0] == '-') {
     const char *s = *av++;
     ++s;
@@ -1330,22 +1394,22 @@ static int cmd_get(int ac,
   remote = *av++;
   --ac;
   if(ac) {
-    local = *av++;
+    r.local = *av++;
     --ac;
   } else
-    local = basename(remote);
+    r.local = basename(remote);
   /* we'll write to a temporary file */
-  tmp = alloc(fakejob.a, strlen(local) + 5);
-  sprintf(tmp, "%s.new", local);
-  if((fd = open(tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0) {
-    error("error opening %s: %s", tmp, strerror(errno));
+  r.tmp = alloc(fakejob.a, strlen(r.local) + 5);
+  sprintf(r.tmp, "%s.new", r.local);
+  if((r.fd = open(r.tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0) {
+    error("error opening %s: %s", r.tmp, strerror(errno));
     goto error;
   }
   if(textmode) {
     flags |= SSH_FXF_TEXT_MODE;
-    if(write_translated_init(fd))
+    if(write_translated_init(&r))
       goto error;
-    fd = -1;
+    r.fd = -1;
   }
   /* open the remote file */
   if(sftp_open(remote, ACE4_READ_DATA|ACE4_READ_ATTRIBUTES,
@@ -1380,70 +1444,20 @@ static int cmd_get(int ac,
    * If there are no requests in flight then we keep going until
    * we reach EOF or an error is detected.
    */
-  while(r.outstanding || (!r.eof && !r.failed)) {
+  while(!r.eof && !r.failed) {
     /* Wait until there's at least one request in flight */
     while(!r.outstanding)
       ferrcheck(pthread_cond_wait(&r.c2, &r.m));
-    /* Don't hold the lock while waiting for a response */
-    ferrcheck(pthread_mutex_unlock(&r.m));
-    rtype = getresponse(-1, 0, "SSH_FXP_READ");
-    ferrcheck(pthread_mutex_lock(&r.m));
-    /* Count down the number of requests in flight */
-    --r.outstanding;
-    /* If we have failed we just have to discard remaining responses */
-    if(r.failed) 
-      continue;
-    switch(rtype) {
-    case SSH_FXP_STATUS:
-      cpcheck(parse_uint32(&fakejob, &st));
-      if(st == SSH_FX_EOF)
-        r.eof = 1;
-      else {
-        status();
-        r.failed = 1;
-      }
-      break;
-    case SSH_FXP_DATA:
-      /* Find the right request */
-      for(n = 0; n < nrequests && fakejob.id != r.reqs[n].id; ++n)
-        ;
-      assert(n < nrequests);
-      /* We don't fully parse the string but instead write it out from the
-       * input buffer it's sitting in. */
-      cpcheck(parse_uint32(&fakejob, &len));
-      /* We don't care what order the responses come in, we just write them to
-       * the right place in the file according to what we asked for.  There's
-       * not much point releasing the lock while doing the write - the
-       * background thread will have done all it wants while we were awaiting
-       * the response. 
-       *
-       * In text mode we can rely on the responses arriving in the correct
-       * order.
-       */
-      if(textmode) {
-        /* We must replace each instance of the newline string with \n */
-        rc = write_translated(fakejob.ptr, len);
-      } else
-        rc = pwrite(fd, fakejob.ptr, len, r.reqs[n].offset);
-      if(rc < 0) {
-        error("error writing to %s: %s", tmp, strerror(errno));
-        r.failed = 1;
-      }
-      written += len;
-      progress(local, written, r.size);
-      /* Free up this slot */
-      r.reqs[n].id = 0;
-      break;
-    default:
-      fatal("unexpected response %d to SSH_FXP_READ", rtype);
-    }
-    /* We either set one of r.eof or r.failed, or reaped a response.  So notify
-     * the background thread. */ 
+    reap_write_response(&r);
+    /* Notify the background thread that something changed. */ 
     ferrcheck(pthread_cond_signal(&r.c1));
   }
   ferrcheck(pthread_mutex_unlock(&r.m));
   /* Wait for the background thread to finish up */
   ferrcheck(pthread_join(tid, 0));
+  /* Reap any remaining jobs */
+  while(r.outstanding)
+    reap_write_response(&r);
   /* Tear all the thread objects down */
   ferrcheck(pthread_mutex_destroy(&r.m));
   ferrcheck(pthread_cond_destroy(&r.c1));
@@ -1455,9 +1469,9 @@ static int cmd_get(int ac,
   if(progress_indicators) {
     elapsed = ((finished.tv_sec - started.tv_sec)
                + (finished.tv_usec - started.tv_usec) / 1000000.0);
-    xprintf("%"PRIu64" bytes in %.1f seconds", written, elapsed);
+    xprintf("%"PRIu64" bytes in %.1f seconds", r.written, elapsed);
     if(elapsed > 0.1)
-      xprintf(" %.0f bytes/sec", written / elapsed);
+      xprintf(" %.0f bytes/sec", r.written / elapsed);
     xprintf("\n");
   }
   /* Close the handle */
@@ -1467,32 +1481,32 @@ static int cmd_get(int ac,
     /* Set permissions etc */
     attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* don't truncate */
     attrs.valid &= ~SSH_FILEXFER_ATTR_UIDGID; /* different mapping! */
-    if((e = set_fstatus(fakejob.a, fd, &attrs))) {
-      error("cannot %s %s: %s", e, tmp, strerror(errno));
+    if((e = set_fstatus(fakejob.a, r.fd, &attrs))) {
+      error("cannot %s %s: %s", e, r.tmp, strerror(errno));
       goto error;
     }
   }
   if(textmode) {
-    if(write_translated_done()) {
-      error("error writing to %s: %s", tmp, strerror(errno));
+    if(write_translated_done(&r)) {
+      error("error writing to %s: %s", r.tmp, strerror(errno));
       goto error;
     }
-  } else if(close(fd) < 0) {
-    error("error closing %s: %s", tmp, strerror(errno));
-    fd = -1;
+  } else if(close(r.fd) < 0) {
+    error("error closing %s: %s", r.tmp, strerror(errno));
+    r.fd = -1;
     goto error;
   }
-  if(rename(tmp, local) < 0) {
-    error("error renaming %s: %s", tmp, strerror(errno));
+  if(rename(r.tmp, r.local) < 0) {
+    error("error renaming %s: %s", r.tmp, strerror(errno));
     goto error;
   }
   return 0;
 error:
-  write_translated_done();              /* ok to call if not initialized */
-  if(fd >= 0)
-    close(fd);
-  if(tmp)
-    unlink(tmp);
+  write_translated_done(&r);            /* ok to call if not initialized */
+  if(r.fd >= 0)
+    close(r.fd);
+  if(r.tmp)
+    unlink(r.tmp);
   if(r.h.len)
     sftp_close(&r.h);
   return -1;
@@ -1669,6 +1683,8 @@ static int cmd_put(int ac,
   ferrcheck(pthread_mutex_lock(&w.m));
   offset = 0;
   while(!w.failed && !eof && !failed) {
+    int wrote;
+    
     /* Wait until we're allowed to send another request */
     if(w.outstanding >= nrequests) {
       ferrcheck(pthread_cond_wait(&w.c2, &w.m));
@@ -1683,6 +1699,7 @@ static int cmd_put(int ac,
     send_bytes(&fakeworker, h.data, h.len);
     send_uint64(&fakeworker, offset);
     send_need(fakejob.worker, buffersize + 4);
+    wrote = 0;
     if(textmode) {
       char *const start = ((char *)fakejob.worker->buffer
                            + fakejob.worker->bufused + 4);
@@ -1733,6 +1750,7 @@ static int cmd_put(int ac,
       offset += n;
       /* We can only fill in the request details when we have the lock, so we
        * don't do that yet */
+      wrote = 1;
     } else if(n == 0)
       /* We reached EOF on the input file */
       eof = 1;
@@ -1742,7 +1760,7 @@ static int cmd_put(int ac,
       failed = 1;
     }
     ferrcheck(pthread_mutex_lock(&w.m));
-    if(!(eof || failed)) {
+    if(wrote) {
       for(i = 0; i < nrequests && w.reqs[i].id; ++i)
         ;
       assert(i < nrequests);
@@ -1756,6 +1774,7 @@ static int cmd_put(int ac,
   ferrcheck(pthread_cond_signal(&w.c1));
   ferrcheck(pthread_mutex_unlock(&w.m));
   ferrcheck(pthread_join(tid, 0));
+  assert(w.outstanding == 0);
   ferrcheck(pthread_mutex_destroy(&w.m));
   ferrcheck(pthread_cond_destroy(&w.c1));
   ferrcheck(pthread_cond_destroy(&w.c2));
