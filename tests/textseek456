@@ -13,3 +13,8 @@ get -L10 input output
 get -L100 input output
 !wc -l < output
 # *899
+get -L1000 input output
+#.*end of file.*
+get -L999 input output
+!wc -l < output
+# *0
