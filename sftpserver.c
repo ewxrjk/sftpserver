@@ -49,6 +49,16 @@
 #include <syslog.h>
 #include <netinet/in.h>
 
+/* Linux and BSD have daemon() but other UNIX platforms tend not to */
+#if ! HAVE_DAEMON
+int daemon(int, int);
+#endif
+
+/* LOG_FTP doesn't exist everywhere */
+#ifndef LOG_FTP
+# define LOG_FTP LOG_DAEMON
+#endif
+
 /* Forward declarations */
 
 static void *worker_init(void);

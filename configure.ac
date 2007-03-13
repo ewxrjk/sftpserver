@@ -35,13 +35,16 @@ RJK_BUILDSYS_MISC
 AC_PROG_RANLIB
 
 AC_CHECK_LIB([pthread],[pthread_create])
+AC_CHECK_LIB([socket],[socket])
 AC_CHECK_LIB([readline],[readline],
-             [AC_SUBST([LIBREADLINE],[-lreadline])],
-             [AC_MSG_ERROR([need a Readline library])])
+             [AC_SUBST([LIBREADLINE],[-lreadline])
+              AC_DEFINE([HAVE_READLINE],[1],[define if you have a readline library])])
 RJK_ICONV
 AC_DEFINE([_GNU_SOURCE], [1], [required for e.g. strsignal])
 AC_C_INLINE
 AC_SYS_LARGEFILE
+AC_REPLACE_FUNCS([daemon futimes])
+AC_CHECK_FUNCS([futimesat])
 
 RJK_UNALIGNED_WRITES
 RJK_GCC_WARNINGS

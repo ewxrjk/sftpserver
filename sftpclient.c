@@ -51,8 +51,13 @@
 #include <langinfo.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <readline/readline.h>
-#include <readline/history.h>
+#include <signal.h>
+#include <limits.h>
+#include <termios.h>
+#if HAVE_READLINE
+# include <readline/readline.h>
+# include <readline/history.h>
+#endif
 
 struct command {
   const char *name;
@@ -274,7 +279,7 @@ static uint32_t newid(void) {
   return latestid;
 }
 
-static const char *resolvepath(const char *name) {
+static const char *makeabspath(const char *name) {
   char *resolved;
 
   if(name[0] == '/')
@@ -400,7 +405,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   send_begin(&fakeworker);
   send_uint8(&fakeworker, type);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   if(protocol->version > 3)
     send_uint32(&fakeworker, 0xFFFFFFFF);
   send_end(&fakeworker);
@@ -434,7 +439,7 @@ static int sftp_opendir(const char *path, struct handle *hp) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_OPENDIR);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   send_end(&fakeworker);
   if(getresponse(SSH_FXP_HANDLE, id, "SSH_FXP_OPENDIR") != SSH_FXP_HANDLE)
     return -1;
@@ -506,7 +511,7 @@ static int sftp_setstat(const char *path,
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_SETSTAT);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   protocol->sendattrs(&fakejob, attrs);
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "SSH_FXP_SETSTAT");
@@ -533,7 +538,7 @@ static int sftp_rmdir(const char *path) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_RMDIR);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "SSH_FXP_RMDIR");
   return status();
@@ -545,7 +550,7 @@ static int sftp_remove(const char *path) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_REMOVE);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "SSH_FXP_REMOVE");
   return status();
@@ -562,8 +567,8 @@ static int sftp_rename(const char *oldpath, const char *newpath,
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_RENAME);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(oldpath));
-  send_path(&fakejob, &fakeworker, resolvepath(newpath));
+  send_path(&fakejob, &fakeworker, makeabspath(oldpath));
+  send_path(&fakejob, &fakeworker, makeabspath(newpath));
   if(protocol->version >= 5)
     send_uint32(&fakeworker, flags);
   send_end(&fakeworker);
@@ -578,8 +583,8 @@ static int sftp_prename(const char *oldpath, const char *newpath) {
   send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   send_uint32(&fakeworker, id = newid());
   send_string(&fakeworker, "posix-rename@openssh.org");
-  send_path(&fakejob, &fakeworker, resolvepath(oldpath));
-  send_path(&fakejob, &fakeworker, resolvepath(newpath));
+  send_path(&fakejob, &fakeworker, makeabspath(oldpath));
+  send_path(&fakejob, &fakeworker, makeabspath(newpath));
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "posix-rename@openssh.org");
   return status();
@@ -601,11 +606,11 @@ static int sftp_link(const char *targetpath, const char *linkpath,
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
      * - see http://bugzilla.mindrot.org/show_bug.cgi?id=861 */
     send_path(&fakejob, &fakeworker, targetpath);
-    send_path(&fakejob, &fakeworker, resolvepath(linkpath));
+    send_path(&fakejob, &fakeworker, makeabspath(linkpath));
   } else {
-    send_path(&fakejob, &fakeworker, resolvepath(linkpath));
+    send_path(&fakejob, &fakeworker, makeabspath(linkpath));
     send_path(&fakejob, &fakeworker, 
-              send_symlink ? targetpath : resolvepath(targetpath));
+              send_symlink ? targetpath : makeabspath(targetpath));
   }
   if(protocol->version >= 6)
     send_uint8(&fakeworker, !!send_symlink);
@@ -663,7 +668,7 @@ static int sftp_open(const char *path,
     send_begin(&fakeworker);
     send_uint8(&fakeworker, SSH_FXP_OPEN);
     send_uint32(&fakeworker, id = newid());
-    send_path(&fakejob, &fakeworker, resolvepath(path));
+    send_path(&fakejob, &fakeworker, makeabspath(path));
     send_uint32(&fakeworker, pflags);
     protocol->sendattrs(&fakejob, attrs);
     send_end(&fakeworker);
@@ -671,7 +676,7 @@ static int sftp_open(const char *path,
     send_begin(&fakeworker);
     send_uint8(&fakeworker, SSH_FXP_OPEN);
     send_uint32(&fakeworker, id = newid());
-    send_path(&fakejob, &fakeworker, resolvepath(path));
+    send_path(&fakejob, &fakeworker, makeabspath(path));
     send_uint32(&fakeworker, desired_access);
     send_uint32(&fakeworker, flags);
     protocol->sendattrs(&fakejob, attrs);
@@ -699,7 +704,7 @@ static int sftp_space_available(const char *path,
   send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   send_uint32(&fakeworker, id = newid());
   send_string(&fakeworker, "space-available");
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   send_end(&fakeworker);
   if(getresponse(SSH_FXP_EXTENDED_REPLY,
                  id, "space-available") != SSH_FXP_EXTENDED_REPLY)
@@ -725,7 +730,7 @@ static int sftp_mkdir(const char *path, mode_t mode) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_MKDIR);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   protocol->sendattrs(&fakejob, &attrs);
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "SSH_FXP_MKDIR");
@@ -739,7 +744,7 @@ static char *sftp_readlink(const char *path) {
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READLINK);
   send_uint32(&fakeworker, id = newid());
-  send_path(&fakejob, &fakeworker, resolvepath(path));
+  send_path(&fakejob, &fakeworker, makeabspath(path));
   send_end(&fakeworker);
   if(getresponse(SSH_FXP_NAME, id, "SSH_FXP_READLINK") != SSH_FXP_NAME)
     return 0;
@@ -777,7 +782,7 @@ static int cmd_cd(int attribute((unused)) ac,
   const char *newcwd;
   struct sftpattr attrs;
 
-  newcwd = sftp_realpath(resolvepath(av[0]));
+  newcwd = sftp_realpath(makeabspath(av[0]));
   if(!newcwd)
     return -1;
   /* Check it's really a directory */
@@ -2181,7 +2186,10 @@ static int cmd_help(int attribute((unused)) ac,
 }
 
 static char *input(const char *prompt, FILE *fp) {
+  char buffer[4096];
+
   if(prompt) {
+#if HAVE_READLINE
     char *const s = readline(prompt);
 
     if(s) {
@@ -2193,13 +2201,15 @@ static char *input(const char *prompt, FILE *fp) {
         add_history(s);
     }
     return s;
-  } else {
-    char buffer[4096];
-    
-    if(!fgets(buffer, sizeof buffer, fp))
-      return 0;
-    return xstrdup(buffer);
+#else
+    xprintf("%s", prompt);
+    if(fflush(stdout) < 0)
+      fatal("error calling fflush: %s", strerror(errno));
+#endif
   }
+  if(!fgets(buffer, sizeof buffer, fp))
+    return 0;
+  return xstrdup(buffer);
 }
 
 /* Input processing loop */

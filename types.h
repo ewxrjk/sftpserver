@@ -36,7 +36,7 @@ struct sftpattr {
   uint8_t type;
   uint64_t size;
   uint64_t allocation_size;             /* v6+ */
-  uid_t uid, gid;                       /* v3 */ 
+  uint32_t uid, gid;                    /* v3 */ 
   char *owner, *group;                  /* v4+ */
   uint32_t permissions;
   struct sftptime atime;

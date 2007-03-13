@@ -32,6 +32,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#if ! HAVE_FUTIMES
+int futimes(int fd, const struct timeval *times);
+#endif
+
 void stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs,
                    uint32_t flags, const char *path) {
@@ -145,8 +149,8 @@ const char *format_attr(struct allocator *a,
     strcpy(size, "?");
   /* ownership */
   if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {
-    sprintf(nowner, "%jd", (intmax_t)attrs->uid);
-    sprintf(ngroup, "%jd", (intmax_t)attrs->gid);
+    sprintf(nowner, "%"PRIu32, attrs->uid);
+    sprintf(ngroup, "%"PRIu32, attrs->gid);
   }
   owner = group = "?";
   if(flags & FORMAT_PREFER_NUMERIC_UID) {

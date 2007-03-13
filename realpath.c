@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
 			  const char *path, unsigned flags);
@@ -41,8 +42,11 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
 
   /* Convert relative paths to absolute paths */
   if(path[0] != '/') {
-    if(!(cwd = getcwd(0, 0)))
+    cwd = xmalloc(PATH_MAX);
+    if(!getcwd(cwd, PATH_MAX)) {
+      free(cwd);
       return 0;
+    }
     assert(cwd[0] == '/');
     abspath = alloc(a, strlen(cwd) + strlen(path) + 2);
     strcpy(abspath, cwd);
