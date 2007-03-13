@@ -42,18 +42,14 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
 
   /* Convert relative paths to absolute paths */
   if(path[0] != '/') {
-    cwd = xmalloc(PATH_MAX);
-    if(!getcwd(cwd, PATH_MAX)) {
-      free(cwd);
+    if(!(cwd = my_getcwd(a)))
       return 0;
-    }
     assert(cwd[0] == '/');
     abspath = alloc(a, strlen(cwd) + strlen(path) + 2);
     strcpy(abspath, cwd);
     strcat(abspath, "/");
     strcat(abspath, path);
     path = abspath;
-    free(cwd);
   }
 
   /* The result always starts with a / */

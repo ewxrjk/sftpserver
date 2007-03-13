@@ -67,6 +67,9 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags);
  * going to do an existence test.
  */
 
+char *my_getcwd(struct allocator *a);
+/* Return the name of the current directory. */
+
 void fatal(const char *msg, ...)
   attribute((noreturn))
   attribute((format(printf,1,2)));

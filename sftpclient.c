@@ -807,12 +807,13 @@ static int cmd_help(int attribute((unused)) ac,
 
 static int cmd_lpwd(int attribute((unused)) ac,
                     char attribute((unused)) **av) {
-  char *buffer = alloc(fakejob.a, PATH_MAX + 1);
-  if(!(getcwd(buffer, PATH_MAX + 1))) {
+  char *lpwd;
+
+  if(!(lpwd = my_getcwd(fakejob.a))) {
     error("error calling getcwd: %s", strerror(errno));
     return -1;
   }
-  xprintf("%s\n", buffer);
+  xprintf("%s\n", lpwd);
   return 0;
 }
 
