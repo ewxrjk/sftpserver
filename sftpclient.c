@@ -2015,12 +2015,63 @@ static int cmd_bad_handle(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_bad_packet(int attribute((unused)) ac,
+                          char attribute((unused)) **av) {
+
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  /* completely missing ID */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  send_uint8(&fakeworker, 0);           /* broken ID */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  send_uint32(&fakeworker, 0);
+  send_uint8(&fakeworker, 0);           /* truncated string length */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  send_uint32(&fakeworker, 0);
+  send_uint32(&fakeworker, 64);         /* truncated string */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  send_uint32(&fakeworker, 0);
+  send_uint32(&fakeworker, 0xFFFFFFFF); /* impossibly long string */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READLINK);
+  send_uint32(&fakeworker, 0);
+  send_uint32(&fakeworker, 0xFFFFFFFF); /* impossibly long string */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
     "_bad_handle", 0, 0, cmd_bad_handle,
     0,
     "operate on a bogus handle"
+  },
+  {
+    "_bad_packet", 0, 0, cmd_bad_packet,
+    0,
+    "send bad packets"
   },
   {
     "_ext_unsupported", 0, 0, cmd_ext_unsupported,

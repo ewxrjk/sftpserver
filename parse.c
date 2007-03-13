@@ -81,6 +81,8 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
     return -1;
   if(!(len + 1))
     return -1;                          /* overflow */
+  if(job->left < len)
+    return -1;                          /* not enough bytes to satisfy */
   if(lenp)
     *lenp = len;
   if(strp) {
