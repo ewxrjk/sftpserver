@@ -2,5 +2,7 @@ _unsupported
 #.*operation not supported.*
 _ext_unsupported
 #.*operation not supported.*
-_readdir_bad_handle
+_bad_handle
+#.*(operation failed|invalid handle).*
+#.*(operation failed|invalid handle).*
 #.*(operation failed|invalid handle).*

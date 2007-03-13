@@ -1995,18 +1995,33 @@ static int cmd_realpath(int attribute((unused)) ac,
     return -1;
 }
 
-static int cmd_readdir_bad_handle(int attribute((unused)) ac,
-                               char attribute((unused)) **av) {
+static int cmd_bad_handle(int attribute((unused)) ac,
+                          char attribute((unused)) **av) {
   struct handle h;
 
   h.len = 8;
   h.data = (void *)"\x0\x0\x0\x0\x0\x0\x0\x0";
   sftp_readdir(&h, 0, 0);
+  sftp_close(&h);
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READ);
+  send_uint32(&fakeworker, 0);
+  send_bytes(&fakeworker, h.data, h.len);
+  send_uint64(&fakeworker, 0);
+  send_uint32(&fakeworker, 64);
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_handle");
+  status();
   return 0;
 }
 
 /* Table of command line operations */
 static const struct command commands[] = {
+  {
+    "_bad_handle", 0, 0, cmd_bad_handle,
+    0,
+    "operate on a bogus handle"
+  },
   {
     "_ext_unsupported", 0, 0, cmd_ext_unsupported,
     0,
@@ -2016,11 +2031,6 @@ static const struct command commands[] = {
     "_init", 0, 0, cmd_init,
     0,
     "resend SSH_FXP_INIT"
-  },
-  {
-    "_readdir_bad_handle", 0, 0, cmd_readdir_bad_handle,
-    0,
-    "do SSH_FXP_READDIR on a bogus handle"
   },
   {
     "_unsupported", 0, 0, cmd_unsupported,
