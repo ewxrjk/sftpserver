@@ -1961,6 +1961,18 @@ static int cmd_unsupported(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_ext_unsupported(int attribute((unused)) ac,
+                               char attribute((unused)) **av) {
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  send_uint32(&fakeworker, 0);          /* id */
+  send_string(&fakeworker, "no-such-sftp-extension@rjk.greenend.org.uk");
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_unsupported");
+  status();
+  return 0;
+}
+
 static int cmd_readlink(int attribute((unused)) ac,
                         char **av) {
   char *r = sftp_readlink(av[0]);
@@ -1983,12 +1995,32 @@ static int cmd_realpath(int attribute((unused)) ac,
     return -1;
 }
 
+static int cmd_readdir_bad_handle(int attribute((unused)) ac,
+                               char attribute((unused)) **av) {
+  struct handle h;
+
+  h.len = 8;
+  h.data = (void *)"\x0\x0\x0\x0\x0\x0\x0\x0";
+  sftp_readdir(&h, 0, 0);
+  return 0;
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
+  {
+    "_ext_unsupported", 0, 0, cmd_ext_unsupported,
+    0,
+    "send an unsupported extension"
+  },
   {
     "_init", 0, 0, cmd_init,
     0,
     "resend SSH_FXP_INIT"
+  },
+  {
+    "_readdir_bad_handle", 0, 0, cmd_readdir_bad_handle,
+    0,
+    "do SSH_FXP_READDIR on a bogus handle"
   },
   {
     "_unsupported", 0, 0, cmd_unsupported,

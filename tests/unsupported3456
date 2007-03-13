@@ -1,2 +1,6 @@
 _unsupported
 #.*operation not supported.*
+_ext_unsupported
+#.*operation not supported.*
+_readdir_bad_handle
+#.*(operation failed|invalid handle).*
