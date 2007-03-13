@@ -58,7 +58,7 @@ DISTCLEANFILES=${SEDOUTPUTS}
 CLEANFILES=*.gcno *.gcda *.gcov
 
 # Distribution
-EXTRA_DIST=${SEDINPUTS} testing.txt tests/*[^~] README
+EXTRA_DIST=${SEDINPUTS} testing.txt tests README
 
 %.s: %.c
 	$(COMPILE) -o $@ -S $<
