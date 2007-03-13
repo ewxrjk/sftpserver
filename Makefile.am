@@ -37,13 +37,10 @@ stat.h getcwd.c globals.c
 libsftp_a_LIBADD=$(LIBOBJS)
 
 # Documentation
-SEDINPUTS=gesftpserver.8.in
-SEDOUTPUTS=$(SEDINPUTS:.in=)
+man_MANS=gesftpserver.8
 
-man_MANS=${SEDOUTPUTS}
-
-${SEDOUTPUTS}: %: %.in config.status
-	sed < $< > $@.new \
+gesftpserver.8: gesftpserver.8.in config.status
+	sed < gesftpserver.8.in > $@.new \
 		-e "s,__libexecdir__,${libexecdir},g"
 	mv $@.new $@
 
@@ -60,7 +57,7 @@ DISTCLEANFILES=${SEDOUTPUTS}
 CLEANFILES=*.gcno *.gcda *.gcov
 
 # Distribution
-EXTRA_DIST=${SEDINPUTS} testing.txt tests README run-tests	\
+EXTRA_DIST=gesftpserver.8.in testing.txt tests README run-tests	\
 format-gconv-report
 
 %.s: %.c
