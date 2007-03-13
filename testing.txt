@@ -39,6 +39,27 @@ versions.
 The other reason for having protocol-specific tests is of course to
 test facilities that only exist in a subset of the protocols.
 
+** Hit-List
+
+Things that still particularly want testing:
+   * the realpath logic in v6.c and realpath.c
+   * serialization logic
+   * encoding translation
+   * unsupported protocol versions
+   * version-select
+   * reverse symlink logic
+   * "anonymous sftp" code; readonly mode
+   * non-regular files (in lots of ways)
+   * hidden attribute
+   * remaining details of file listing (longname)
+   * invalid UIDs/GIDs and owner/group names
+   * *STAT operations have poor coverage
+   * read-write opens
+   * initially-good permissions for open
+   * v6 link logic
+   * the client (if I decide to promote it to a proper client rather
+     than a test tool)
+
 * Interoperability Tests
 
 ** Programmable Clients
