@@ -249,9 +249,13 @@ static uint32_t sftp_init(struct sftpjob *job) {
     send_string(job->worker, "linkpath-targetpath");
   }
   send_end(job->worker);
-  /* Now we are initialized we can safely process other jobs in the
-   * background. */
-  queue_init(&workqueue, &workqueue_details, 4);
+  if(protocol->version < 6) {
+    /* Now we are initialized we can safely process other jobs in the
+     * background.  We can't do this for v6 because the first request might be
+     * version-select. */
+    D(("normal work queue creation"));
+    queue_init(&workqueue, &workqueue_details, 4);
+  }
   return HANDLER_RESPONDED;
 }
 
@@ -304,7 +308,7 @@ static void worker_cleanup(void *wdv) {
 /* Process a job */
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   struct sftpjob *const job = jv;
-  int l, r, type;
+  int l, r, type = 0;
   uint32_t status;
   
   job->a = a;
@@ -356,6 +360,13 @@ done:
   serialize_remove_job(job);
   free(job->data);
   free(job);
+  if(type != SSH_FXP_VERSION && workqueue == 0) {
+    /* This must have been the first job after initializing to version 6.  It
+     * might or might not have been version-select but either way it's now safe
+     * to go multithreaded. */
+    D(("late work queue creation"));
+    queue_init(&workqueue, &workqueue_details, 4);
+  }
   return;
 }
 
