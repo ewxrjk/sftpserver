@@ -129,6 +129,7 @@ static void version(void) {
 static uint32_t sftp_init(struct sftpjob *job) {
   uint32_t version;
   size_t offset;
+  int n;
 
   /* Cannot initialize more than once */
   if(protocol != &sftppreinit)
@@ -191,7 +192,8 @@ static uint32_t sftp_init(struct sftpjob *job) {
      * Therefore we send 0 here.
      */
     send_uint32(job->worker, 0);
-    send_string(job->worker, "space-available");
+    for(n = 0; n < protocol->nextensions; ++n)
+      send_string(job->worker, protocol->extensions[n].name);
     send_sub_end(job->worker, offset);
   }
   if(protocol->version >= 6) {
@@ -218,8 +220,9 @@ static uint32_t sftp_init(struct sftpjob *job) {
     send_uint16(job->worker, 0);        /* supported-open-block-vector */
     send_uint16(job->worker, 0);        /* supported-block-vector */
     send_uint32(job->worker, 0);        /* attrib-extension-count */
-    send_uint32(job->worker, 1);        /* extension-count */
-    send_string(job->worker, "space-available");
+    send_uint32(job->worker, protocol->nextensions); /* extension-count */
+    for(n = 0; n < protocol->nextensions; ++n)
+      send_string(job->worker, protocol->extensions[n].name);
     send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
     send_string(job->worker, "versions");
