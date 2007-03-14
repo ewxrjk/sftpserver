@@ -19,3 +19,6 @@ cd ..
 ls -1
 #dir
 #link
+cd /
+pwd
+#/
