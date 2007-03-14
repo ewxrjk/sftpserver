@@ -66,10 +66,7 @@ static void worker_cleanup(void *wdv);
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a);
 static void sftp_service(void);
 
-/* Globals */
-
-const char *local_encoding;
-struct queue *workqueue;
+static const char *local_encoding;
 
 static const struct queuedetails workqueue_details = {
   worker_init,
