@@ -2035,21 +2035,21 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READ);
   send_uint32(&fakeworker, 0);
-  send_uint8(&fakeworker, 0);           /* truncated string length */
+  send_uint8(&fakeworker, 0);           /* truncated handle length */
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READ);
   send_uint32(&fakeworker, 0);
-  send_uint32(&fakeworker, 64);         /* truncated string */
+  send_uint32(&fakeworker, 64);         /* truncated handle */
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READ);
   send_uint32(&fakeworker, 0);
-  send_uint32(&fakeworker, 0xFFFFFFFF); /* impossibly long string */
+  send_uint32(&fakeworker, 0xFFFFFFFF); /* impossibly long handle */
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
@@ -2065,6 +2065,20 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   send_uint8(&fakeworker, SSH_FXP_READLINK);
   send_uint32(&fakeworker, 0);
   send_uint32(&fakeworker, 0xFFFFFFFF); /* impossibly long string */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READLINK);
+  send_uint32(&fakeworker, 0);
+  send_uint32(&fakeworker, 32);         /* truncated string */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
+  status();
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_READLINK);
+  send_uint32(&fakeworker, 0);
+  send_uint8(&fakeworker, 0);           /* truncated string length */
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
