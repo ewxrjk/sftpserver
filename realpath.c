@@ -105,13 +105,14 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
               result[oldresultlen] = 0;
             /* Process all! the elements of the link target */
             result = process_path(a, result, nresultp, target, flags);
-          } else if(errno != EINVAL && !(flags & RP_MAY_NOT_EXIST))
+          } else if(errno != EINVAL && !(flags & RP_MAY_NOT_EXIST)) {
             /* EINVAL means it wasn't a link.  Anything else means something
              * went wrong while resolving it.  If we've not been asked to
              * handle nonexistent paths we save the remaining effort and return
              * an error straight away. */
             D(("error reading link: %s", strerror(errno)));
             return 0;
+          }
         }
         D(("result[2] -> '%s'", result));
       }
