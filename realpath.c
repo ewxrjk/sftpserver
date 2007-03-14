@@ -36,6 +36,8 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
   char *cwd, *abspath, *result = 0;
   size_t nresult = 0;
 
+  D(("my_realpath '%s' %#x", path, flags));
+
   /* Default is current directory */
   if(path[0] == 0)
     path = ".";
@@ -50,6 +52,7 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
     strcat(abspath, "/");
     strcat(abspath, path);
     path = abspath;
+    D(("convert relative path to '%s'", path));
   }
 
   /* The result always starts with a / */
@@ -61,6 +64,7 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
 
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
 			  const char *path, unsigned flags) {
+  D(("process_path path='%s' result='%s'", path, result));
   while(*path) {
     if(*path == '/')
       ++path;
@@ -79,12 +83,14 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
           *ls = 0;
         else
           strcpy(result, "/");          /* /.. = / */
+        D(("result[0] -> '%s'", result));
       } else {
         const size_t oldresultlen = strlen(result);
         /* Append the new path element */
         if(result[1])
           result = append(a, result, nresultp, "/");
         result = appendn(a, result, nresultp, path, elementlen);
+        D(("result[1] -> '%s'", result));
         /* If we're following symlinks, see if the path so far points to a
          * link */
         if(flags & RP_READLINK) {
@@ -104,12 +110,15 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
              * went wrong while resolving it.  If we've not been asked to
              * handle nonexistent paths we save the remaining effort and return
              * an error straight away. */
+            D(("error reading link: %s", strerror(errno)));
             return 0;
         }
+        D(("result[2] -> '%s'", result));
       }
-      path += elementlen;
+     path += elementlen;
     }
   }
+  D(("returning '%s'", result));
   return result;
 }
 

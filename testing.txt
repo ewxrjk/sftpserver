@@ -57,6 +57,7 @@ Things that still particularly want testing:
    * read-write opens
    * initially-good permissions for open
    * v6 link logic
+   * run tests under valgrind
    * the client (if I decide to promote it to a proper client rather
      than a test tool)
 

@@ -161,6 +161,33 @@ AC_DEFUN([RJK_GCOV],[
   AC_SUBST([GCOV],[$GCOV])
 ])
 
+AC_DEFUN([RJK_THREADS],[
+  AC_CANONICAL_BUILD
+  AC_CANONICAL_HOST
+  # If you're cross-compiling then you're on your own
+  if test "$host" = "$build"; then
+    case $host_os in
+    solaris2* )
+      if test "$GCC" = no; then
+        CC="${CC} -mt"
+      else
+        AC_DEFINE([_REENTRANT],[1],[define to enable thread-safe API])
+        AC_CHECK_LIB([pthread],[pthread_create])
+      fi
+      ;;
+    linux* )
+      AC_CHECK_LIB([pthread],[pthread_create])
+      ;;
+    freebsd* ) 
+      AC_CHECK_LIB([pthread],[pthread_create])
+      ;;
+    * )
+      AC_MSG_ERROR([don't know how to support threads on this system])
+      ;;
+    esac
+  fi
+])
+
 dnl Local Variables:
 dnl mode:autoconf
 dnl indent-tabs-mode:nil

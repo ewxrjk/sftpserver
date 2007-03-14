@@ -34,7 +34,7 @@ RJK_BUILDSYS_MISC
 #RJK_GTKFLAGS
 AC_PROG_RANLIB
 
-AC_CHECK_LIB([pthread],[pthread_create])
+RJK_THREADS
 AC_CHECK_LIB([socket],[socket])
 AC_CHECK_LIB([readline],[readline],
              [AC_SUBST([LIBREADLINE],[-lreadline])

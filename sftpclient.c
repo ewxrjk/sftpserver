@@ -174,7 +174,8 @@ static void version(void) {
 static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
   va_list ap;
 
-  fprintf(stderr, "%s:%d ", inputpath, inputline);
+  if(inputpath)
+    fprintf(stderr, "%s:%d ", inputpath, inputline);
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   va_end(ap);

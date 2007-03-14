@@ -24,6 +24,7 @@
 #include "utils.h"
 #include <errno.h>
 #include <unistd.h>
+#include <string.h>
 
 char *my_getcwd(struct allocator *a) {
   char *buffer = 0;
@@ -33,8 +34,10 @@ char *my_getcwd(struct allocator *a) {
     buffer = allocmore(a, buffer, oldsize, size);
     if(getcwd(buffer, size))
       return buffer;
-    else if(errno != ERANGE)
+    else if(errno != ERANGE) {
+      D(("getcwd returned error %s", strerror(errno)));
       return 0;
+    }
     oldsize = size;
     size *= 2;
   } while(size);
