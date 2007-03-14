@@ -399,6 +399,34 @@ static char *sftp_realpath(const char *path) {
   return resolved;
 }
 
+static char *sftp_realpath_v6(const char *path,
+                              int control_byte,
+                              char **compose,
+                              struct sftpattr *attrs) {
+  char *resolved;
+  uint32_t u32, id;
+
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_REALPATH);
+  send_uint32(&fakeworker, id = newid());
+  send_path(&fakejob, &fakeworker, path);
+  if(control_byte >= 0) {
+    send_uint8(&fakeworker, control_byte);
+    if(compose)
+      while(*compose)
+        send_path(&fakejob, &fakeworker, *compose++);
+  }
+  send_end(&fakeworker);
+  if(getresponse(SSH_FXP_NAME, id, "SSH_FXP_REALPATH") != SSH_FXP_NAME)
+    return 0;
+  cpcheck(parse_uint32(&fakejob, &u32));
+  if(u32 != 1)
+    fatal("wrong count in SSH_FXP_REALPATH reply");
+  cpcheck(parse_path(&fakejob, &resolved));
+  cpcheck(protocol->parseattrs(&fakejob, attrs));
+  return resolved;
+}
+
 static int sftp_stat(const char *path, struct sftpattr *attrs,
                      uint8_t type) {
   uint32_t id;
@@ -783,14 +811,21 @@ static int cmd_cd(int attribute((unused)) ac,
   const char *newcwd;
   struct sftpattr attrs;
 
-  newcwd = sftp_realpath(makeabspath(av[0]));
-  if(!newcwd)
-    return -1;
-  /* Check it's really a directory */
-  if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT))
-    return -1;
+  if(protocol->version >= 6) {
+    /* We can do this more efficiently */
+    newcwd = sftp_realpath_v6(cwd, SSH_FXP_REALPATH_STAT_ALWAYS, av, &attrs);
+    if(!newcwd)
+      return -1;
+  } else {
+    newcwd = sftp_realpath(makeabspath(av[0]));
+    if(!newcwd)
+      return -1;
+    /* Check it's really a directory */
+    if(sftp_stat(newcwd, &attrs, SSH_FXP_LSTAT))
+      return -1;
+  }
   if(attrs.type != SSH_FILEXFER_TYPE_DIRECTORY) {
-    error("%s is not a directory", av[0]);
+    error("%s is not a directory (type %d)", av[0], attrs.type);
     return -1;
   }
   free(cwd);

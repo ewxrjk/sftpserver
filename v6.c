@@ -33,8 +33,7 @@
 #include <errno.h>
 
 uint32_t sftp_v6_realpath(struct sftpjob *job) {
-  char *path, *compose;
-  struct sftpattr attr;
+  char *path, *compose, *resolvedpath;
   uint8_t control_byte = SSH_FXP_REALPATH_NO_CHECK;
   unsigned rpflags = 0;
   struct stat sb;
@@ -74,23 +73,28 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   default:
     return SSH_FX_BAD_MESSAGE;
   }
-  memset(&attr, 0, sizeof attr);
-  if(!(attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST)))
+  if(!(resolvedpath = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST)))
     return HANDLER_ERRNO;
-  D(("...real path is %s", attr.name));
+  D(("...real path is %s", resolvedpath));
   switch(control_byte) {
   case SSH_FXP_REALPATH_NO_CHECK:
     /* Don't stat, send dummy attributes */
+    memset(&attrs, 0, sizeof attrs);
+    attrs.name = resolvedpath;
     break;
   case SSH_FXP_REALPATH_STAT_IF:
     /* stat but accept failure */
     if(lstat(path, &sb) >= 0)
-      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, 0);
+      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
+    else {
+      memset(&attrs, 0, sizeof attrs);
+      attrs.name = resolvedpath;
+    }
     break;
   case SSH_FXP_REALPATH_STAT_ALWAYS:
     /* stat and error on failure */
     if(stat(path, &sb) >= 0)
-      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, 0);
+      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else
       return HANDLER_ERRNO;
     break;
@@ -98,7 +102,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_NAME);
   send_uint32(job->worker, job->id);
-  protocol->sendnames(job, 1, &attr);
+  protocol->sendnames(job, 1, &attrs);
   send_end(job->worker);
   return HANDLER_RESPONDED;
 }

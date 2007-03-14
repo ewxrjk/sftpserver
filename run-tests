@@ -24,7 +24,7 @@ from subprocess import Popen,PIPE,STDOUT
 srcdir = os.path.abspath(os.getenv('srcdir'))
 builddir = os.path.abspath('.')
 client = os.path.abspath("sftpclient")
-server = os.path.abspath("gesftpserver")
+server = "gesftpserver"
 
 def rmrf(path):
     if os.path.lexists(path):
@@ -49,8 +49,13 @@ while len(args) > 0 and args[0][0] == '-':
     if args[0] == "--protocols":
         protocols = args[1].split(',')
         args = args[2:]
+    elif args[0] == "--server":
+        server = args[1]
+        args = args[2:]
     else:
         fatal("unknown option '%s'" % args[0])
+
+server = os.path.abspath(server)
 
 if len(args) > 0:
     tests = args
