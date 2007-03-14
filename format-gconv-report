@@ -2,15 +2,21 @@
 import re,sys
 
 percent = {}
+total_lines = 0
+covered_lines = 0
 
 for line in sys.stdin.readlines():
   line = line[:-1]
   r = re.match("File `(?:.*/)?([^/]+.c)'", line)
   if r:
     name = r.group(1)
-  r = re.match("Lines executed:([0-9\\.]+)% of [0-9]+", line)
+  r = re.match("Lines executed:([0-9\\.]+)% of ([0-9]+)", line)
   if r:
-    percent[name] = float(r.group(1))
+    this_pc = float(r.group(1))
+    this_lines = int(r.group(2))
+    percent[name] = this_pc
+    total_lines += this_lines
+    covered_lines += this_lines * this_pc / 100.0;
 
 def cmp(a,b):
   if percent[a] < percent[b]: return -1 
@@ -22,4 +28,4 @@ keys.sort(cmp)
 
 for k in keys:
   print "%20s: %d%%" % (k, percent[k])
-
+print "Total coverage: %d%%" % (100 * (covered_lines / total_lines))
