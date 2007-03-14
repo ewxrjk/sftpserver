@@ -53,14 +53,15 @@ all: ${SEDOUTPUTS}
 check: all
 	rm -f *.gcda *.gcov
 	srcdir=${srcdir} ${srcdir}/run-tests
-	${GCOV} ${srcdir}/*.c
+	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report
 
 # Cleaning
 DISTCLEANFILES=${SEDOUTPUTS}
 CLEANFILES=*.gcno *.gcda *.gcov
 
 # Distribution
-EXTRA_DIST=${SEDINPUTS} testing.txt tests README run-tests
+EXTRA_DIST=${SEDINPUTS} testing.txt tests README run-tests	\
+format-gconv-report
 
 %.s: %.c
 	$(COMPILE) -o $@ -S $<

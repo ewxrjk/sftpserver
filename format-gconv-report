@@ -1,0 +1,25 @@
+#! /usr/bin/env python
+import re,sys
+
+percent = {}
+
+for line in sys.stdin.readlines():
+  line = line[:-1]
+  r = re.match("File `(?:.*/)?([^/]+.c)'", line)
+  if r:
+    name = r.group(1)
+  r = re.match("Lines executed:([0-9\\.]+)% of [0-9]+", line)
+  if r:
+    percent[name] = float(r.group(1))
+
+def cmp(a,b):
+  if percent[a] < percent[b]: return -1 
+  elif percent[a] > percent[b]: return 1
+  else: return 0
+
+keys = percent.keys()
+keys.sort(cmp)
+
+for k in keys:
+  print "%20s: %d%%" % (k, percent[k])
+
