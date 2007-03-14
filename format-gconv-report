@@ -26,6 +26,7 @@ def cmp(a,b):
 keys = percent.keys()
 keys.sort(cmp)
 
-for k in keys:
-  print "%20s: %d%%" % (k, percent[k])
-print "Total coverage: %d%%" % (100 * (covered_lines / total_lines))
+if len(keys):
+  for k in keys:
+    print "%20s: %d%%" % (k, percent[k])
+  print "Total coverage: %d%%" % (100 * (covered_lines / total_lines))
