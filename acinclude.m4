@@ -165,24 +165,33 @@ AC_DEFUN([RJK_THREADS],[
   AC_CANONICAL_BUILD
   AC_CANONICAL_HOST
   # If you're cross-compiling then you're on your own
+  AC_MSG_CHECKING([how to build threaded code])
   if test "$host" = "$build"; then
     case $host_os in
     solaris2* )
-      if test "$GCC" = no; then
-        CC="${CC} -mt"
-      else
+      case "$GCC" in
+      yes )
+        AC_MSG_RESULT([-D_REENTRANT -lpthread])
         AC_DEFINE([_REENTRANT],[1],[define to enable thread-safe API])
         AC_CHECK_LIB([pthread],[pthread_create])
-      fi
+        ;;
+      * )
+        AC_MSG_RESULT([-mt option])
+        CC="${CC} -mt"
+        ;;
+      esac
       ;;
     linux* )
+      AC_MSG_RESULT([-lpthread])
       AC_CHECK_LIB([pthread],[pthread_create])
       ;;
     freebsd* ) 
+      AC_MSG_RESULT([-lpthread])
       AC_CHECK_LIB([pthread],[pthread_create])
       ;;
     * )
-      AC_MSG_ERROR([don't know how to support threads on this system])
+      AC_MSG_RESULT([unknown])
+      AC_MSG_ERROR([don't know how to build threaded code on this system])
       ;;
     esac
   fi
