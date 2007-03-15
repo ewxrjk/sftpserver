@@ -25,4 +25,4 @@ put -f one one-ul
 put -f one one-ul
 !diff one one-ul
 put -d one one-del
-![ -e one-del ] && echo one-del unexpectedly exists
+![ -f one-del ] && echo one-del unexpectedly exists

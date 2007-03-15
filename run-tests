@@ -63,6 +63,9 @@ else:
     tests = os.listdir(os.path.join(srcdir, 'tests'))
 tests.sort()
 
+# Clean up
+rmrf(os.path.join(builddir, ',testroot'))
+
 for test in tests:
     for proto in protocols:
         if ('.' in test
@@ -72,7 +75,6 @@ for test in tests:
             continue
         sys.stderr.write("Testing %s protocol %s ... " % (test, proto))
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
-        rmrf(root)
         os.makedirs(root)
         os.chdir(root)
         output = Popen([client, "-S", proto, "-P", server,
@@ -122,6 +124,7 @@ if failed:
     print "%d tests failed" % failed
     sys.exit(1)
 else:
+    os.chdir("/")
     rmrf(os.path.join(builddir, ',testroot'))
     print "OK"
 
