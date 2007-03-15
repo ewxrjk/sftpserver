@@ -171,8 +171,7 @@ AC_DEFUN([RJK_THREADS],[
     solaris2* )
       case "$GCC" in
       yes )
-        AC_MSG_RESULT([-D_REENTRANT -lpthread])
-        AC_DEFINE([_REENTRANT],[1],[define to enable thread-safe API])
+        AC_MSG_RESULT([-lpthread])
         AC_CHECK_LIB([pthread],[pthread_create])
         ;;
       * )
@@ -181,11 +180,7 @@ AC_DEFUN([RJK_THREADS],[
         ;;
       esac
       ;;
-    linux* )
-      AC_MSG_RESULT([-lpthread])
-      AC_CHECK_LIB([pthread],[pthread_create])
-      ;;
-    freebsd* ) 
+    linux* | freebsd* | darwin* )
       AC_MSG_RESULT([-lpthread])
       AC_CHECK_LIB([pthread],[pthread_create])
       ;;
@@ -195,6 +190,8 @@ AC_DEFUN([RJK_THREADS],[
       ;;
     esac
   fi
+  # We always ask for this.
+  AC_DEFINE([_REENTRANT],[1],[define for re-entrant functions])
 ])
 
 dnl Local Variables:
