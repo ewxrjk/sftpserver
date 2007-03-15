@@ -197,7 +197,7 @@ const struct sftpprotocol sftpv6 = {
    |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
    |SSH_FILEXFER_ATTR_BITS
    |SSH_FILEXFER_ATTR_LINK_COUNT),
-  SSH_FX_LOCK_CONFLICT,
+  SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK,
   v456_sendnames,
   v456_sendattrs,
   v456_parseattrs,

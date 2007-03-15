@@ -210,7 +210,10 @@ uint32_t sftp_rmdir(struct sftpjob *job) {
   pcheck(parse_path(job, &path));
   D(("sftp_rmdir %s", path));
   if(rmdir(path) < 0)
-    return HANDLER_ERRNO;
+    if(errno == EEXIST)
+      return SSH_FX_DIR_NOT_EMPTY;
+    else
+      return HANDLER_ERRNO;
   else
     return SSH_FX_OK;
 }
