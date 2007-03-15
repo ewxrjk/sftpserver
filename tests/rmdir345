@@ -1,4 +1,6 @@
 !mkdir nonempty
 !touch nonempty/foo
+rmdir nonempty/foo
+#.*operation failed.*
 rmdir nonempty
 #.*operation failed.*
