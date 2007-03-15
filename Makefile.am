@@ -40,7 +40,7 @@ libsftp_a_LIBADD=$(LIBOBJS)
 man_MANS=gesftpserver.8
 
 gesftpserver.8: gesftpserver.8.in config.status
-	sed < gesftpserver.8.in > $@.new \
+	sed < ${srcdir}/gesftpserver.8.in > $@.new \
 		-e "s,__libexecdir__,${libexecdir},g"
 	mv $@.new $@
 
