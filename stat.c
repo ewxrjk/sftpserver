@@ -73,10 +73,18 @@ void stat_to_attrs(struct allocator *a,
   attrs->mtime.seconds = sb->st_mtime;
   attrs->ctime.seconds = sb->st_ctime;
 #if HAVE_STAT_TIMESPEC
-  attrs->atime.nanoseconds = sb->st_atimespec.tv_nsec;
-  attrs->mtime.nanoseconds = sb->st_mtimespec.tv_nsec;
-  attrs->ctime.nanoseconds = sb->st_ctimespec.tv_nsec;
-  attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIMES;
+  if(sb->st_atimespec.tv_nsec >= 0
+     && sb->st_atimespec.tv_nsec < 1000000000
+     && sb->st_mtimespec.tv_nsec >= 0
+     && sb->st_mtimespec.tv_nsec < 1000000000
+     && sb->st_ctimespec.tv_nsec >= 0
+     && sb->st_ctimespec.tv_nsec < 1000000000) {
+    /* Only send subsecond times if they are in range */ 
+    attrs->atime.nanoseconds = sb->st_atimespec.tv_nsec;
+    attrs->mtime.nanoseconds = sb->st_mtimespec.tv_nsec;
+    attrs->ctime.nanoseconds = sb->st_ctimespec.tv_nsec;
+    attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIME;
+  }
 #endif
   attrs->link_count = sb->st_nlink;
   /* If we know the path we can determine whether the file is hidden or not */
@@ -258,7 +266,10 @@ void normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
     times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)     \
                        ? (time_t)attrs.mtime.seconds                    \
                        : current.st_mtime);                             \
-    SET_STATUS_NANOSEC;							\
+    times[0].tv_usec = 0;                                               \
+    times[1].tv_usec = 0;                                               \
+    if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)                 \
+      SET_STATUS_NANOSEC;						\
     D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",                  \
        (unsigned long)times[0].tv_sec,                                  \
        (unsigned long)times[0].tv_usec,                                 \
