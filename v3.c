@@ -519,12 +519,16 @@ static uint32_t sftp_v3_fstat(struct sftpjob *job) {
 uint32_t sftp_setstat(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
+  uint32_t rc;
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_setstat %s", path));
+  /* Check owner/group */
+  if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
+    return rc;
   if(set_status(job->a, path, &attrs)) 
     return HANDLER_ERRNO;
   else
@@ -542,6 +546,9 @@ uint32_t sftp_fsetstat(struct sftpjob *job) {
   pcheck(parse_handle(job, &id));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
+  /* Check owner/group */
+  if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
+    return rc;
   if((rc = handle_get_fd(&id, &fd, 0, 0))) 
     return rc;
   if(set_fstatus(job->a, fd, &attrs))

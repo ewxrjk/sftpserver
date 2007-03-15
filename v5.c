@@ -57,8 +57,12 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   struct stat sb;
   struct handleid id;
   unsigned handle_flags = 0;
+  uint32_t rc;
 
   D(("generic_open %s %#"PRIx32" %#"PRIx32, path, desired_access, flags));
+  /* Check owner/group */
+  if((rc = normalize_ownergroup(job->a, attrs)) != SSH_FX_OK)
+    return rc;
   /* For opens, the size indicates the planned total size, and doesn't affect
    * the file creation. */
   attrs->valid &= ~(uint32_t)SSH_FILEXFER_ATTR_SIZE;

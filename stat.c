@@ -202,7 +202,9 @@ const char *format_attr(struct allocator *a,
   return formatted;
 }
 
-void normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
+uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
+  uint32_t rc = SSH_FX_OK;
+
   switch(attrs->valid & (SSH_FILEXFER_ATTR_UIDGID
                          |SSH_FILEXFER_ATTR_OWNERGROUP)) { 
   case SSH_FILEXFER_ATTR_UIDGID:
@@ -211,11 +213,15 @@ void normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
       attrs->valid |= SSH_FILEXFER_ATTR_OWNERGROUP;
     break;
   case SSH_FILEXFER_ATTR_OWNERGROUP:
-    if((attrs->uid = name2uid(attrs->owner)) != (uid_t)-1
-       && (attrs->gid = name2gid(attrs->group)) != (gid_t)-1)
+    if((attrs->uid = name2uid(attrs->owner)) == (uid_t)-1)
+      rc = SSH_FX_OWNER_INVALID;
+    if((attrs->gid = name2gid(attrs->group)) == (gid_t)-1)
+      rc = SSH_FX_GROUP_INVALID;
+    if(rc == SSH_FX_OK)
       attrs->valid |= SSH_FILEXFER_ATTR_UIDGID;
     break;
   }
+  return rc;
 }
 
 /* Horrendous ugliness for SETSTAT/FSETSTAT */

@@ -28,8 +28,8 @@ const char *format_attr(struct allocator *a,
 #define FORMAT_PREFER_LOCALTIME 0x00000002
 /* Prefer numeric UID instead of names */
 
-void normalize_ownergroup(struct allocator *a,
-                          struct sftpattr *attrs);
+uint32_t normalize_ownergroup(struct allocator *a,
+                              struct sftpattr *attrs);
 
 const char *set_status(struct allocator *a,
                        const char *path,
