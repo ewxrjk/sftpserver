@@ -110,6 +110,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
 uint32_t sftp_link(struct sftpjob *job) {
   char *oldpath, *newlinkpath;
   uint8_t symbolic;
+  struct stat sb;
 
   /* See also comment in v3.c for SSH_FXP_SYMLINK */
   if(readonly)
@@ -120,11 +121,18 @@ uint32_t sftp_link(struct sftpjob *job) {
   D(("sftp_link %s %s [%s]", oldpath, newlinkpath,
      symbolic ? "symbolic" : "hard"));
   if((symbolic ? symlink : link)(oldpath, newlinkpath) < 0) {
-    /* e.g. Linux returns EPERM for symlink or link on a FAT32 fs */
-    if(errno == EPERM)
-      return SSH_FX_OP_UNSUPPORTED;
-    else
+    switch(errno) {
+    case EPERM:
+      if(!symbolic && stat(oldpath, &sb) >= 0 && S_ISDIR(sb.st_mode))
+        /* Can't hard-link directories */
+        return SSH_FX_FILE_IS_A_DIRECTORY;
+      else
+        /* e.g. Linux returns EPERM for symlink or link on a FAT32 fs */
+        return SSH_FX_OP_UNSUPPORTED;
+      break;
+    default:
       return HANDLER_ERRNO;
+    }
   } else
     return SSH_FX_OK;
 }

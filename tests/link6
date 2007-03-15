@@ -1,7 +1,10 @@
+!mkdir dir
 put /dev/null foo
 put /dev/null wibble
 link foo bar
 ls -l bar
 #-rw-r--r-- +2 +\S+ +\S+ +0 +[a-zA-Z]+ \d+ \d+:\d+ bar
 link wibble bar
-#.*File exists.*
+#.*file already exists.*
+link dir spong
+#.*file is a directory.*
