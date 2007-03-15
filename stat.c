@@ -83,7 +83,7 @@ void stat_to_attrs(struct allocator *a,
     attrs->atime.nanoseconds = sb->st_atimespec.tv_nsec;
     attrs->mtime.nanoseconds = sb->st_mtimespec.tv_nsec;
     attrs->ctime.nanoseconds = sb->st_ctimespec.tv_nsec;
-    attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIME;
+    attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIMES;
   }
 #endif
   attrs->link_count = sb->st_nlink;
