@@ -73,7 +73,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   default:
     return SSH_FX_BAD_MESSAGE;
   }
-  if(!(resolvedpath = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST)))
+  if(!(resolvedpath = my_realpath(job->a, path, rpflags)))
     return HANDLER_ERRNO;
   D(("...real path is %s", resolvedpath));
   switch(control_byte) {
@@ -83,8 +83,8 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
     attrs.name = resolvedpath;
     break;
   case SSH_FXP_REALPATH_STAT_IF:
-    /* stat but accept failure */
-    if(lstat(path, &sb) >= 0)
+    /* stat as hard as we can but accept failure if it's just not there */
+    if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
       stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else {
       memset(&attrs, 0, sizeof attrs);
@@ -93,7 +93,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
     break;
   case SSH_FXP_REALPATH_STAT_ALWAYS:
     /* stat and error on failure */
-    if(stat(path, &sb) >= 0)
+    if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
       stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else
       return HANDLER_ERRNO;

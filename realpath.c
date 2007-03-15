@@ -104,14 +104,22 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
               /* Relative symlink, lose the last path element */
               result[oldresultlen] = 0;
             /* Process all! the elements of the link target */
-            result = process_path(a, result, nresultp, target, flags);
-          } else if(errno != EINVAL && !(flags & RP_MAY_NOT_EXIST)) {
-            /* EINVAL means it wasn't a link.  Anything else means something
-             * went wrong while resolving it.  If we've not been asked to
-             * handle nonexistent paths we save the remaining effort and return
-             * an error straight away. */
-            D(("error reading link: %s", strerror(errno)));
-            return 0;
+            if(!(result = process_path(a, result, nresultp, target, flags)))
+              return result;
+          } else {
+            switch(errno) {
+            case EINVAL:
+              /* Not a link.  Proceed. */
+              break;
+            default:
+              if(!(flags & RP_MAY_NOT_EXIST)) {
+                /* Nonexistent files are bad.  Return an error. */
+                D(("error reading link: %s", strerror(errno)));
+                return 0;
+              }
+              /* Nonexistent files are OK.  Proceed. */
+              break;
+            }
           }
         }
         D(("result[2] -> '%s'", result));

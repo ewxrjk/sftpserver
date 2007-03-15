@@ -2032,6 +2032,36 @@ static int cmd_realpath(int attribute((unused)) ac,
     return -1;
 }
 
+
+static int cmd_realpath6(int attribute((unused)) ac,
+                         char **av) {
+  int control_byte;
+  char *resolved;
+  struct sftpattr attrs;
+  time_t now;
+  struct tm nowtime;
+
+  if(!strcmp(av[0], "no-check"))
+    control_byte = SSH_FXP_REALPATH_NO_CHECK;
+  else if(!strcmp(av[0], "stat-if"))
+    control_byte = SSH_FXP_REALPATH_STAT_IF;
+  else if(!strcmp(av[0], "stat-always"))
+    control_byte = SSH_FXP_REALPATH_STAT_ALWAYS;
+  else
+    return error("unknown control string '%s'", av[0]);
+  resolved = sftp_realpath_v6(av[1], control_byte, av + 2, &attrs);
+  if(!resolved)
+    return -1;
+  if(attrs.valid) {
+    attrs.name = resolved;
+    time(&now);
+    gmtime_r(&now, &nowtime);
+    xprintf("%s\n", format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
+  } else
+    xprintf("%s\n", resolved);
+  return 0;
+}
+
 static int cmd_bad_handle(int attribute((unused)) ac,
                           char attribute((unused)) **av) {
   struct handle h;
@@ -2307,6 +2337,11 @@ static const struct command commands[] = {
     "expand a path name"
   },
   {
+    "realpath6", 2, INT_MAX, cmd_realpath6,
+    "CONTROL PATH [COMPOSE...]",
+    "expand a path name"
+  },
+  {
     "rename", 2, 2, cmd_mv,
     "OLDPATH NEWPATH",
     "rename a remote file"
@@ -2436,7 +2471,8 @@ static void process(const char *prompt, FILE *fp) {
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
-      error("wrong number of arguments");
+      error("wrong number of arguments (got %d, want %d-%d)",
+            ac, commands[n].minargs, commands[n].maxargs);
       if(stoponerror)
         fatal("stopping on error");
       goto next;

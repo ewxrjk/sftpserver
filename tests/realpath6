@@ -1,0 +1,47 @@
+!mkdir dir
+!mkdir dir/subdir
+!mkdir dir/subdir/contents
+!ln -s nowhere dir/dangling
+!ln -s subdir dir/followable
+realpath6 no-check dir
+#/.*/dir
+realpath6 no-check dir/subdir
+#/.*/subdir
+realpath6 no-check dir/subdir/contents
+#/.*/subdir/contents
+realpath6 no-check dir/dangling
+#/.*/dangling
+realpath6 no-check dir/dangling/contents
+#/.*/dangling/contents
+realpath6 no-check dir/followable
+#/.*/followable
+realpath6 no-check dir/followable/contents
+#/.*/followable/contents
+realpath6 stat-if dir
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/dir
+realpath6 stat-if dir/subdir
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir
+realpath6 stat-if dir/subdir/contents
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir/contents
+realpath6 stat-if dir/dangling
+#/.*/nowhere
+realpath6 stat-if dir/dangling/contents
+#/.*/nowhere/contents
+realpath6 stat-if dir/followable
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir
+realpath6 stat-if dir/followable/contents
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir/contents
+realpath6 stat-always dir
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/dir
+realpath6 stat-always dir/subdir
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir
+realpath6 stat-always dir/subdir/contents
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir/contents
+realpath6 stat-always dir/dangling
+#.*file does not exist.*
+realpath6 stat-always dir/dangling/contents
+#.*file does not exist.*
+realpath6 stat-always dir/followable
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir
+realpath6 stat-always dir/followable/contents
+#drwxr.[sx]r.x +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ .*/subdir/contents
