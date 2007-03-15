@@ -2054,7 +2054,6 @@ static int cmd_bad_handle(int attribute((unused)) ac,
 
 static int cmd_bad_packet(int attribute((unused)) ac,
                           char attribute((unused)) **av) {
-
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READ);
   /* completely missing ID */
@@ -2117,6 +2116,32 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
+  return 0;
+}
+
+static int cmd_stat(int attribute((unused)) ac,
+                    char **av) {
+  struct sftpattr attrs;
+  time_t now;
+  struct tm nowtime;
+
+  if(sftp_stat(av[0], &attrs, SSH_FXP_STAT)) return -1;
+  time(&now);
+  gmtime_r(&now, &nowtime);
+  xprintf("%s\n", format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
+  return 0;
+}
+
+static int cmd_lstat(int attribute((unused)) ac,
+                     char **av) {
+  struct sftpattr attrs;
+  time_t now;
+  struct tm nowtime;
+
+  if(sftp_stat(av[0], &attrs, SSH_FXP_LSTAT)) return -1;
+  time(&now);
+  gmtime_r(&now, &nowtime);
+  xprintf("%s\n", format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
   return 0;
 }
 
@@ -2233,6 +2258,11 @@ static const struct command commands[] = {
     "list remote directory"
   },
   {
+    "lstat", 1, 1, cmd_lstat,
+    "PATH",
+    "lstat a file"
+  },
+  {
     "lumask", 0, 1, cmd_lumask,
     "OCTAL",
     "get or set local umask"
@@ -2295,6 +2325,11 @@ static const struct command commands[] = {
     "symlink", 2, 2, cmd_symlink,
     "TARGET NEWPATH",
     "create a remote symlink"
+  },
+  {
+    "stat", 1, 1, cmd_stat,
+    "PATH",
+    "stat a file"
   },
   {
     "text", 0, 0, cmd_text,

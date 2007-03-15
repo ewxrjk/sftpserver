@@ -15,3 +15,9 @@ ls -la
 !chmod 000 noreadperm
 ls noreadperm
 #.*permission denied.*
+lstat b
+#lrwxr.[xs]r.x +\? +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ b
+stat b
+#.*file does not exist
+stat large
+#-rw-r--r-- +\? +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
