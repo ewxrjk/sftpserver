@@ -191,14 +191,20 @@ uint32_t sftp_already_init(struct sftpjob attribute((unused)) *job) {
 
 uint32_t sftp_remove(struct sftpjob *job) {
   char *path;
-  
+  struct stat sb;
+
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
   pcheck(parse_path(job, &path));
   D(("sftp_remove %s", path));
-  if(unlink(path) < 0)
+  if(unlink(path) < 0) {
+    if(errno == EPERM) {
+      if(lstat(path, &sb) == 0 && S_ISDIR(sb.st_mode))
+        return SSH_FX_FILE_IS_A_DIRECTORY;
+      errno = EPERM;                    /* put errno back */
+    }
     return HANDLER_ERRNO;
-  else
+  } else
     return SSH_FX_OK;
 }
 

@@ -2,5 +2,7 @@
 !touch nonempty/foo
 rmdir nonempty/foo
 #.*operation failed.*
+rm nonempty
+#.*operation failed.*
 rmdir nonempty
 #.*operation failed.*
