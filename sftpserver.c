@@ -84,6 +84,7 @@ static const struct option options[] = {
   { "version", no_argument, 0, 'V' },
   { "debug", no_argument, 0, 'd' },
   { "debug-file", required_argument, 0, 'D' },
+#if DAEMON
   { "chroot", required_argument, 0, 'r' },
   { "user", required_argument, 0, 'u' },
   { "listen", required_argument, 0, 'L' },
@@ -91,6 +92,7 @@ static const struct option options[] = {
   { "background", no_argument, 0, 'b' },
   { "ipv4", no_argument, 0, '4' },
   { "ipv6", no_argument, 0, '6' },
+#endif
   { "readonly", no_argument, 0, 'R' },
   { 0, 0, 0, 0 }
 };
@@ -105,13 +107,15 @@ static void help(void) {
   xprintf("Options:\n"
           "  --help, -h               Display usage message\n"
           "  --version, -V            Display version number\n"
+#if DAEMON
           "  --chroot, -r PATH        Change root to PATH\n"
           "  --user, -u USER          Change to user USER\n"
           "  --listen, -L PORT        Listen on PORT\n"
           "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
           "  -4|-6                    Force IPv4 or IPv6 for --listen\n"
-          "  --readonly, -R           Read-only mode\n"
-          "  --background, -b         Daemonize\n");
+          "  --background, -b         Daemonize\n"
+#endif
+          "  --readonly, -R           Read-only mode\n");
   exit(0);
 }
 
@@ -370,6 +374,7 @@ done:
   return;
 }
 
+#if DAEMON
 static void sigchld_handler(int attribute((unused)) sig) {
   const int save_errno = errno;
   int w;
@@ -378,21 +383,25 @@ static void sigchld_handler(int attribute((unused)) sig) {
     ;
   errno = save_errno;
 }
+#endif
 
 int main(int argc, char **argv) {
-  int n, listenfd = -1;
+  int n;
+  const char *bn;
+#if DAEAMON
+  iconv_t cd;
+  int listenfd = -1;
   const char *root = 0, *user = 0;
   struct passwd *pw = 0;
   const char *host = 0, *port = 0;
   int daemonize = 0;
   struct addrinfo hints;
-  iconv_t cd;
-  const char *bn;
 
   memset(&hints, 0, sizeof hints);
   hints.ai_flags = AI_PASSIVE;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+#endif
 
   /* Find basename of executable */
   if(!(bn = strrchr(argv[0], '/')))
@@ -421,6 +430,7 @@ int main(int argc, char **argv) {
     case 'V': version();
     case 'd': debugging = 1; break;
     case 'D': debugging = 1; debugpath = optarg; break;
+#if DAEMON
     case 'r': root = optarg; break;
     case 'u': user = optarg; break;
     case 'H': host = optarg; break;
@@ -428,13 +438,16 @@ int main(int argc, char **argv) {
     case 'b': daemonize = 1; break;
     case '4': hints.ai_family = PF_INET; break;
     case '6': hints.ai_family = PF_INET6; break;
+#endif
     case 'R': readonly = 1; break;
     default: exit(1);
     }
   }
 
+#if DAEMON
   if(daemonize && !port)
     fatal("--background requires --port");
+#endif
 
   /* If writes to the client fail then we'll get EPIPE.  Arguably it might
    * better just to die the SIGPIPE but reporting an EPIPE is pretty harmless.
@@ -452,6 +465,7 @@ int main(int argc, char **argv) {
    */
   signal(SIGPIPE, SIG_IGN);
 
+#if DAEMON
   if(user) {
     /* Look up the user */
     if(!(pw = getpwnam(user)))
@@ -459,7 +473,7 @@ int main(int argc, char **argv) {
     if(initgroups(user, pw->pw_gid))
       fatal("error calling initgroups: %s", strerror(errno));
   }
-  
+
   if(port) {
     struct addrinfo *res;
     int rc;
@@ -565,6 +579,10 @@ int main(int argc, char **argv) {
       }
     }
   }
+#else
+  sftp_service();
+  return 0;
+#endif
 }
 
 static void sftp_service(void) {

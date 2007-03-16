@@ -1,3 +1,4 @@
+
 # This file is part of the Green End SFTP Server.
 # Copyright (C) 2007 Richard Kettlewell
 #
@@ -61,6 +62,15 @@ AC_ARG_ENABLE([reversed-symlink],
 AC_MSG_RESULT([$revlink])
 if test $revlink = yes; then
   AC_DEFINE([REVERSE_SYMLINK],[1],[define to reverse SSH_FXP_SYMLINK args])
+fi
+
+AC_ARG_ENABLE([daemon],
+              [AS_HELP_STRING([--enable-daemon],
+                              [Turn on daemon mode support])],
+              [daemon="$enableval"],
+              [daemon=no])
+if test $daemon = yes; then
+  AC_DEFINE([DAEMON],[1],[define to enable daemon mode])
 fi
 
 RJK_GCOV
