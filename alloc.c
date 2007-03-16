@@ -32,6 +32,10 @@ struct chunk {
   struct chunk *next;
   union block *ptr;
   size_t left;
+  /* size_t will usually have the same size as a pointer; by chucking an extra
+   * one in we become 4 * the size of a pointer, which is much more likely to
+   * be a power of 2 than 3 *. */
+  size_t spare;
 };
 
 union block {
