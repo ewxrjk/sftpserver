@@ -1,0 +1,5 @@
+!touch foo
+mv -o foo bar
+#.*permission denied.*
+mv -n foo bar
+#.*permission denied.*

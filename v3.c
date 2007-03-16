@@ -511,7 +511,7 @@ static uint32_t sftp_v3_fstat(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0, 0)))
+  if((rc = handle_get_fd(&id, &fd, 0)))
     return rc;
   return sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
@@ -549,7 +549,7 @@ uint32_t sftp_fsetstat(struct sftpjob *job) {
   /* Check owner/group */
   if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
     return rc;
-  if((rc = handle_get_fd(&id, &fd, 0, 0))) 
+  if((rc = handle_get_fd(&id, &fd, 0))) 
     return rc;
   if(set_fstatus(job->a, fd, &attrs))
     return HANDLER_ERRNO;
@@ -655,7 +655,7 @@ uint32_t sftp_read(struct sftpjob *job) {
      id.id, id.tag, len, offset));
   if(len > MAXREAD)
     len = MAXREAD;
-  if((rc = handle_get_fd(&id, &fd, 0, &flags)))
+  if((rc = handle_get_fd(&id, &fd, &flags)))
     return rc;
   /* We read straight into our own output buffer to save a copy. */
   send_begin(job->worker);
@@ -699,7 +699,7 @@ uint32_t sftp_write(struct sftpjob *job) {
     return SSH_FX_BAD_MESSAGE;
   D(("sftp_write %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
-  if((rc = handle_get_fd(&id, &fd, 0, &flags)))
+  if((rc = handle_get_fd(&id, &fd, &flags)))
     return rc;
   while(len > 0) {
     /* Short writes aren't allowed so we loop around writing more */

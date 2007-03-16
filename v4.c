@@ -252,7 +252,7 @@ uint32_t sftp_v456_fstat(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0, 0)))
+  if((rc = handle_get_fd(&id, &fd, 0)))
     return rc;
   return sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
 }

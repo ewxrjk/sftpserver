@@ -16,7 +16,7 @@ for line in sys.stdin.readlines():
     this_lines = int(r.group(2))
     percent[name] = this_pc
     total_lines += this_lines
-    covered_lines += this_lines * this_pc / 100.0;
+    covered_lines += this_lines * this_pc / 100.0
 
 def cmp(a,b):
   if percent[a] < percent[b]: return -1 

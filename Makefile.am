@@ -47,14 +47,21 @@ gesftpserver.8: gesftpserver.8.in config.status
 # Build and test
 all: ${SEDOUTPUTS}
 
-check: all
+check: all links
 	rm -f *.gcda *.gcov
-	srcdir=${srcdir} ${srcdir}/run-tests
+	srcdir=${srcdir} ${srcdir}/run-tests --directory tests
+	srcdir=${srcdir} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro
 	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report
+
+links:
+	rm -f gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug
+	ln -s gesftpserver gesftpserver-ro
+	ln -s gesftpserver gesftpserver-debug
+	ln -s gesftpserver gesftpserver-ro-debug
 
 # Cleaning
 DISTCLEANFILES=${SEDOUTPUTS}
-CLEANFILES=*.gcno *.gcda *.gcov
+CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug
 
 # Distribution
 EXTRA_DIST=gesftpserver.8.in testing.txt tests README run-tests	\

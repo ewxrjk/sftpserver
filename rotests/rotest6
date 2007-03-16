@@ -1,0 +1,3 @@
+!touch foo
+link a b
+#.*permission denied.*

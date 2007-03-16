@@ -86,7 +86,7 @@ void handle_new_dir(struct handleid *id, DIR *dp, const char *path) {
 }
 
 uint32_t handle_get_fd(const struct handleid *id,
-                       int *fd, const char **pathp, unsigned *flagsp) {
+                       int *fd, unsigned *flagsp) {
   uint32_t rc;
 
   ferrcheck(pthread_mutex_lock(&handle_lock));
@@ -94,8 +94,6 @@ uint32_t handle_get_fd(const struct handleid *id,
      && id->tag == handles[id->id].tag
      && handles[id->id].type == SSH_FXP_OPEN) {
     *fd = handles[id->id].u.fd;
-    if(pathp)
-      *pathp = handles[id->id].path;
     if(flagsp)
       *flagsp = handles[id->id].flags;
     rc = 0;

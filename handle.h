@@ -39,7 +39,7 @@ void handle_new_dir(struct handleid *id, DIR *dp, const char *path);
 unsigned handle_flags(const struct handleid *id);
 
 uint32_t handle_get_fd(const struct handleid *id, 
-                       int *fd, const char **pathp,
+                       int *fd,
                        unsigned *flagsp);
 uint32_t handle_get_dir(const struct handleid *id,
                         DIR **dp, const char **pathp);

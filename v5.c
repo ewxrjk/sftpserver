@@ -327,7 +327,7 @@ uint32_t sftp_text_seek(struct sftpjob *job) {
 
   pcheck(parse_handle(job, &id));
   pcheck(parse_uint64(job, &line));
-  if((rc = handle_get_fd(&id, &fd, 0, 0)))
+  if((rc = handle_get_fd(&id, &fd, 0)))
     return rc;
   /* Seek back to line 0 */
   if(lseek(fd, 0, SEEK_SET) < 0)

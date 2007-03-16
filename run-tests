@@ -43,6 +43,7 @@ def fatal(msg):
 os.umask(022)                           # for consistent permissions
 failed = 0
 protocols = ['3', '4', '5', '6']
+dir = 'tests'
 
 args = sys.argv[1:]
 while len(args) > 0 and args[0][0] == '-':
@@ -51,6 +52,9 @@ while len(args) > 0 and args[0][0] == '-':
         args = args[2:]
     elif args[0] == "--server":
         server = args[1]
+        args = args[2:] 
+    elif args[0] == "--directory":
+        dir = args[1]
         args = args[2:]
     else:
         fatal("unknown option '%s'" % args[0])
@@ -60,7 +64,7 @@ server = os.path.abspath(server)
 if len(args) > 0:
     tests = args
 else:
-    tests = os.listdir(os.path.join(srcdir, 'tests'))
+    tests = os.listdir(os.path.join(srcdir, dir))
 tests.sort()
 
 # Clean up
@@ -73,12 +77,12 @@ for test in tests:
             or '#' in test
             or '~' in test):
             continue
-        sys.stderr.write("Testing %s protocol %s ... " % (test, proto))
+        sys.stderr.write("Testing %s/%s protocol %s ... " % (dir, test, proto))
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         os.makedirs(root)
         os.chdir(root)
         output = Popen([client, "-S", proto, "-P", server,
-                        "-b", os.path.join(srcdir, 'tests', test),
+                        "-b", os.path.join(srcdir, dir, test),
                         '--echo',
 			'--fix-sigpipe',   # stupid Python
                         '--no-stop-on-error'],
@@ -88,8 +92,7 @@ for test in tests:
             output = output[:-1]
         n = 0
         errors = []
-        for expected in file(os.path.join(srcdir, 'tests',
-                                          '%s' % test)):
+        for expected in file(os.path.join(srcdir, dir, '%s' % test)):
             expected = expected[:-1]    # strip newline
 	    if n >= len(output):
                 errors.append("EXPECTED: %s" % expected)

@@ -1,0 +1,18 @@
+!touch foo
+!mkdir dir
+put foo dest
+#.*permission denied.*
+chmod 600 foo
+#.*permission denied.*
+rm foo
+#.*permission denied.*
+mkdir spong
+#.*permission denied.*
+rmdir dir
+#.*permission denied.*
+mv foo bar
+#.*permission denied.*
+mv -p foo bar
+#.*permission denied.*
+symlink a b
+#.*permission denied.*

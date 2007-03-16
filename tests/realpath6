@@ -5,6 +5,8 @@
 !ln -s subdir dir/followable
 !ln -s / root
 !ln -s /./.././.././.. root-wonky
+realpath6 no-check ""
+#/.*/,testroot/realpath6\.6
 realpath6 no-check dir
 #/.*/dir
 realpath6 no-check dir/subdir
