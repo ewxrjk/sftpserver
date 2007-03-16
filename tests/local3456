@@ -1,0 +1,11 @@
+!mkdir dir
+!mkdir dir/subdir
+lcd dir/subdir
+lpwd
+#/.*/dir/subdir
+lcd ..
+lpwd
+#/.*/dir
+lls
+#subdir
+quit
