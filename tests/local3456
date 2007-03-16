@@ -13,4 +13,9 @@ lls -1 "\\"
 #\\
 anything "
 #.*unterminated string
+
+nosuchcommand
+#.*unknown command:.*
+cd stupid stupid stupid
+#.*wrong number of arguments.*
 quit

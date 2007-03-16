@@ -97,7 +97,7 @@ for test in tests:
                 break
             got = output[n]
             n += 1
-            if expected[0] == '#':
+            if len(expected) > 0 and expected[0] == '#':
                 expected = expected[1:]
                 try:
                     if not re.match(expected, got):
