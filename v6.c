@@ -145,18 +145,15 @@ uint32_t sftp_version_select(struct sftpjob *job) {
   if(!workqueue) {
     pcheck(parse_path(job, &newversion));
     /* Handle known versions */
-    if(newversion[0] && !newversion[1]) {
-      switch(newversion[0]) {
-      case '3': protocol = &sftpv3; return SSH_FX_OK;
-      case '4': protocol = &sftpv4; return SSH_FX_OK;
-      case '5': protocol = &sftpv5; return SSH_FX_OK;
-      case '6': protocol = &sftpv6; return SSH_FX_OK;
-      }
-    }
-  }
-  /* We're allowed to not send a response and we MUST close the channel.  (-13,
-   * s5.5). */
-  fatal("invalid version '%s'", newversion);
+    if(!strcmp(newversion, "3")) { protocol = &sftpv3; return SSH_FX_OK; }
+    if(!strcmp(newversion, "4")) { protocol = &sftpv4; return SSH_FX_OK; }
+    if(!strcmp(newversion, "5")) { protocol = &sftpv5; return SSH_FX_OK; }
+    if(!strcmp(newversion, "6")) { protocol = &sftpv6; return SSH_FX_OK; }
+    /* We're allowed to not send a response and we MUST close the channel.
+     * (-13, s5.5). */
+    fatal("invalid version '%s'", newversion);
+  } else
+    fatal("version-select after workqueue created");
 }
 
 static const struct sftpcmd sftpv6tab[] = {

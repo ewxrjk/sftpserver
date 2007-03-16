@@ -106,6 +106,8 @@ static int sshverbose;
 static int sftpversion = 6;
 static int quirk_reverse_symlink;
 
+static char *sftp_realpath(const char *path);
+
 static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
   { "version", no_argument, 0, 'V' },
@@ -280,9 +282,20 @@ static uint32_t newid(void) {
   return latestid;
 }
 
+/* Find path to current directory */
+static char *remote_cwd(void) {
+  if(!cwd) {
+    if(!(cwd = sftp_realpath(".")))
+      exit(1);
+    cwd = xstrdup(cwd);
+  }
+  return cwd;
+}
+
 static const char *makeabspath(const char *name) {
   char *resolved;
 
+  assert(cwd != 0);
   if(name[0] == '/')
     return name;
   resolved = alloc(fakejob.a, strlen(cwd) + strlen(name) + 2);
@@ -431,6 +444,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
                      uint8_t type) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, type);
   send_uint32(&fakeworker, id = newid());
@@ -465,6 +479,7 @@ static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
 static int sftp_opendir(const char *path, struct handle *hp) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_OPENDIR);
   send_uint32(&fakeworker, id = newid());
@@ -537,6 +552,7 @@ static int sftp_setstat(const char *path,
                         const struct sftpattr *attrs) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_SETSTAT);
   send_uint32(&fakeworker, id = newid());
@@ -564,6 +580,7 @@ static int sftp_fsetstat(const struct handle *hp,
 static int sftp_rmdir(const char *path) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_RMDIR);
   send_uint32(&fakeworker, id = newid());
@@ -576,6 +593,7 @@ static int sftp_rmdir(const char *path) {
 static int sftp_remove(const char *path) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_REMOVE);
   send_uint32(&fakeworker, id = newid());
@@ -589,6 +607,7 @@ static int sftp_rename(const char *oldpath, const char *newpath,
                        unsigned flags) {
   uint32_t id;
   
+  remote_cwd();
   /* In v3/4 atomic is assumed, overwrite and native are not available */
   if(protocol->version <= 4 && (flags & ~SSH_FXF_RENAME_ATOMIC) != 0)
     return error("cannot emulate rename flags %#x in protocol %d",
@@ -608,6 +627,7 @@ static int sftp_rename(const char *oldpath, const char *newpath,
 static int sftp_prename(const char *oldpath, const char *newpath) {
   uint32_t id;
   
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   send_uint32(&fakeworker, id = newid());
@@ -626,6 +646,7 @@ static int sftp_link(const char *targetpath, const char *linkpath,
   if(protocol->version < 6 && !send_symlink)
     return error("hard links not supported in protocol %"PRIu32,
                  protocol->version);
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, (protocol->version >= 6
                            ? SSH_FXP_LINK
@@ -654,6 +675,7 @@ static int sftp_open(const char *path,
                      struct handle *hp) {
   uint32_t id, pflags = 0;
 
+  remote_cwd();
   if(protocol->version <= 4) {
     /* We must translate the v5/6 style parameters back down to v3/4 */
     if(desired_access & ACE4_READ_DATA)
@@ -729,6 +751,7 @@ static int sftp_space_available(const char *path,
                                 struct space_available *as) {
   uint32_t id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   send_uint32(&fakeworker, id = newid());
@@ -750,6 +773,7 @@ static int sftp_mkdir(const char *path, mode_t mode) {
   struct sftpattr attrs;
   uint32_t id;
 
+  remote_cwd();
   if(mode == (mode_t)-1)
     attrs.valid = 0;
   else {
@@ -770,6 +794,7 @@ static char *sftp_readlink(const char *path) {
   char *resolved;
   uint32_t u32, id;
 
+  remote_cwd();
   send_begin(&fakeworker);
   send_uint8(&fakeworker, SSH_FXP_READLINK);
   send_uint32(&fakeworker, id = newid());
@@ -802,7 +827,7 @@ static int sftp_text_seek(const struct handle *hp, uint64_t line) {
 
 static int cmd_pwd(int attribute((unused)) ac,
                    char attribute((unused)) **av) {
-  xprintf("%s\n", cwd);
+  xprintf("%s\n", remote_cwd());
   return 0;
 }
 
@@ -811,6 +836,7 @@ static int cmd_cd(int attribute((unused)) ac,
   const char *newcwd;
   struct sftpattr attrs;
 
+  remote_cwd();
   if(protocol->version >= 6) {
     /* We can do this more efficiently */
     newcwd = sftp_realpath_v6(cwd, SSH_FXP_REALPATH_STAT_ALWAYS, av, &attrs);
@@ -924,12 +950,13 @@ static int cmd_ls(int ac,
   size_t cols, rows;
   int singlefile;
 
+  remote_cwd();
   if(ac > 0 && av[0][0] == '-') {
     options = *av++;
     --ac;
   } else
     options = "";
-  path = ac > 0 ? av[0] : cwd;
+  path = ac > 0 ? av[0] : remote_cwd();
   /* See what type the file is */
   if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT))
     return -1;
@@ -1913,18 +1940,37 @@ static int cmd_binary(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_version(int attribute((unused)) ac,
+static int cmd_version(int ac,
                        char attribute((unused)) **av) {
-  xprintf("Protocol version: %d\n", protocol->version);
-  if(servername)
-    xprintf("Server vendor:    %s\n"
-            "Server name:      %s\n"
-            "Server version:   %s\n"
-            "Server build:     %"PRIu64"\n",
-            vendorname, servername, serverversion, serverbuild);
-  if(serverversions)
-    xprintf("Server supports:  %s\n", serverversions);
-  return 0;
+  if(ac == 1) {
+    const uint32_t id = newid();
+
+    send_begin(&fakeworker);
+    send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+    send_uint32(&fakeworker, id);
+    send_string(&fakeworker, "version-select");
+    send_path(&fakejob, &fakeworker, av[0]);
+    send_end(&fakeworker);
+    getresponse(SSH_FXP_STATUS, id, "version-select");
+    if(status()) return -1;
+    if(!strcmp(av[0], "3")) protocol = &sftpv3;
+    else if(!strcmp(av[0], "4")) protocol = &sftpv4;
+    else if(!strcmp(av[0], "5")) protocol = &sftpv5;
+    else if(!strcmp(av[0], "6")) protocol = &sftpv6;
+    else fatal("unknown protocol %s", av[0]);
+    return 0;
+  } else {
+    xprintf("Protocol version: %d\n", protocol->version);
+    if(servername)
+      xprintf("Server vendor:    %s\n"
+              "Server name:      %s\n"
+              "Server version:   %s\n"
+              "Server build:     %"PRIu64"\n",
+              vendorname, servername, serverversion, serverbuild);
+    if(serverversions)
+      xprintf("Server supports:  %s\n", serverversions);
+    return 0;
+  }
 }
 
 static int cmd_debug(int attribute((unused)) ac,
@@ -1956,7 +2002,7 @@ static int cmd_df(int ac,
                   char **av) {
   struct space_available as;
 
-  if(sftp_space_available(ac ? av[0] : cwd, &as)) 
+  if(sftp_space_available(ac ? av[0] : remote_cwd(), &as)) 
     return -1;
   report_bytes(32, "Bytes on device", as.bytes_on_device);
   report_bytes(32, "Unused bytes on device", as.unused_bytes_on_device);
@@ -2391,9 +2437,9 @@ static const struct command commands[] = {
     "text mode"
   },
   {
-    "version", 0, 0, cmd_version,
+    "version", 0, 1, cmd_version,
     0,
-    "display protocol version"
+    "set or display protocol version"
   },
   { 0, 0, 0, 0, 0, 0 }
 };
@@ -2661,10 +2707,6 @@ int main(int argc, char **argv) {
   if(sftp_init())
     return 1;
   
-  /* Find path to current directory */
-  if(!(cwd = sftp_realpath(".")))
-    exit(1);
-  cwd = xstrdup(cwd);
 
   if(batchfile) {
     FILE *fp;

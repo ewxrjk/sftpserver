@@ -1,0 +1,8 @@
+version 3
+version
+#Protocol version: +3
+#Server vendor: +.+
+#Server name: +.+
+#Server version: +.+
+#Server build: +\d+
+#Server supports: +3,4,5,6

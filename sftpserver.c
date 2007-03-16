@@ -360,7 +360,7 @@ done:
   serialize_remove_job(job);
   free(job->data);
   free(job);
-  if(type != SSH_FXP_VERSION && workqueue == 0) {
+  if(type != SSH_FXP_INIT && workqueue == 0) {
     /* This must have been the first job after initializing to version 6.  It
      * might or might not have been version-select but either way it's now safe
      * to go multithreaded. */
