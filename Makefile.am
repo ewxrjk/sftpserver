@@ -51,7 +51,7 @@ check: all links
 	rm -f *.gcda *.gcov
 	srcdir=${srcdir} ${srcdir}/run-tests --directory tests
 	srcdir=${srcdir} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro
-	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report
+	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report --html .
 
 links:
 	rm -f gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug

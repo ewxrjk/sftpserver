@@ -1,11 +1,32 @@
 #! /usr/bin/env python
-import re,sys
+import re,sys,os,string
+
+def fatal(msg):
+  sys.stderr.write("%s\n" % msg)
+  sys.exit(1)
+
+def sgmlquotechar(c):
+  if c == '&' or c == '<' or ord(c) < 32 or ord(c) > 126:
+    return "&#%d;" % ord(c)
+  else:
+    return c
+
+def sgmlquote(s):
+  return string.join(map(sgmlquotechar, s),'')
 
 percent = {}
 total_lines = 0
 covered_lines = 0
+args = sys.argv[1:]
+htmldir = None
+while len(args) > 0:
+  if args[0] == "--html":
+    htmldir = args[1]
+    args = args[2:]
+  else:
+    fatal("unknown option '%s'" % args[0])
 
-for line in sys.stdin.readlines():
+for line in sys.stdin:
   line = line[:-1]
   r = re.match("File `(?:.*/)?([^/]+.c)'", line)
   if r:
@@ -30,3 +51,28 @@ if len(keys):
   for k in keys:
     print "%20s: %d%%" % (k, percent[k])
   print "Total coverage: %d%%" % (100 * (covered_lines / total_lines))
+
+if htmldir is not None and len(keys):
+  index = open(os.path.join(htmldir, "index.html"), "w")
+  index.write("<html><head><title>gcov report</title>\n")
+  index.write("<body><h1>gcov report</h1>\n")
+  index.write("<table><tr><th>File</th><th>Coverage</th></tr>\n")
+  for k in keys:
+    index.write("<tr><td><a href=\"%s.html\">%s</a><td>%d%%\n" %
+                (sgmlquote(k), sgmlquote(k), percent[k]))
+  index.write("</table>\n")
+  index.write("<p>Total coverage: %d%%</p>\n" % (100 * (covered_lines / total_lines)))
+  for k in keys:
+    html = open(os.path.join(htmldir, "%s.html" % k), "w")
+    html.write("<html><head><title>%s</title>\n" % sgmlquote(k))
+    html.write("<body><h1>%s</h1>\n" % sgmlquote(k))
+    html.write("<pre>")
+    r = re.compile("^ *#####:.*")
+    for line in open("%s.gcov" % k, "r"):
+      if len(line) > 0 and line[-1] == '\n':
+        line = line[:-1]
+      if r.match(line):
+        html.write("<span style='background-color:#ffff00'>%s</span>\n" % sgmlquote(line))
+      else:
+        html.write("%s\n" % sgmlquote(line))
+    html.write("</pre>\n")
