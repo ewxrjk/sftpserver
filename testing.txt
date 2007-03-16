@@ -47,10 +47,9 @@ Things that still particularly want testing:
    * unsupported protocol versions
    * version-select
    * reverse symlink logic
-   * "anonymous sftp" code; readonly mode
+   * "anonymous sftp" code
    * non-regular files (in lots of ways)
    * hidden attribute
-   * remaining details of file listing (longname)
    * invalid UIDs/GIDs and owner/group names
    * read-write opens
    * initially-good permissions for open
