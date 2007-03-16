@@ -2456,8 +2456,11 @@ static void process(const char *prompt, FILE *fp) {
         system(getenv("SHELL"));
       goto next;
     }
-    if((ac = split(line, av = avbuf)) < 0 && stoponerror)
-      fatal("stopping on error");
+    if((ac = split(line, av = avbuf)) < 0) {
+      if(stoponerror)
+        fatal("stopping on error");
+      goto next;
+    }
     if(!ac)
       goto next;
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)

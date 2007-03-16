@@ -1,0 +1,2 @@
+link foo bar
+#.*hard links not supported in protocol \d

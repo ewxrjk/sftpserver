@@ -8,4 +8,9 @@ lpwd
 #/.*/dir
 lls
 #subdir
+!touch \\
+lls -1 "\\"
+#\\
+anything "
+#.*unterminated string
 quit
