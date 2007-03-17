@@ -1,0 +1,5 @@
+!mkfifo -m 644 fifo
+stat fifo
+#prw-r--r-- +\S+ +\S+ +\S+ +\d+ +\S+ +[\d :]+ fifo
+stat /dev/null
+#crw-rw-rw- +\S+ +\S+ +\S+ +\d+ +\S+ +[\d :]+ /dev/null
