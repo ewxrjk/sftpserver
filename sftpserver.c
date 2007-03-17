@@ -313,7 +313,7 @@ static void worker_cleanup(void *wdv) {
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   struct sftpjob *const job = jv;
   int l, r, type = 0;
-  uint32_t status;
+  uint32_t status, rc;
   
   job->a = a;
   job->id = 0;
@@ -330,8 +330,8 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   --job->left;
   /* Everything but SSH_FXP_INIT has an ID field */
   if(type != SSH_FXP_INIT)
-    if(parse_uint32(job, &job->id)) {
-      send_status(job, SSH_FX_BAD_MESSAGE, "missing ID field");
+    if((rc = parse_uint32(job, &job->id)) != SSH_FX_OK) {
+      send_status(job, rc, "missing ID field");
       goto done;
     }
   /* Locate the handler for the command */

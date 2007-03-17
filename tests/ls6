@@ -21,9 +21,10 @@ stat b
 #.*file does not exist
 stat large
 #-rw-r--r-- +1 +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
-chmod 7755 large
-stat large
-#-rwsr-sr-t +1 +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
-chmod 7000 large
-stat large
-#---S--S--T +1 +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
+!mkdir dir
+chmod 7755 dir
+stat dir
+#drwsr-sr-t +\d+ +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ dir
+chmod 7000 dir
+stat dir
+#d--S--S--T +\d+ +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ dir
