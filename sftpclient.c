@@ -2249,6 +2249,16 @@ static int cmd_lstat(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_truncate(int attribute((unused)) ac,
+                        char **av) {
+  struct sftpattr attrs;
+
+  memset(&attrs, 0, sizeof attrs);
+  attrs.valid = SSH_FILEXFER_ATTR_SIZE;
+  attrs.size = strtoull(av[0], 0, 0);
+  return sftp_setstat(av[1], &attrs);
+}
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -2454,6 +2464,11 @@ static const struct command commands[] = {
     "text", 0, 0, cmd_text,
     0,
     "text mode"
+  },
+  {
+    "truncate", 2, 2, cmd_truncate,
+    "LENGTH FILE",
+    "truncate a file"
   },
   {
     "version", 0, 1, cmd_version,
