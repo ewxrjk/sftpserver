@@ -55,9 +55,9 @@ static int v3_encode(struct sftpjob attribute((unused)) *job,
   return 0;
 }
 
-static int v3_decode(struct sftpjob attribute((unused)) *job, 
-                     char attribute((unused)) **path) {
-  return 0;
+static uint32_t v3_decode(struct sftpjob attribute((unused)) *job, 
+                          char attribute((unused)) **path) {
+  return SSH_FX_OK;
 }
 
 /* Send a filename list as found in an SSH_FXP_NAME response.  The response
@@ -125,29 +125,29 @@ static void v3_sendattrs(struct sftpjob *job,
   /* Note that we just discard unknown bits rather than reporting errors. */
 }
 
-static int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
-  uint32_t n;
+static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
+  uint32_t n, rc;
 
   memset(attrs, 0, sizeof *attrs);
-  if(parse_uint32(job, &attrs->valid))
-    return -1;
+  if((rc = parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
+    return rc;
   /* Translate v3 bits t v4+ bits */
   if(attrs->valid & SSH_FILEXFER_ACMODTIME)
     attrs->valid |= (SSH_FILEXFER_ATTR_ACCESSTIME
                      |SSH_FILEXFER_ATTR_MODIFYTIME);
   /* Read the v3 fields */
   if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
-    if(parse_uint64(job, &attrs->size))
-      return -1;
+    if((rc = parse_uint64(job, &attrs->size)) != SSH_FX_OK)
+      return rc;
   if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {
-    if(parse_uint32(job, &attrs->uid))
-      return -1;
-    if(parse_uint32(job, &attrs->gid))
-      return -1;
+    if((rc = parse_uint32(job, &attrs->uid)) != SSH_FX_OK)
+      return rc;
+    if((rc = parse_uint32(job, &attrs->gid)) != SSH_FX_OK)
+      return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    if(parse_uint32(job, &attrs->permissions))
-      return -1;
+    if((rc = parse_uint32(job, &attrs->permissions)) != SSH_FX_OK)
+      return rc;
     /* Fake up type field */
     switch(attrs->permissions & S_IFMT) {
     case S_IFIFO: attrs->type = SSH_FILEXFER_TYPE_FIFO; break;
@@ -162,24 +162,25 @@ static int v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   } else
     attrs->type = SSH_FILEXFER_TYPE_UNKNOWN;
   if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    if(parse_uint32(job, &n))
-      return -1;
+    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+      return rc;
     attrs->atime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if(parse_uint32(job, &n))
-      return -1;
+    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+      return rc;
     attrs->mtime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
-    if(parse_uint32(job, &n))
-      return -1;
+    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+      return rc;
     while(n-- > 0) {
-      parse_string(job, 0, 0);
-      parse_string(job, 0, 0);
+      if((rc = parse_string(job, 0, 0)) != SSH_FX_OK
+         || (rc = parse_string(job, 0, 0)) != SSH_FX_OK)
+        return rc;
     }
   }
-  return 0;
+  return SSH_FX_OK;;
 }
 
 /* Command implementations */

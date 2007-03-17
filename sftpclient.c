@@ -2209,6 +2209,20 @@ static int cmd_bad_packet456(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_bad_path(int attribute((unused)) ac,
+                             char attribute((unused)) **av) {
+  send_begin(&fakeworker);
+  send_uint8(&fakeworker, SSH_FXP_OPENDIR);
+  send_uint32(&fakeworker, 0);
+  send_string(&fakeworker, "\xC0");     /* can't be the start of a UTF-8
+                                         * sequence */
+  /* missing type field */
+  send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, 0, "_bad_path");
+  status();
+  return 0;
+}
+
 static int cmd_stat(int attribute((unused)) ac,
                     char **av) {
   struct sftpattr attrs;
@@ -2251,6 +2265,11 @@ static const struct command commands[] = {
     "_bad_packet456", 0, 0, cmd_bad_packet456,
     0,
     "send bad packets (protos >= 4 only)"
+  },
+  {
+    "_bad_path", 0, 0, cmd_bad_path,
+    0,
+    "send bad paths"
   },
   {
     "_ext_unsupported", 0, 0, cmd_ext_unsupported,

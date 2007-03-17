@@ -100,11 +100,11 @@ struct sftpprotocol {
   void (*sendnames)(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
   void (*sendattrs)(struct sftpjob *job, const struct sftpattr *filestat);
-  int (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
+  uint32_t (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
   int (*encode)(struct sftpjob *job,
                 char **path);           /* Convert from local to wire */
-  int (*decode)(struct sftpjob *job,
-                char **path);           /* Convert from wire to local */
+  uint32_t (*decode)(struct sftpjob *job,
+                     char **path);      /* Convert from wire to local */
   int nextensions;
   const struct sftpextension *extensions;
 };

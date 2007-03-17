@@ -74,9 +74,9 @@ void v456_sendnames(struct sftpjob *job,
                     int nnames, const struct sftpattr *names);
 void v456_sendattrs(struct sftpjob *job,
  		    const struct sftpattr *attrs);
-int v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
+uint32_t v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
 int v456_encode(struct sftpjob *job, char **path);
-int v456_decode(struct sftpjob *job, char **path);
+uint32_t v456_decode(struct sftpjob *job, char **path);
 uint32_t sftp_v34_rename(struct sftpjob *job);
 uint32_t sftp_v34_open(struct sftpjob *job);
 uint32_t sftp_v456_lstat(struct sftpjob *job);

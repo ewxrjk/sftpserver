@@ -24,21 +24,22 @@
 #include "handle.h"
 #include "parse.h"
 #include "types.h"
+#include "sftp.h"
 #include "globals.h"
 #include <string.h>
 #include <arpa/inet.h>
 
-int parse_uint8(struct sftpjob *job, uint8_t *ur) {
+uint32_t parse_uint8(struct sftpjob *job, uint8_t *ur) {
   if(job->left < 1)
-    return -1;
+    return SSH_FX_BAD_MESSAGE;
   *ur = *job->ptr++;
   --job->left;
-  return 0;
+  return SSH_FX_OK;
 }
 
-int parse_uint32(struct sftpjob *job, uint32_t *ur) {
+uint32_t parse_uint32(struct sftpjob *job, uint32_t *ur) {
   if(job->left < 4)
-    return -1;
+    return SSH_FX_BAD_MESSAGE;
 #if UNALIGNED_WRITES
   *ur = ntohl(*(uint32_t *)job->ptr);
   job->ptr += 4;
@@ -52,14 +53,14 @@ int parse_uint32(struct sftpjob *job, uint32_t *ur) {
   }
 #endif
   job->left -= 4;
-  return 0;
+  return SSH_FX_OK;
 }
 
-int parse_uint64(struct sftpjob *job, uint64_t *ur) {
+uint32_t parse_uint64(struct sftpjob *job, uint64_t *ur) {
   uint64_t u;
 
   if(job->left < 8)
-    return -1;
+    return SSH_FX_BAD_MESSAGE;
   u = *job->ptr++;
   u = (u << 8) + *job->ptr++;
   u = (u << 8) + *job->ptr++;
@@ -70,19 +71,19 @@ int parse_uint64(struct sftpjob *job, uint64_t *ur) {
   u = (u << 8) + *job->ptr++;
   job->left -= 8;
   *ur = u;
-  return 0;
+  return SSH_FX_OK;
 }
 
-int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
-  uint32_t len;
+uint32_t parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
+  uint32_t len, rc;
   char *str;
 
-  if(parse_uint32(job, &len))
-    return -1;
+  if((rc = parse_uint32(job, &len)) != SSH_FX_OK)
+    return rc;
   if(!(len + 1))
-    return -1;                          /* overflow */
+    return SSH_FX_BAD_MESSAGE;          /* overflow */
   if(job->left < len)
-    return -1;                          /* not enough bytes to satisfy */
+    return SSH_FX_BAD_MESSAGE;          /* not enough bytes to satisfy */
   if(lenp)
     *lenp = len;
   if(strp) {
@@ -92,24 +93,26 @@ int parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
   }
   job->ptr += len;
   job->left -= len;
-  return 0;
+  return SSH_FX_OK;
 }
 
-int parse_path(struct sftpjob *job, char **strp) {
-  if(parse_string(job, strp, 0))
-    return -1;
+uint32_t parse_path(struct sftpjob *job, char **strp) {
+  uint32_t rc;
+  
+  if((rc = parse_string(job, strp, 0)) != SSH_FX_OK)
+    return rc;
   return protocol->decode(job, strp);
 }
 
-int parse_handle(struct sftpjob *job, struct handleid *id) {
-  uint32_t len;
+uint32_t parse_handle(struct sftpjob *job, struct handleid *id) {
+  uint32_t len, rc;
 
-  if(parse_uint32(job, &len)
+  if((rc = parse_uint32(job, &len)) != SSH_FX_OK
      || len != 8
-     || parse_uint32(job, &id->id)
-     || parse_uint32(job, &id->tag))
-    return -1;
-  return 0;
+     || (rc = parse_uint32(job, &id->id)) != SSH_FX_OK
+     || (rc = parse_uint32(job, &id->tag) != SSH_FX_OK))
+    return rc;
+  return SSH_FX_OK;
 }
 
 /*

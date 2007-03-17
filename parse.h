@@ -21,12 +21,12 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-int parse_uint8(struct sftpjob *job, uint8_t *ur);
-int parse_uint32(struct sftpjob *job, uint32_t *ur);
-int parse_uint64(struct sftpjob *job, uint64_t *ur);
-int parse_string(struct sftpjob *job, char **strp, size_t *lenp);
-int parse_path(struct sftpjob *job, char **strp);
-int parse_handle(struct sftpjob *job, struct handleid *id);
+uint32_t parse_uint8(struct sftpjob *job, uint8_t *ur);
+uint32_t parse_uint32(struct sftpjob *job, uint32_t *ur);
+uint32_t parse_uint64(struct sftpjob *job, uint64_t *ur);
+uint32_t parse_string(struct sftpjob *job, char **strp, size_t *lenp);
+uint32_t parse_path(struct sftpjob *job, char **strp);
+uint32_t parse_handle(struct sftpjob *job, struct handleid *id);
 /* Parse various values out of the remaining data of a job.  Return 0 on
  * success, non-0 on error. */
 
@@ -38,11 +38,12 @@ int parse_handle(struct sftpjob *job, struct handleid *id);
   }                                                     \
 } while(0)
 #else
-#define pcheck(E) do {					\
-  if((E)) {						\
-    D(("%s:%d: %s", __FILE__, __LINE__, #E));		\
-    return SSH_FX_BAD_MESSAGE;				\
-  }							\
+#define pcheck(E) do {                                          \
+  const uint32_t rc = (E);                                      \
+  if(rc != SSH_FX_OK) {                                         \
+    D(("%s:%d: %s: %"PRIu32, __FILE__, __LINE__, #E, rc));      \
+    return rc;                                                  \
+  }                                                             \
 } while(0)
 /* error-checking wrapper for parse_ functions */
 #endif

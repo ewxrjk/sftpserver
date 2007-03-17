@@ -80,8 +80,12 @@ void send_status(struct sftpjob *job,
   if(!msg)
     msg = status_to_string(status);
   /* Limit to status values known to this version of the protocol */
-  if(status > protocol->maxstatus)
-    status = SSH_FX_FAILURE;
+  if(status > protocol->maxstatus) {
+    switch(status) {
+    case SSH_FX_INVALID_FILENAME: status = SSH_FX_BAD_MESSAGE; break;
+    default: status = SSH_FX_FAILURE; break;
+    }
+  }
   send_begin(job->worker);
   send_uint8(job->worker, SSH_FXP_STATUS);
   send_uint32(job->worker, job->id);
