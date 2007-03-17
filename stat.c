@@ -79,7 +79,7 @@ void stat_to_attrs(struct allocator *a,
      && sb->st_mtimespec.tv_nsec < 1000000000
      && sb->st_ctimespec.tv_nsec >= 0
      && sb->st_ctimespec.tv_nsec < 1000000000) {
-    /* Only send subsecond times if they are in range */ 
+    /* Only send subsecond times if they are in range */
     attrs->atime.nanoseconds = sb->st_atimespec.tv_nsec;
     attrs->mtime.nanoseconds = sb->st_mtimespec.tv_nsec;
     attrs->ctime.nanoseconds = sb->st_ctimespec.tv_nsec;
@@ -206,7 +206,7 @@ uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
   uint32_t rc = SSH_FX_OK;
 
   switch(attrs->valid & (SSH_FILEXFER_ATTR_UIDGID
-                         |SSH_FILEXFER_ATTR_OWNERGROUP)) { 
+                         |SSH_FILEXFER_ATTR_OWNERGROUP)) {
   case SSH_FILEXFER_ATTR_UIDGID:
     if((attrs->owner = uid2name(a, attrs->uid))
        && (attrs->group = gid2name(a, attrs->gid)))
@@ -224,6 +224,14 @@ uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
   return rc;
 }
 
+struct set_status_callbacks {
+  int (*do_truncate)(const void *what, off_t size);
+  int (*do_chown)(const void *what, uid_t uid, gid_t gid);
+  int (*do_chmod)(const void *what, mode_t mode);
+  int (*do_stat)(const void *what, struct stat *sb);
+  int (*do_utimes)(const void *what, struct timeval *tv);
+};
+
 /* Horrendous ugliness for SETSTAT/FSETSTAT */
 #if HAVE_STAT_TIMESPEC
 #define SET_STATUS_NANOSEC do {                                         \
@@ -238,66 +246,131 @@ uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
 #define SET_STATUS_NANOSEC ((void)0)
 #endif
 
-#define SET_STATUS(WHAT, TRUNCATE, CHOWN, CHMOD, STAT, UTIMES) do {     \
-  struct timeval times[2];                                              \
-  struct stat current;                                                  \
-  struct sftpattr attrs = *attrsp;                                      \
-                                                                        \
-  if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {                            \
-    D(("...truncate to %"PRIu64, attrs.size));                          \
-    if(TRUNCATE(WHAT, attrs.size) < 0)                                  \
-      return #TRUNCATE;                                                 \
-  }                                                                     \
-  normalize_ownergroup(a, &attrs);                                      \
-  if(attrs.valid & SSH_FILEXFER_ATTR_UIDGID) {                          \
-    D(("...chown to %"PRId32"/%"PRId32, attrs.uid, attrs.gid));         \
-    if(CHOWN(WHAT, attrs.uid, attrs.gid) < 0)                           \
-      return #CHOWN;							\
-  }                                                                     \
-  if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {                     \
-    const mode_t mode = attrs.permissions & 07777;                      \
-    D(("...chmod to %#o", (unsigned)mode));                             \
-    if(CHMOD(WHAT, mode) < 0)                                           \
-      return #CHMOD;                                                    \
-  }                                                                     \
-  if(attrs.valid & (SSH_FILEXFER_ATTR_ACCESSTIME                        \
-                     |SSH_FILEXFER_ATTR_MODIFYTIME)) {                  \
-    if(STAT(WHAT, &current) < 0) {                                      \
-      D(("cannot stat"));                                               \
-      return #STAT;                                                     \
-    }                                                                   \
-    times[0].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)     \
-                       ? (time_t)attrs.atime.seconds                    \
-                       : current.st_atime);                             \
-    times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)     \
-                       ? (time_t)attrs.mtime.seconds                    \
-                       : current.st_mtime);                             \
-    times[0].tv_usec = 0;                                               \
-    times[1].tv_usec = 0;                                               \
-    if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)                 \
-      SET_STATUS_NANOSEC;						\
-    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",                  \
-       (unsigned long)times[0].tv_sec,                                  \
-       (unsigned long)times[0].tv_usec,                                 \
-       (unsigned long)times[1].tv_sec,                                  \
-       (unsigned long)times[1].tv_usec));                               \
-    if(UTIMES(WHAT, times) < 0)                                         \
-      return #UTIMES;                                                   \
-  }                                                                     \
-  return 0;                                                             \
-} while(0)
+static const char *do_set_status(struct allocator *a,
+                                 const void *what,
+                                 const struct sftpattr *attrsp,
+                                 const struct set_status_callbacks *cb) {
+  struct timeval times[2];
+  struct stat current;
+  struct sftpattr attrs = *attrsp;
+
+  if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {
+    D(("...truncate to %"PRIu64, attrs.size));
+    if(cb->do_truncate(what, attrs.size) < 0)
+      return "truncate";
+  }
+  normalize_ownergroup(a, &attrs);
+  if(attrs.valid & SSH_FILEXFER_ATTR_UIDGID) {
+    D(("...chown to %"PRId32"/%"PRId32, attrs.uid, attrs.gid));
+    if(cb->do_chown(what, attrs.uid, attrs.gid) < 0)
+      return "chown";
+  }
+  if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
+    const mode_t mode = attrs.permissions & 07777;
+    D(("...chmod to %#o", (unsigned)mode));
+    if(cb->do_chmod(what, mode) < 0)
+      return "chmod";
+  }
+  if(attrs.valid & (SSH_FILEXFER_ATTR_ACCESSTIME
+                     |SSH_FILEXFER_ATTR_MODIFYTIME)) {
+    if(cb->do_stat(what, &current) < 0) {
+      D(("cannot stat"));
+      return "stat";
+    }
+    memset(times, 0, sizeof times);
+    times[0].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
+                       ? (time_t)attrs.atime.seconds
+                       : current.st_atime);
+    times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
+                       ? (time_t)attrs.mtime.seconds
+                       : current.st_mtime);
+#if HAVE_STAT_TIMESPEC
+    if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
+      times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
+                          ? (long)attrs.atime.nanoseconds
+                          : current.st_atimespec.tv_nsec) / 1000;
+      times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
+                          ? (long)attrs.mtime.nanoseconds
+                          : current.st_mtimespec.tv_nsec) / 1000;
+    }
+#endif
+    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",
+       (unsigned long)times[0].tv_sec,
+       (unsigned long)times[0].tv_usec,
+       (unsigned long)times[1].tv_sec,
+       (unsigned long)times[1].tv_usec));
+    if(cb->do_utimes(what, times) < 0)
+      return "utimes";
+  }
+  return 0;
+}
+
+static int name_truncate(const void *what, off_t size) {
+  return truncate(what, size);
+}
+
+static int name_chown(const void *what, uid_t uid, gid_t gid) {
+  return chown(what, uid, gid);
+}
+
+static int name_chmod(const void *what, mode_t mode) {
+  return chmod(what, mode);
+}
+
+static int name_lstat(const void *what, struct stat *sb) {
+  return lstat(what, sb);
+}
+
+static int name_utimes(const void *what, struct timeval *tv) {
+  return utimes(what, tv);
+}
+
+static const struct set_status_callbacks name_callbacks = {
+  name_truncate,
+  name_chown,
+  name_chmod,
+  name_lstat,
+  name_utimes
+};
 
 const char *set_status(struct allocator *a,
                        const char *path,
 		       const struct sftpattr *attrsp) {
-  
-  SET_STATUS(path, truncate, lchown, chmod, lstat, utimes);
+  return do_set_status(a, path, attrsp, &name_callbacks);
 }
+
+static int fd_truncate(const void *what, off_t size) {
+  return ftruncate(*(const int *)what, size);
+}
+
+static int fd_chown(const void *what, uid_t uid, gid_t gid) {
+  return fchown(*(const int *)what, uid, gid);
+}
+
+static int fd_chmod(const void *what, mode_t mode) {
+  return fchmod(*(const int *)what, mode);
+}
+
+static int fd_stat(const void *what, struct stat *sb) {
+  return fstat(*(const int *)what, sb);
+}
+
+static int fd_utimes(const void *what, struct timeval *tv) {
+  return futimes(*(const int *)what, tv);
+}
+
+static const struct set_status_callbacks fd_callbacks = {
+  fd_truncate,
+  fd_chown,
+  fd_chmod,
+  fd_stat,
+  fd_utimes
+};
 
 const char *set_fstatus(struct allocator *a,
                         int fd,
 			const struct sftpattr *attrsp) {
-  SET_STATUS(fd, ftruncate, fchown, fchmod, fstat, futimes);
+  return do_set_status(a, &fd, attrsp, &fd_callbacks);
 }
 
 /*
