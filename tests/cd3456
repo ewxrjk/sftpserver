@@ -22,3 +22,7 @@ ls -1
 cd /
 pwd
 #/
+lcd dir
+!cd .. && rm -rf dir
+lpwd
+#.*No such file or directory.*
