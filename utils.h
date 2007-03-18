@@ -70,6 +70,8 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags);
 char *my_getcwd(struct allocator *a);
 /* Return the name of the current directory. */
 
+const char *my_dirname(struct allocator *a, const char *path);
+
 void fatal(const char *msg, ...)
   attribute((noreturn))
   attribute((format(printf,1,2)));

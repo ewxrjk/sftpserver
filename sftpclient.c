@@ -87,6 +87,7 @@ static const char *vendorname, *servername, *serverversion, *serverversions;
 static uint64_t serverbuild;
 static int stoponerror;
 static int echo;
+static uint32_t attrmask;
 
 const struct sftpprotocol *protocol = &sftpv3;
 const char sendtype[] = "request";
@@ -320,7 +321,8 @@ static void progress(const char *path, uint64_t sofar, uint64_t total) {
 /* SFTP operation stubs */
 
 static int sftp_init(void) {
-  uint32_t version;
+  uint32_t version, u32;
+  uint16_t u16;
   
   /* Send SSH_FXP_INIT */
   send_begin(&fakeworker);
@@ -348,6 +350,7 @@ static int sftp_init(void) {
   default:
     return error("server wanted protocol version %"PRIu32, version);
   }
+  attrmask = protocol->attrmask;
   /* Extension data */
   while(fakejob.left) {
     char *xname, *xdata;
@@ -385,8 +388,40 @@ static int sftp_init(void) {
         quirk_reverse_symlink = 0;
       else
         error("unknown %s value '%s'", xname, xdata);
+    } else if(!strcmp(xname, "supported")) {
+      struct sftpjob xjob;
+      
+      xjob.a = &allocator;
+      xjob.ptr = (void *)xdata;
+      xjob.left = xdatalen;
+      cpcheck(parse_uint32(&xjob, &attrmask));
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-attribute-bits */
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-open-flags */
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-access-mask */
+      cpcheck(parse_uint32(&xjob, &u32)); /* max-read-size */
+      while(xjob.left)
+        cpcheck(parse_string(&xjob, 0, 0)); /* extension-names */
+    } else if(!strcmp(xname, "supported2")) {
+      struct sftpjob xjob;
+      
+      xjob.a = &allocator;
+      xjob.ptr = (void *)xdata;
+      xjob.left = xdatalen;
+      cpcheck(parse_uint32(&xjob, &attrmask)); /* supported-attribute-mask */
+      assert(!(attrmask & SSH_FILEXFER_ATTR_CTIME));
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-attribute-bits */
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-open-flags */
+      cpcheck(parse_uint32(&xjob, &u32)); /* supported-access-mask */
+      cpcheck(parse_uint32(&xjob, &u32)); /* max-read-size */
+      cpcheck(parse_uint16(&xjob, &u16)); /* supported-open-block-vector */
+      cpcheck(parse_uint16(&xjob, &u16)); /* supported-block-vector */
+      cpcheck(parse_uint32(&xjob, &u32)); /* attrib-extension-count */
+      while(u32-- > 0)
+        cpcheck(parse_string(&xjob, 0, 0)); /* attrib-extension-names */
+      cpcheck(parse_uint32(&xjob, &u32)); /* extension-count */
+      while(u32-- > 0)
+        cpcheck(parse_string(&xjob, 0, 0)); /* extension-names */
     }
-    /* TODO supported and supported2 */
   }
   /* Make sure outbound translation will actually work */
   if(buffersize < strlen(newline))
@@ -1577,7 +1612,7 @@ static int cmd_get(int ac,
     /* Set permissions etc */
     attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* don't truncate */
     attrs.valid &= ~SSH_FILEXFER_ATTR_UIDGID; /* different mapping! */
-    if((e = set_fstatus(fakejob.a, r.fd, &attrs))) {
+    if(set_fstatus(fakejob.a, r.fd, &attrs, &e) != SSH_FX_OK) {
       error("cannot %s %s: %s", e, r.tmp, strerror(errno));
       goto error;
     }
@@ -1754,6 +1789,9 @@ static int cmd_put(int ac,
     attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE
                      |SSH_FILEXFER_ATTR_LINK_COUNT
                      |SSH_FILEXFER_ATTR_UIDGID);
+    /* Mask off attributes that don't work in this protocol version */
+    attrs.valid &= attrmask;
+    assert(!(attrs.valid & SSH_FILEXFER_ATTR_CTIME));
     attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
   }
   if(textmode)

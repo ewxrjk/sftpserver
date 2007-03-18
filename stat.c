@@ -246,36 +246,73 @@ struct set_status_callbacks {
 #define SET_STATUS_NANOSEC ((void)0)
 #endif
 
-static const char *do_set_status(struct allocator *a,
-                                 const void *what,
-                                 const struct sftpattr *attrsp,
-                                 const struct set_status_callbacks *cb) {
+static uint32_t do_set_status(struct allocator *a,
+                              const void *what,
+                              const struct sftpattr *attrsp,
+                              const struct set_status_callbacks *cb,
+                              const char **whyp) {
   struct timeval times[2];
   struct stat current;
   struct sftpattr attrs = *attrsp;
+  const char *why;
 
+  if(!whyp)
+    whyp = &why;
+  *whyp = 0;
+  if((attrs.valid & (SSH_FILEXFER_ATTR_SIZE|SSH_FILEXFER_ATTR_ALLOCATION_SIZE))
+     == (SSH_FILEXFER_ATTR_SIZE|SSH_FILEXFER_ATTR_ALLOCATION_SIZE)
+     && attrs.allocation_size < attrs.size) {
+    /* This is a MUST, e.g. draft -13 s7.4.  We honor it even though we don't
+     * honor allocation-size. */
+    *whyp = "size exceeds allocation-size";
+    return SSH_FX_INVALID_PARAMETER;
+  }
+  if(attrs.valid & (SSH_FILEXFER_ATTR_LINK_COUNT
+                    |SSH_FILEXFER_ATTR_TEXT_HINT))
+    /* Client has violated a MUST NOT */
+    return SSH_FX_INVALID_PARAMETER;
+  if((attrs.valid & (SSH_FILEXFER_ATTR_SIZE
+                     |SSH_FILEXFER_ATTR_PERMISSIONS
+                     |SSH_FILEXFER_ATTR_ACCESSTIME
+                     |SSH_FILEXFER_ATTR_MODIFYTIME
+                     |SSH_FILEXFER_ATTR_UIDGID
+                     |SSH_FILEXFER_ATTR_OWNERGROUP
+                     |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
+                     |SSH_FILEXFER_ATTR_ALLOCATION_SIZE)) != attrs.valid) {
+    /* SHOULD not change any attributes if we cannot perform as required.  We
+     * have a SHOULD which allows us to ignore allocation-size. */
+    *whyp = "unsupported flags";
+    return SSH_FX_OP_UNSUPPORTED;
+  }
   if(attrs.valid & SSH_FILEXFER_ATTR_SIZE) {
     D(("...truncate to %"PRIu64, attrs.size));
-    if(cb->do_truncate(what, attrs.size) < 0)
-      return "truncate";
+    if(cb->do_truncate(what, attrs.size) < 0) {
+      *whyp = "truncate";
+      return HANDLER_ERRNO;
+    }
   }
   normalize_ownergroup(a, &attrs);
   if(attrs.valid & SSH_FILEXFER_ATTR_UIDGID) {
     D(("...chown to %"PRId32"/%"PRId32, attrs.uid, attrs.gid));
-    if(cb->do_chown(what, attrs.uid, attrs.gid) < 0)
-      return "chown";
+    if(cb->do_chown(what, attrs.uid, attrs.gid) < 0) {
+      *whyp = "chown";
+      return HANDLER_ERRNO;
+    }
   }
   if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
     const mode_t mode = attrs.permissions & 07777;
     D(("...chmod to %#o", (unsigned)mode));
-    if(cb->do_chmod(what, mode) < 0)
-      return "chmod";
+    if(cb->do_chmod(what, mode) < 0) {
+      *whyp = "chmod";
+      return HANDLER_ERRNO;
+    }
   }
   if(attrs.valid & (SSH_FILEXFER_ATTR_ACCESSTIME
                      |SSH_FILEXFER_ATTR_MODIFYTIME)) {
     if(cb->do_stat(what, &current) < 0) {
       D(("cannot stat"));
-      return "stat";
+      *whyp = "stat";
+      return HANDLER_ERRNO;
     }
     memset(times, 0, sizeof times);
     times[0].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
@@ -299,10 +336,12 @@ static const char *do_set_status(struct allocator *a,
        (unsigned long)times[0].tv_usec,
        (unsigned long)times[1].tv_sec,
        (unsigned long)times[1].tv_usec));
-    if(cb->do_utimes(what, times) < 0)
-      return "utimes";
+    if(cb->do_utimes(what, times) < 0) {
+      *whyp = "utimes";
+      return HANDLER_ERRNO;
+    }
   }
-  return 0;
+  return SSH_FX_OK;
 }
 
 static int name_truncate(const void *what, off_t size) {
@@ -333,10 +372,11 @@ static const struct set_status_callbacks name_callbacks = {
   name_utimes
 };
 
-const char *set_status(struct allocator *a,
-                       const char *path,
-		       const struct sftpattr *attrsp) {
-  return do_set_status(a, path, attrsp, &name_callbacks);
+uint32_t set_status(struct allocator *a,
+                    const char *path,
+                    const struct sftpattr *attrsp,
+                    const char **whyp) {
+  return do_set_status(a, path, attrsp, &name_callbacks, whyp);
 }
 
 static int fd_truncate(const void *what, off_t size) {
@@ -367,10 +407,11 @@ static const struct set_status_callbacks fd_callbacks = {
   fd_utimes
 };
 
-const char *set_fstatus(struct allocator *a,
-                        int fd,
-			const struct sftpattr *attrsp) {
-  return do_set_status(a, &fd, attrsp, &fd_callbacks);
+uint32_t set_fstatus(struct allocator *a,
+                     int fd,
+                     const struct sftpattr *attrsp,
+                     const char **whyp) {
+  return do_set_status(a, &fd, attrsp, &fd_callbacks, whyp);
 }
 
 /*

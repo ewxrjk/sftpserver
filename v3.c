@@ -530,10 +530,7 @@ uint32_t sftp_setstat(struct sftpjob *job) {
   /* Check owner/group */
   if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
     return rc;
-  if(set_status(job->a, path, &attrs)) 
-    return HANDLER_ERRNO;
-  else
-    return SSH_FX_OK;
+  return set_status(job->a, path, &attrs, 0);
 }
 
 uint32_t sftp_fsetstat(struct sftpjob *job) {
@@ -552,15 +549,13 @@ uint32_t sftp_fsetstat(struct sftpjob *job) {
     return rc;
   if((rc = handle_get_fd(&id, &fd, 0))) 
     return rc;
-  if(set_fstatus(job->a, fd, &attrs))
-    return HANDLER_ERRNO;
-  else
-    return SSH_FX_OK;
+  return set_fstatus(job->a, fd, &attrs, 0);
 }
 
 uint32_t sftp_mkdir(struct sftpjob *job) {
   char *path;
   struct sftpattr attrs;
+  uint32_t rc;
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
@@ -582,13 +577,13 @@ uint32_t sftp_mkdir(struct sftpjob *job) {
     if(mkdir(path, DEFAULT_PERMISSIONS) < 0)
       return HANDLER_ERRNO;
   }
-  if(set_status(job->a, path, &attrs)) {
+  if((rc = set_status(job->a, path, &attrs, 0))) {
     const int save_errno = errno;
     /* If we can't have the desired permissions, don't have the directory at
      * all */
     rmdir(path);
     errno = save_errno;
-    return HANDLER_ERRNO;
+    return rc;
   }
   return SSH_FX_OK;
 }
@@ -789,7 +784,11 @@ const struct sftpprotocol sftpv3 = {
   sizeof sftpv3tab / sizeof (struct sftpcmd), /* ncommands */
   sftpv3tab,                                  /* commands */
   3,                                          /* version */
-  0xFFFFFFFF,                                 /* attrbits */
+  (SSH_FILEXFER_ATTR_SIZE
+   |SSH_FILEXFER_ATTR_PERMISSIONS
+   |SSH_FILEXFER_ATTR_ACCESSTIME
+   |SSH_FILEXFER_ATTR_MODIFYTIME
+   |SSH_FILEXFER_ATTR_UIDGID),                /* attrmask */
   SSH_FX_OP_UNSUPPORTED,                      /* maxstatus */
   v3_sendnames,
   v3_sendattrs,

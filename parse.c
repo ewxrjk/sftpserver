@@ -37,6 +37,23 @@ uint32_t parse_uint8(struct sftpjob *job, uint8_t *ur) {
   return SSH_FX_OK;
 }
 
+uint32_t parse_uint16(struct sftpjob *job, uint16_t *ur) {
+  if(job->left < 2)
+    return SSH_FX_BAD_MESSAGE;
+#if UNALIGNED_WRITES
+  *ur = ntohs(*(uint16_t *)job->ptr);
+  job->ptr += 2;
+#else
+  {
+    uint16_t u = *job->ptr++;
+    u = (u << 8) + *job->ptr++;
+    *ur = u;
+  }
+#endif
+  job->left -= 2;
+  return SSH_FX_OK;
+}
+
 uint32_t parse_uint32(struct sftpjob *job, uint32_t *ur) {
   if(job->left < 4)
     return SSH_FX_BAD_MESSAGE;

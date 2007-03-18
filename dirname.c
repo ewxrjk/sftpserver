@@ -18,32 +18,29 @@
  * USA
  */
 
-#ifndef STAT_H
-#define STAT_H
+#include "sftpcommon.h"
+#include "alloc.h"
+#include "debug.h"
+#include "utils.h"
+#include <assert.h>
+#include <string.h>
 
-const char *format_attr(struct allocator *a,
-			const struct sftpattr *attrs, int thisyear,
-			unsigned long flags);
-#define FORMAT_PREFER_NUMERIC_UID 0x00000001
-#define FORMAT_PREFER_LOCALTIME 0x00000002
-/* Prefer numeric UID instead of names */
+const char *my_dirname(struct allocator *a, const char *path) {
+  const char *ls = strrchr(path, '/');
+  if(ls) {
+    if(ls != path) {
+      const size_t len = ls - path;
+      char *d;
 
-uint32_t normalize_ownergroup(struct allocator *a,
-                              struct sftpattr *attrs);
-
-uint32_t set_status(struct allocator *a,
-                    const char *path,
-                    const struct sftpattr *attrs,
-                    const char **whyp);
-uint32_t set_fstatus(struct allocator *a,
-                     int fd,
-                     const struct sftpattr *attrs,
-                     const char **whyp);
-void stat_to_attrs(struct allocator *a,
-		   const struct stat *sb, struct sftpattr *attrs,
-                   uint32_t flags, const char *path);
-
-#endif /* STAT_H */
+      assert(len + 1 != 0);
+      d = alloc(a, len + 1);
+      memcpy(d, path, len);
+      return d;
+    } else
+      return "/";
+  } else
+    return ".";
+}
 
 /*
 Local Variables:

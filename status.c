@@ -83,6 +83,7 @@ void send_status(struct sftpjob *job,
   if(status > protocol->maxstatus) {
     switch(status) {
     case SSH_FX_INVALID_FILENAME: status = SSH_FX_BAD_MESSAGE; break;
+    case SSH_FX_NO_SUCH_PATH: status = SSH_FX_NO_SUCH_FILE; break;
     default: status = SSH_FX_FAILURE; break;
     }
   }

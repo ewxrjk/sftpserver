@@ -48,7 +48,7 @@ uint32_t v456_decode(struct sftpjob *job,
 
 void v456_sendattrs(struct sftpjob *job,
  		    const struct sftpattr *attrs) {
-  const uint32_t valid = attrs->valid & protocol->attrbits;
+  const uint32_t valid = attrs->valid & protocol->attrmask;
 
   send_uint32(job->worker, valid);
   send_uint8(job->worker, attrs->type);

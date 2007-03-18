@@ -22,6 +22,7 @@
 #define PARSE_H
 
 uint32_t parse_uint8(struct sftpjob *job, uint8_t *ur);
+uint32_t parse_uint16(struct sftpjob *job, uint16_t *ur);
 uint32_t parse_uint32(struct sftpjob *job, uint32_t *ur);
 uint32_t parse_uint64(struct sftpjob *job, uint64_t *ur);
 uint32_t parse_string(struct sftpjob *job, char **strp, size_t *lenp);
@@ -31,11 +32,12 @@ uint32_t parse_handle(struct sftpjob *job, struct handleid *id);
  * success, non-0 on error. */
 
 #if CLIENT
-#define cpcheck(E) do {                                 \
-  if((E)) {                                             \
-    D(("%s:%d: %s", __FILE__, __LINE__, #E));		\
-    fatal("error parsing response from server");        \
-  }                                                     \
+#define cpcheck(E) do {                                                 \
+  const uint32_t rc = (E);                                              \
+  if(rc) {                                                              \
+    D(("%s:%d: %s returned %"PRIu32, __FILE__, __LINE__, #E, rc));      \
+    fatal("error parsing response from server");                        \
+  }                                                                     \
 } while(0)
 #else
 #define pcheck(E) do {                                          \

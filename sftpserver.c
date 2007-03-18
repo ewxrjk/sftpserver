@@ -206,21 +206,25 @@ static uint32_t sftp_init(struct sftpjob *job) {
                               |SSH_FILEXFER_ATTR_ACCESSTIME
                               |SSH_FILEXFER_ATTR_MODIFYTIME
                               |SSH_FILEXFER_ATTR_OWNERGROUP
-                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
-                              |SSH_FILEXFER_ATTR_CTIME
-                              |SSH_FILEXFER_ATTR_LINK_COUNT));
+                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
+    /* Note - the client is invited to only send these bits, rather than
+     * promised that we never send anything else.  Therefore 'supported-' is a
+     * misnomer.  In particular we will send SSH_FILEXFER_ATTR_CTIME but cannot
+     * set the ctime of files and so follow the SHOULD that tells us to reject
+     * attempts to do so. */
     send_uint32(job->worker, 0);         /* supported-attribute-bits */
     send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
                               |SSH_FXF_APPEND_DATA
                               |SSH_FXF_APPEND_DATA_ATOMIC
                               |SSH_FXF_TEXT_MODE
                               |SSH_FXF_NOFOLLOW
-                              |SSH_FXF_DELETE_ON_CLOSE));
-    send_uint32(job->worker, 0xFFFFFFFF);
+                              |SSH_FXF_DELETE_ON_CLOSE)); /* supported-open-flags */
+    send_uint32(job->worker, 0xFFFFFFFF); /* supported-access-mask */
     send_uint32(job->worker, 0);        /* max-read-size - see above */
     send_uint16(job->worker, 0);        /* supported-open-block-vector */
     send_uint16(job->worker, 0);        /* supported-block-vector */
     send_uint32(job->worker, 0);        /* attrib-extension-count */
+    /* attrib-extensions would go here */
     send_uint32(job->worker, protocol->nextensions); /* extension-count */
     for(n = 0; n < protocol->nextensions; ++n)
       send_string(job->worker, protocol->extensions[n].name);

@@ -226,6 +226,18 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     return SSH_FX_OP_UNSUPPORTED;
   }
   if(fd < 0) {
+    if(((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_OPEN_EXISTING
+        || (flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_TRUNCATE_EXISTING)
+       && errno == ENOENT) {
+      /* The client could do the extra check but at the cost of a round trip,
+       * so it makes some sense to do it and return the alternative status.
+       * This is of rather limited use as the client has no way to know that we
+       * reliably send SSH_FX_NO_SUCH_PATH when appropriate, but the
+       * alternative error message might clue in users occasionally. */
+      if(lstat(my_dirname(job->a, path), &sb) < 0)
+        return SSH_FX_NO_SUCH_PATH;
+      errno = ENOENT;                   /* restore errno just in case */
+    }
 #ifdef O_NOFOLLOW
     /* If we couldn't open the file because we declined to follow a symlink
      * then we need an unusual error code.  (But if we had to emulate
@@ -241,12 +253,12 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
     return HANDLER_ERRNO;
   }
   /* Set initial attributrs if we created the file */
-  if(created && attrs->valid && set_fstatus(job->a, fd, attrs)) { 
+  if(created && attrs->valid && (rc = set_fstatus(job->a, fd, attrs, 0))) { 
     const int save_errno = errno;
     close(fd);
     unlink(path);
     errno = save_errno;
-    return HANDLER_ERRNO;
+    return rc;
   }
   /* The draft says "It is implementation specific whether the directory entry
    * is removed immediately or when the handle is closed".  I interpret

@@ -95,7 +95,7 @@ struct sftpprotocol {
   int ncommands;
   const struct sftpcmd *commands;       /* sorted by type */
   int version;                          /* protocol version number */
-  uint32_t attrbits;                    /* known attr bits */
+  uint32_t attrmask;                    /* known attr valid mask */
   uint32_t maxstatus;                   /* max known status */
   void (*sendnames)(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
