@@ -26,3 +26,5 @@ lcd dir
 !cd .. && rm -rf dir
 lpwd
 #.*No such file or directory.*
+_lrealpath no-check .
+#.*No such file or directory.*

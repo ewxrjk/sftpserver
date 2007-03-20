@@ -2116,7 +2116,6 @@ static int cmd_realpath(int attribute((unused)) ac,
     return -1;
 }
 
-
 static int cmd_realpath6(int attribute((unused)) ac,
                          char **av) {
   int control_byte;
@@ -2144,6 +2143,29 @@ static int cmd_realpath6(int attribute((unused)) ac,
   } else
     xprintf("%s\n", resolved);
   return 0;
+}
+
+static int cmd_lrealpath(int attribute((unused)) ac,
+                         char **av) {
+  char *r;
+  unsigned flags;
+
+  if(!strcmp(av[0], "no-check"))
+    flags = RP_MAY_NOT_EXIST;
+  else if(!strcmp(av[0], "stat-if"))
+    flags = RP_READLINK|RP_MAY_NOT_EXIST;
+  else if(!strcmp(av[0], "stat-always"))
+    flags = RP_READLINK;
+  else
+    return error("unknown control string '%s'", av[0]);
+  r = my_realpath(fakejob.a, av[1], flags);
+  if(r) {
+    xprintf("%s\n", r);
+    return 0;
+  } else {
+    perror(0);
+    return -1;
+  }
 }
 
 static int cmd_bad_handle(int attribute((unused)) ac,
@@ -2328,6 +2350,11 @@ static const struct command commands[] = {
     "_init", 0, 0, cmd_init,
     0,
     "resend SSH_FXP_INIT"
+  },
+  {
+    "_lrealpath", 2, 2, cmd_lrealpath,
+    "CONTROL PATH",
+    "expand a local path name"
   },
   {
     "_unsupported", 0, 0, cmd_unsupported,
