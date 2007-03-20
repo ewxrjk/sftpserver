@@ -91,8 +91,16 @@ void send_status(struct sftpjob *job,
   send_uint8(job->worker, SSH_FXP_STATUS);
   send_uint32(job->worker, job->id);
   send_uint32(job->worker, status);
-  send_string(job->worker, msg);
-  send_string(job->worker, "en");               /* we are not I18N'd yet */
+  send_path(job, job->worker, msg);     /* needs to be UTF-8 */
+  /* We are not I18N'd yet.  Doing so will require the following:
+   *  - determine an RFC1766 interpretation of the current LC_MESSAGES
+   *    setting
+   *  - set LC_MESSAGES in setlocale()
+   *  - send the right tag for messages from strerror()
+   *  - _if_ we have a localization for one of our own messages, send the
+   *    right tag (otherwise still send "en")
+   */
+  send_string(job->worker, "en");
   send_end(job->worker);
 }
 
