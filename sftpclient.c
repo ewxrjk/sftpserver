@@ -106,6 +106,7 @@ static int nsshoptions;
 static int sshverbose;
 static int sftpversion = 6;
 static int quirk_reverse_symlink;
+static int forceversion;
 
 static char *sftp_realpath(const char *path);
 
@@ -125,6 +126,7 @@ static const struct option options[] = {
   { "no-progress", no_argument, 0, 260 },
   { "echo", no_argument, 0, 261 },
   { "fix-sigpipe", no_argument, 0, 262 },
+  { "force-version", required_argument, 0, 263 },
   { "debug", no_argument, 0, 'd' },
   { "debug-path", required_argument, 0, 'D' },
   { "host", required_argument, 0, 'H' },
@@ -2709,6 +2711,7 @@ int main(int argc, char **argv) {
     case 260: progress_indicators = 0; break;
     case 261: echo = 1; break;
     case 262: signal(SIGPIPE, SIG_DFL); break; /* stupid python */
+    case 263: sftpversion = atoi(optarg); forceversion = 1; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
     case '4': hints.ai_family = PF_INET; break;
@@ -2727,7 +2730,7 @@ int main(int argc, char **argv) {
   if(buffersize > 1048576)
     buffersize = 1048576;
 
-  if(sftpversion < 3 || sftpversion > 6)
+  if((sftpversion < 3 || sftpversion > 6) && !forceversion)
     fatal("unknown SFTP version %d", sftpversion);
   
   if(host || port) {

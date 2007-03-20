@@ -42,18 +42,18 @@ test facilities that only exist in a subset of the protocols.
 ** Hit-List
 
 Things that still particularly want testing:
+   * read-write opens
    * serialization logic
    * encoding translation
-   * unsupported protocol versions
-   * version-select
    * reverse symlink logic
-   * "anonymous sftp" code
    * non-regular files (in lots of ways)
-   * hidden attribute
    * invalid UIDs/GIDs and owner/group names
-   * read-write opens
+   * hidden attribute
    * initially-good permissions for open
    * run tests under valgrind
+
+Untested but lower priority:
+   * "anonymous sftp" code
    * the client (if I decide to promote it to a proper client rather
      than a test tool)
 

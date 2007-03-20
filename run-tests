@@ -42,7 +42,7 @@ def fatal(msg):
 
 os.umask(022)                           # for consistent permissions
 failed = 0
-protocols = ['3', '4', '5', '6']
+protocols = ['3', '4', '5', '6', '7']
 dir = 'tests'
 
 args = sys.argv[1:]
@@ -81,10 +81,12 @@ for test in tests:
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         os.makedirs(root)
         os.chdir(root)
-        output = Popen([client, "-S", proto, "-P", server,
+        output = Popen([client,
+                        "--force-version", proto,
+                        "-P", server,
                         "-b", os.path.join(srcdir, dir, test),
                         '--echo',
-			'--fix-sigpipe',   # stupid Python
+                        '--fix-sigpipe',   # stupid Python
                         '--no-stop-on-error'],
                        stdout=PIPE,
                        stderr=STDOUT).communicate()[0].split('\n')
@@ -94,7 +96,7 @@ for test in tests:
         errors = []
         for expected in file(os.path.join(srcdir, dir, '%s' % test)):
             expected = expected[:-1]    # strip newline
-	    if n >= len(output):
+            if n >= len(output):
                 errors.append("EXPECTED: %s" % expected)
                 errors.append("     GOT: EOF")
                 break
@@ -131,3 +133,8 @@ else:
     rmrf(os.path.join(builddir, ',testroot'))
     print "OK"
 
+# Local Variables:
+# mode:python
+# indent-tabs-mode:nil
+# py-indent-offset:4
+# End:
