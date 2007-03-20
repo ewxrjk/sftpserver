@@ -1718,6 +1718,8 @@ static int cmd_put(int ac,
   uint32_t id;
   FILE *fp = 0;
   uint32_t disp = SSH_FXF_CREATE_TRUNCATE, flags = 0;
+  int setmode = 0;
+  mode_t mode = 0;
 
   memset(&h, 0, sizeof h);
   memset(&attrs, 0, sizeof attrs);
@@ -1749,6 +1751,11 @@ static int cmd_put(int ac,
         break;
       case 'd':
         flags |= SSH_FXF_DELETE_ON_CLOSE;
+        break;
+      case 'm':
+        setmode = 1;
+        mode = strtoul(s, 0, 8);
+        s = "";
         break;
       default:
         return error("unknown put option -%c'", s[-1]);
@@ -1795,6 +1802,10 @@ static int cmd_put(int ac,
     attrs.valid &= attrmask;
     assert(!(attrs.valid & SSH_FILEXFER_ATTR_CTIME));
     attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
+  }
+  if(setmode) {
+    attrs.valid |= SSH_FILEXFER_ATTR_PERMISSIONS;
+    attrs.permissions = mode;
   }
   if(textmode)
     flags |= SSH_FXF_TEXT_MODE;
@@ -2474,7 +2485,7 @@ static const struct command commands[] = {
     "set or toggle progress indicators"
   },
   {
-    "put", 1, 3, cmd_put, "[-Pafte] LOCAL-PATH [REMOTE-PATH]",
+    "put", 1, 3, cmd_put, "[-PaftemMODE] LOCAL-PATH [REMOTE-PATH]",
     "upload a file"
   },
   {

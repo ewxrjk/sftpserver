@@ -49,7 +49,6 @@ Things that still particularly want testing:
    * non-regular files (in lots of ways)
    * invalid UIDs/GIDs and owner/group names
    * hidden attribute
-   * initially-good permissions for open
    * run tests under valgrind
 
 Untested but lower priority:
