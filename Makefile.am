@@ -47,21 +47,40 @@ gesftpserver.8: gesftpserver.8.in config.status
 # Build and test
 all: ${SEDOUTPUTS}
 
-check: all links
+check: all aliases
 	rm -f *.gcda *.gcov
 	srcdir=${srcdir} ${srcdir}/run-tests --directory tests
 	srcdir=${srcdir} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro
 	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report --html .
 
-links:
-	rm -f gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug
-	ln -s gesftpserver gesftpserver-ro
-	ln -s gesftpserver gesftpserver-debug
-	ln -s gesftpserver gesftpserver-ro-debug
+check-valgrind: all aliases
+	srcdir=${srcdir} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind
+
+aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
+		gesftpserver-valgrind
+
+gesftpserver-ro:
+	rm -f $@
+	ln -s gesftpserver $@
+
+gesftpserver-debug:
+	rm -f $@
+	ln -s gesftpserver $@
+
+gesftpserver-ro-debug:
+	rm -f $@
+	ln -s gesftpserver $@
+
+gesftpserver-valgrind:
+	echo "#! /bin/sh" > $@.new
+	echo "set -e" >> $@.new
+	echo "exec valgrind --leak-check=full --logfile=,valgrind --num-callers=64 `pwd`/gesftpserver \"\$$@\"" >> $@.new
+	chmod +x $@.new
+	mv $@.new $@
 
 # Cleaning
 DISTCLEANFILES=${SEDOUTPUTS}
-CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug
+CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug gesftpserver-valgrind
 
 # Distribution
 EXTRA_DIST=gesftpserver.8.in testing.txt tests README run-tests	\
