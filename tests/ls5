@@ -1,0 +1,30 @@
+!touch empty
+!echo spong > small
+!dd if=/dev/zero of=large bs=1024 count=1024 2>/dev/null
+!ln -s a b
+!ln small wibble
+ls -la
+#drwxr.[xs]r.x +\? +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \. \[hide\]
+#drwxr.[xs]r.x +\? +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.\. \[hide\]
+#lrwxr.[xs]r.x +\? +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ b -> a
+#-rw-r--r-- +\? +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d+ empty
+#-rw-r--r-- +\? +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
+#-rw-r--r-- +\? +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ small
+#-rw-r--r-- +\? +\S+ +\S+ +6 +[a-zA-Z]+ +\d+ +\d+:\d+ wibble
+!mkdir noreadperm
+!chmod 000 noreadperm
+ls noreadperm
+#.*permission denied.*
+lstat b
+#lrwxr.[xs]r.x +\? +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ b
+stat b
+#.*file does not exist
+stat large
+#-rw-r--r-- +\? +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large
+!mkdir dir
+chmod 7755 dir
+stat dir
+#drwsr-sr-t +\? +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ dir
+chmod 7000 dir
+stat dir
+#d--S--S--T +\? +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ dir

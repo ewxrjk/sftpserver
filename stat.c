@@ -106,13 +106,32 @@ void stat_to_attrs(struct allocator *a,
   attrs->name = path;
 }
 
+static const struct {
+  uint32_t bit;
+  const char *description;
+} attr_bits[] = {
+  { SSH_FILEXFER_ATTR_FLAGS_READONLY, "ro" },
+  { SSH_FILEXFER_ATTR_FLAGS_SYSTEM, "sys" },
+  { SSH_FILEXFER_ATTR_FLAGS_HIDDEN, "hide" },
+  { SSH_FILEXFER_ATTR_FLAGS_CASE_INSENSITIVE, "ci"},
+  { SSH_FILEXFER_ATTR_FLAGS_ARCHIVE, "arc" },
+  { SSH_FILEXFER_ATTR_FLAGS_ENCRYPTED, "enc" },
+  { SSH_FILEXFER_ATTR_FLAGS_COMPRESSED, "comp" },
+  { SSH_FILEXFER_ATTR_FLAGS_SPARSE, "sp" },
+  { SSH_FILEXFER_ATTR_FLAGS_APPEND_ONLY, "app" },
+  { SSH_FILEXFER_ATTR_FLAGS_IMMUTABLE, "imm" },
+  { SSH_FILEXFER_ATTR_FLAGS_SYNC, "sync" },
+  { SSH_FILEXFER_ATTR_FLAGS_TRANSLATION_ERR, "trans" }
+};
+
 const char *format_attr(struct allocator *a,
 			const struct sftpattr *attrs, int thisyear,
 			unsigned long flags) {
   char perms[64], linkcount[64], size[64], date[64], nowner[64], ngroup[64];
-  char *formatted, *p;
+  char *formatted, *p, bits[64];
   const char *owner, *group;
   static const char typedetails[] = "?-dl??scbp";
+  size_t n;
 
   /* permissions */
   p = perms;
@@ -191,14 +210,32 @@ const char *format_attr(struct allocator *a,
       strftime(date, sizeof date, "%b %d  %Y", &mtime);
   } else
     strcpy(date, "?");
+  /* attribute bits */
+  bits[0] = 0;
+  if(flags & FORMAT_ATTRS
+     && (attrs->valid & SSH_FILEXFER_ATTR_BITS)
+     && attrs->attrib_bits) {
+    strcat(bits, "[");
+    for(n = 0; n < sizeof attr_bits / sizeof *attr_bits; ++n) {
+      if(attrs->attrib_bits & attr_bits[n].bit) {
+        if(bits[1])
+          strcat(bits, ",");
+        strcat(bits, attr_bits[n].description);
+      }
+    }
+    strcat(bits, "]");
+  }
   /* Format the result */
   formatted = alloc(a, 80 + strlen(attrs->name));
+
   /* The draft is pretty specific about field widths */
-  sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s%s%s",
+  sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s%s%s%s%s",
 	  perms, linkcount, owner, group,
 	  size, date, attrs->name,
           attrs->target ? " -> " : "",
-          attrs->target ? attrs->target : "");
+          attrs->target ? attrs->target : "",
+          flags & FORMAT_ATTRS ? " " : "",
+          flags & FORMAT_ATTRS ? bits : "");
   return formatted;
 }
 

@@ -4,8 +4,8 @@
 !ln -s a b
 !ln small wibble
 ls -la
-#drwxr.[xs]r.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.
-#drwxr.[xs]r.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.\.
+#drwxr.[xs]r.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \. \[hide\]
+#drwxr.[xs]r.x +\d+ +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ \.\. \[hide\]
 #lrwxr.[xs]r.x +1 +\S+ +\S+ +\S+ +[a-zA-Z]+ +\d+ +\d+:\d+ b -> a
 #-rw-r--r-- +1 +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d+ empty
 #-rw-r--r-- +1 +\S+ +\S+ +1048576 +[a-zA-Z]+ +\d+ +\d+:\d+ large

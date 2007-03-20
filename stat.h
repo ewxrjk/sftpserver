@@ -26,6 +26,7 @@ const char *format_attr(struct allocator *a,
 			unsigned long flags);
 #define FORMAT_PREFER_NUMERIC_UID 0x00000001
 #define FORMAT_PREFER_LOCALTIME 0x00000002
+#define FORMAT_ATTRS 0x00000004
 /* Prefer numeric UID instead of names */
 
 uint32_t normalize_ownergroup(struct allocator *a,
