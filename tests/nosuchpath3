@@ -1,0 +1,3 @@
+!touch foo
+put -A foo bar/spong
+#.*file does not exist.*

@@ -48,7 +48,6 @@ Things that still particularly want testing:
    * reverse symlink logic
    * non-regular files (in lots of ways)
    * invalid UIDs/GIDs and owner/group names
-   * hidden attribute
    * run tests under valgrind
 
 Untested but lower priority:
