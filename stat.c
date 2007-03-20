@@ -163,7 +163,7 @@ const char *format_attr(struct allocator *a,
     }
     *p = 0;
   } else
-    strcpy(p + 1, "?????????");
+    strcpy(p, "?????????");
   /* link count */
   if(attrs->valid & SSH_FILEXFER_ATTR_LINK_COUNT)
     sprintf(linkcount, "%"PRIu32, attrs->link_count);

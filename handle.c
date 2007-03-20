@@ -144,6 +144,7 @@ uint32_t handle_close(const struct handleid *id) {
     default:
       rc = SSH_FX_INVALID_HANDLE;
     }
+    free(handles[id->id].path);
   }
   else
     rc = SSH_FX_INVALID_HANDLE;

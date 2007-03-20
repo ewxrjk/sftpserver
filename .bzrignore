@@ -25,3 +25,6 @@ gesftpserverro
 build-*
 *.tar.gz
 gesftpserver.8
+gesftpserver-ro
+gesftpserver-ro-debug
+gesftpserver-valgrind

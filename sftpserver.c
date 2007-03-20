@@ -307,6 +307,8 @@ static void *worker_init(void) {
 static void worker_cleanup(void *wdv) {
   struct worker *w = wdv;
 
+  iconv_close(w->utf8_to_local);
+  iconv_close(w->local_to_utf8);
   free(w->buffer);
   free(w);
 }

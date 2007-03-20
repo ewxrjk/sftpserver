@@ -54,6 +54,7 @@ check: all aliases
 	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report --html .
 
 check-valgrind: all aliases
+	rm -f ,valgrind*
 	srcdir=${srcdir} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind
 
 aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
@@ -74,7 +75,7 @@ gesftpserver-ro-debug:
 gesftpserver-valgrind:
 	echo "#! /bin/sh" > $@.new
 	echo "set -e" >> $@.new
-	echo "exec valgrind --leak-check=full --logfile=,valgrind --num-callers=64 `pwd`/gesftpserver \"\$$@\"" >> $@.new
+	echo "exec valgrind --leak-check=full --logfile=`pwd`/,valgrind --num-callers=64 `pwd`/gesftpserver \"\$$@\"" >> $@.new
 	chmod +x $@.new
 	mv $@.new $@
 
