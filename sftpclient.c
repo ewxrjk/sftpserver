@@ -1890,31 +1890,30 @@ static int cmd_put(int ac,
                buffersize);
     }
     if(n > 0) {
-      /* Send off another write request with however much data we read */
-      send_uint32(&fakeworker, n);
-      fakejob.worker->bufused += n;
-      send_end(&fakeworker);
-      offset += n;
-      /* We can only fill in the request details when we have the lock, so we
-       * don't do that yet */
-      wrote = 1;
-    } else if(n == 0)
-      /* We reached EOF on the input file */
-      eof = 1;
-    else {
-      /* Error reading the input file */
-      error("error reading %s: %s", local, strerror(errno));
-      failed = 1;
-    }
-    ferrcheck(pthread_mutex_lock(&w.m));
-    if(wrote) {
+      /* Update the reqs[] array first, so that a reply can't arrive before its
+       * ID is listed */
+      ferrcheck(pthread_mutex_lock(&w.m));
       for(i = 0; i < nrequests && w.reqs[i].id; ++i)
         ;
       assert(i < nrequests);
       w.reqs[i].id = id;
       w.reqs[i].n = n;
       ++w.outstanding;
+      ferrcheck(pthread_mutex_unlock(&w.m));
+      /* Send off another write request with however much data we read */
+      send_uint32(&fakeworker, n);
+      fakejob.worker->bufused += n;
+      send_end(&fakeworker);
+      offset += n;
+    } else if(n == 0) {
+      /* We reached EOF on the input file */
+      eof = 1;
+    } else {
+      /* Error reading the input file */
+      error("error reading %s: %s", local, strerror(errno));
+      failed = 1;
     }
+    ferrcheck(pthread_mutex_lock(&w.m));
     ferrcheck(pthread_cond_signal(&w.c1));
   }
   w.finished = 1;

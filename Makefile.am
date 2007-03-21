@@ -49,13 +49,13 @@ all: ${SEDOUTPUTS}
 
 check: all aliases
 	rm -f *.gcda *.gcov
-	srcdir=${srcdir} ${srcdir}/run-tests --directory tests
-	srcdir=${srcdir} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro
+	srcdir=${srcdir} ${srcdir}/run-tests --directory tests $(TESTS)
+	srcdir=${srcdir} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
 	${GCOV} ${srcdir}/*.c  | ${srcdir}/format-gconv-report --html .
 
 check-valgrind: all aliases
 	rm -f ,valgrind*
-	srcdir=${srcdir} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind
+	srcdir=${srcdir} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind $(TESTS)
 
 aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
 		gesftpserver-valgrind
