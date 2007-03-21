@@ -1900,7 +1900,7 @@ static int cmd_put(int ac,
       w.reqs[i].n = n;
       ++w.outstanding;
       ferrcheck(pthread_mutex_unlock(&w.m));
-      /* Send off another write request with however much data we read */
+      /* Send off the write request with however much data we read */
       send_uint32(&fakeworker, n);
       fakejob.worker->bufused += n;
       send_end(&fakeworker);
