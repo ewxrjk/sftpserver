@@ -1,0 +1,3 @@
+!mkdir dir
+get dir
+#.*file is a directory.*

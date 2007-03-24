@@ -66,17 +66,35 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   /* For opens, the size indicates the planned total size, and doesn't affect
    * the file creation. */
   attrs->valid &= ~(uint32_t)SSH_FILEXFER_ATTR_SIZE;
+  /* The v6 spec says implementations "SHOULD" pre-allocate according to the
+   * allocation-size field if present.  This is impossible on UNIX so we ignore
+   * it.
+   *
+   * This means that the MUST later in the same section, that the queried
+   * allocation-size must exceed the requested one, cannot be honored.  Since
+   * the specification taken literally prohibits UNIX implementations, I assume
+   * that it is in error.
+   */
   switch(desired_access & (ACE4_READ_DATA|ACE4_WRITE_DATA)) {
   case 0:                               /* probably a broken client */
   case ACE4_READ_DATA:
     D(("O_RDONLY"));
     open_flags = O_RDONLY;
+    if(desired_access & (ACE4_WRITE_NAMED_ATTRS
+                         |ACE4_WRITE_ATTRIBUTES
+                         |ACE4_WRITE_ACL
+                         |ACE4_WRITE_OWNER))
+      return SSH_FX_PERMISSION_DENIED;
     break;
   case ACE4_WRITE_DATA:
     if(readonly)
       return SSH_FX_PERMISSION_DENIED;
     D(("O_WRONLY"));
     open_flags = O_WRONLY;
+    if(desired_access & (ACE4_READ_NAMED_ATTRS
+                         |ACE4_READ_ATTRIBUTES
+                         |ACE4_READ_ACL))
+      return SSH_FX_PERMISSION_DENIED;
     break;
   case ACE4_READ_DATA|ACE4_WRITE_DATA:
     if(readonly)
@@ -87,6 +105,19 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   default:
     fatal("bitwise operators have broken");
   }
+  /* UNIX systems generally do not allow the owner to be changed by
+   * non-superusers. */
+  if((desired_access & ACE4_WRITE_OWNER) && getuid())
+    return SSH_FX_PERMISSION_DENIED;
+  /* LIST_DIRECTORY, ADD_FILE, ADD_SUBDIRECTORY and DELETE_CHILD don't make
+   * sense for regular files.  We ignore them, regarding a grant of permission
+   * as not implying that the operation can possibly work.
+   *
+   * Similary SYNCHRONIZE and EXECUTE we're happy to grant permission for even
+   * if there's no way to take advantage of that permission.
+   *
+   * DELETE is always possible and nothing to do with opening the file.
+   */
 #ifdef O_NOCTTY
   /* We don't want to accidentally acquire a controlling terminal. */
   open_flags |= O_NOCTTY;

@@ -221,8 +221,8 @@ static uint32_t sftp_init(struct sftpjob *job) {
                               |SSH_FXF_DELETE_ON_CLOSE)); /* supported-open-flags */
     send_uint32(job->worker, 0xFFFFFFFF); /* supported-access-mask */
     send_uint32(job->worker, 0);        /* max-read-size - see above */
-    send_uint16(job->worker, 0);        /* supported-open-block-vector */
-    send_uint16(job->worker, 0);        /* supported-block-vector */
+    send_uint16(job->worker, 1);        /* supported-open-block-vector */
+    send_uint16(job->worker, 1);        /* supported-block-vector */
     send_uint32(job->worker, 0);        /* attrib-extension-count */
     /* attrib-extensions would go here */
     send_uint32(job->worker, protocol->nextensions); /* extension-count */
