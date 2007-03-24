@@ -112,7 +112,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
               /* Not a link.  Proceed. */
               break;
             default:
-              if(!(flags & RP_MAY_NOT_EXIST)) {
+              if((flags & RP_MUST_EXIST)) {
                 /* Nonexistent files are bad.  Return an error. */
                 D(("error reading link: %s", strerror(errno)));
                 return 0;

@@ -51,7 +51,7 @@ char *my_readlink(struct allocator *a, const char *path);
 
 char *my_realpath(struct allocator *a, const char *path, unsigned flags);
 #define RP_READLINK 0x0001              /* follow symlinks */
-#define RP_MAY_NOT_EXIST 0x0002         /* nonexistent paths are OK */
+#define RP_MUST_EXIST 0x0002            /* path must exist */
 /* Return the real path name of PATH.  Sets errno and returns a null pointer on
  * error.
  *

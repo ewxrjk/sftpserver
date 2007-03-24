@@ -2163,11 +2163,11 @@ static int cmd_lrealpath(int attribute((unused)) ac,
   unsigned flags;
 
   if(!strcmp(av[0], "no-check"))
-    flags = RP_MAY_NOT_EXIST;
+    flags = 0;
   else if(!strcmp(av[0], "stat-if"))
-    flags = RP_READLINK|RP_MAY_NOT_EXIST;
-  else if(!strcmp(av[0], "stat-always"))
     flags = RP_READLINK;
+  else if(!strcmp(av[0], "stat-always"))
+    flags = RP_READLINK|RP_MUST_EXIST;
   else
     return error("unknown control string '%s'", av[0]);
   r = my_realpath(fakejob.a, av[1], flags);

@@ -31,6 +31,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 
 uint32_t sftp_v6_realpath(struct sftpjob *job) {
   char *path, *compose, *resolvedpath;
@@ -60,15 +61,15 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   switch(control_byte) {
   case SSH_FXP_REALPATH_NO_CHECK:
     /* Don't follow links and don't fail if the path doesn't exist */
-    rpflags = RP_MAY_NOT_EXIST;
+    rpflags = 0;
     break;
   case SSH_FXP_REALPATH_STAT_IF:
     /* Follow links but don't fail if the path doesn't exist */
-    rpflags = RP_READLINK|RP_MAY_NOT_EXIST;
+    rpflags = RP_READLINK;
     break;
   case SSH_FXP_REALPATH_STAT_ALWAYS:
     /* Follow links and fail if the path doesn't exist */
-    rpflags = RP_READLINK;
+    rpflags = RP_READLINK|RP_MUST_EXIST;
     break;
   default:
     return SSH_FX_BAD_MESSAGE;
@@ -96,6 +97,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
     if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
       stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else
+      /* Can only happen if path is deleted between realpath call and stat */
       return HANDLER_ERRNO;
     break;
   }
@@ -149,11 +151,11 @@ uint32_t sftp_version_select(struct sftpjob *job) {
     if(!strcmp(newversion, "4")) { protocol = &sftpv4; return SSH_FX_OK; }
     if(!strcmp(newversion, "5")) { protocol = &sftpv5; return SSH_FX_OK; }
     if(!strcmp(newversion, "6")) { protocol = &sftpv6; return SSH_FX_OK; }
-    /* We're allowed to not send a response and we MUST close the channel.
-     * (-13, s5.5). */
-    fatal("invalid version '%s'", newversion);
+    send_status(job, SSH_FX_INVALID_PARAMETER, "unknown version");
   } else
-    fatal("version-select after workqueue created");
+    send_status(job, SSH_FX_INVALID_PARAMETER, "badly timed version-select");
+  /* We MUST close the channel.  (-13, s5.5). */
+  exit(-1);
 }
 
 static const struct sftpcmd sftpv6tab[] = {

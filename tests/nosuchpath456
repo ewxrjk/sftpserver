@@ -1,3 +1,5 @@
 !touch foo
 put -A foo bar/spong
 #.*path does not exist.*
+put -A foo /spong
+#.*file does not exist.*

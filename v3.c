@@ -452,7 +452,7 @@ uint32_t sftp_v345_realpath(struct sftpjob *job) {
   pcheck(parse_path(job, &path));
   D(("sftp_realpath %s", path));
   memset(&attr, 0, sizeof attr);
-  attr.name = my_realpath(job->a, path, RP_READLINK|RP_MAY_NOT_EXIST);;
+  attr.name = my_realpath(job->a, path, RP_READLINK);
   if(attr.name) {
     D(("...real path is %s", attr.name));
     send_begin(job->worker);
