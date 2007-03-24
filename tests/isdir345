@@ -1,3 +1,6 @@
 !mkdir dir
+!touch foo
 get dir
+#.*operation failed.*
+put foo dir
 #.*operation failed.*

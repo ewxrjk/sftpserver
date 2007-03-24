@@ -256,6 +256,11 @@ uint32_t generic_open(struct sftpjob *job, const char *path,
   default:
     return SSH_FX_OP_UNSUPPORTED;
   }
+  /* BSD lets us open directories, but we MUST return an error */
+  if(fd >= 0 && fstat(fd, &sb) == 0 && S_ISDIR(sb.st_mode)) {
+    close(fd);
+    return SSH_FX_FILE_IS_A_DIRECTORY;
+  }
   if(fd < 0) {
     if(((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_OPEN_EXISTING
         || (flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_TRUNCATE_EXISTING)
