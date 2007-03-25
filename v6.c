@@ -109,7 +109,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   return HANDLER_RESPONDED;
 }
 
-uint32_t sftp_link(struct sftpjob *job) {
+uint32_t sftp_v6_link(struct sftpjob *job) {
   char *oldpath, *newlinkpath;
   uint8_t symbolic;
   struct stat sb;
@@ -139,7 +139,7 @@ uint32_t sftp_link(struct sftpjob *job) {
     return SSH_FX_OK;
 }
 
-uint32_t sftp_version_select(struct sftpjob *job) {
+uint32_t sftp_v6_version_select(struct sftpjob *job) {
   char *newversion;
 
   /* If we've already created the work queue then this can't be the first
@@ -159,36 +159,36 @@ uint32_t sftp_version_select(struct sftpjob *job) {
 }
 
 static const struct sftpcmd sftpv6tab[] = {
-  { SSH_FXP_INIT, sftp_already_init },
+  { SSH_FXP_INIT, sftp_vany_already_init },
   { SSH_FXP_OPEN, sftp_v56_open },
-  { SSH_FXP_CLOSE, sftp_close },
-  { SSH_FXP_READ, sftp_read },
-  { SSH_FXP_WRITE, sftp_write },
+  { SSH_FXP_CLOSE, sftp_vany_close },
+  { SSH_FXP_READ, sftp_vany_read },
+  { SSH_FXP_WRITE, sftp_vany_write },
   { SSH_FXP_LSTAT, sftp_v456_lstat },
   { SSH_FXP_FSTAT, sftp_v456_fstat },
-  { SSH_FXP_SETSTAT, sftp_setstat },
-  { SSH_FXP_FSETSTAT, sftp_fsetstat },
-  { SSH_FXP_OPENDIR, sftp_opendir },
-  { SSH_FXP_READDIR, sftp_readdir },
-  { SSH_FXP_REMOVE, sftp_remove },
-  { SSH_FXP_MKDIR, sftp_mkdir },
-  { SSH_FXP_RMDIR, sftp_rmdir },
+  { SSH_FXP_SETSTAT, sftp_vany_setstat },
+  { SSH_FXP_FSETSTAT, sftp_vany_fsetstat },
+  { SSH_FXP_OPENDIR, sftp_vany_opendir },
+  { SSH_FXP_READDIR, sftp_vany_readdir },
+  { SSH_FXP_REMOVE, sftp_vany_remove },
+  { SSH_FXP_MKDIR, sftp_vany_mkdir },
+  { SSH_FXP_RMDIR, sftp_vany_rmdir },
   { SSH_FXP_REALPATH, sftp_v6_realpath },
   { SSH_FXP_STAT, sftp_v456_stat },
   { SSH_FXP_RENAME, sftp_v56_rename },
-  { SSH_FXP_READLINK, sftp_readlink },
-  { SSH_FXP_LINK, sftp_link },
-  { SSH_FXP_EXTENDED, sftp_extended }
+  { SSH_FXP_READLINK, sftp_vany_readlink },
+  { SSH_FXP_LINK, sftp_v6_link },
+  { SSH_FXP_EXTENDED, sftp_vany_extended }
 };
 
 /* TODO: file locking */
 
 static const struct sftpextension sftp_v6_extensions[] = {
-  { "posix-rename@openssh.org", sftp_posix_rename },
-  { "space-available", sftp_space_available },
-  { "statfs@openssh.org", sftp_statfs },
-  { "text-seek", sftp_text_seek },
-  { "version-select", sftp_version_select },
+  { "posix-rename@openssh.org", sftp_vany_posix_rename },
+  { "space-available", sftp_vany_space_available },
+  { "statfs@openssh.org", sftp_vany_statfs },
+  { "text-seek", sftp_vany_text_seek },
+  { "version-select", sftp_v6_version_select },
 };
 
 const struct sftpprotocol sftpv6 = {

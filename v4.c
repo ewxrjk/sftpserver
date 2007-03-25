@@ -261,33 +261,33 @@ uint32_t sftp_v456_fstat(struct sftpjob *job) {
 }
 
 static const struct sftpcmd sftpv4tab[] = {
-  { SSH_FXP_INIT, sftp_already_init },
+  { SSH_FXP_INIT, sftp_vany_already_init },
   { SSH_FXP_OPEN, sftp_v34_open },
-  { SSH_FXP_CLOSE, sftp_close },
-  { SSH_FXP_READ, sftp_read },
-  { SSH_FXP_WRITE, sftp_write },
+  { SSH_FXP_CLOSE, sftp_vany_close },
+  { SSH_FXP_READ, sftp_vany_read },
+  { SSH_FXP_WRITE, sftp_vany_write },
   { SSH_FXP_LSTAT, sftp_v456_lstat },
   { SSH_FXP_FSTAT, sftp_v456_fstat },
-  { SSH_FXP_SETSTAT, sftp_setstat },
-  { SSH_FXP_FSETSTAT, sftp_fsetstat },
-  { SSH_FXP_OPENDIR, sftp_opendir },
-  { SSH_FXP_READDIR, sftp_readdir },
-  { SSH_FXP_REMOVE, sftp_remove },
-  { SSH_FXP_MKDIR, sftp_mkdir },
-  { SSH_FXP_RMDIR, sftp_rmdir },
+  { SSH_FXP_SETSTAT, sftp_vany_setstat },
+  { SSH_FXP_FSETSTAT, sftp_vany_fsetstat },
+  { SSH_FXP_OPENDIR, sftp_vany_opendir },
+  { SSH_FXP_READDIR, sftp_vany_readdir },
+  { SSH_FXP_REMOVE, sftp_vany_remove },
+  { SSH_FXP_MKDIR, sftp_vany_mkdir },
+  { SSH_FXP_RMDIR, sftp_vany_rmdir },
   { SSH_FXP_REALPATH, sftp_v345_realpath },
   { SSH_FXP_STAT, sftp_v456_stat },
   { SSH_FXP_RENAME, sftp_v34_rename },
-  { SSH_FXP_READLINK, sftp_readlink },
-  { SSH_FXP_SYMLINK, sftp_symlink },
-  { SSH_FXP_EXTENDED, sftp_extended }
+  { SSH_FXP_READLINK, sftp_vany_readlink },
+  { SSH_FXP_SYMLINK, sftp_v345_symlink },
+  { SSH_FXP_EXTENDED, sftp_vany_extended }
 };
 
 static const struct sftpextension v4_extensions[] = {
-  { "posix-rename@openssh.org", sftp_posix_rename },
-  { "space-available", sftp_space_available },
-  { "statfs@openssh.org", sftp_statfs },
-  { "text-seek", sftp_text_seek },
+  { "posix-rename@openssh.org", sftp_vany_posix_rename },
+  { "space-available", sftp_vany_space_available },
+  { "statfs@openssh.org", sftp_vany_statfs },
+  { "text-seek", sftp_vany_text_seek },
 };
 
 const struct sftpprotocol sftpv4 = {

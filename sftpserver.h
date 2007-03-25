@@ -55,20 +55,20 @@ void send_status(struct sftpjob *job,
                  const char *msg);
 /* Send an SSH_FXP_STATUS */
 
-uint32_t sftp_already_init(struct sftpjob *job);
-uint32_t sftp_remove(struct sftpjob *job);
-uint32_t sftp_rmdir(struct sftpjob *job);
-uint32_t sftp_symlink(struct sftpjob *job);
-uint32_t sftp_readlink(struct sftpjob *job);
-uint32_t sftp_close(struct sftpjob *job);
-uint32_t sftp_read(struct sftpjob *job);
-uint32_t sftp_write(struct sftpjob *job);
-uint32_t sftp_setstat(struct sftpjob *job);
-uint32_t sftp_fsetstat(struct sftpjob *job);
-uint32_t sftp_opendir(struct sftpjob *job);
-uint32_t sftp_readdir(struct sftpjob *job);
-uint32_t sftp_mkdir(struct sftpjob *job);
-uint32_t sftp_extended(struct sftpjob *job);
+uint32_t sftp_vany_already_init(struct sftpjob *job);
+uint32_t sftp_vany_remove(struct sftpjob *job);
+uint32_t sftp_vany_rmdir(struct sftpjob *job);
+uint32_t sftp_v345_symlink(struct sftpjob *job);
+uint32_t sftp_vany_readlink(struct sftpjob *job);
+uint32_t sftp_vany_close(struct sftpjob *job);
+uint32_t sftp_vany_read(struct sftpjob *job);
+uint32_t sftp_vany_write(struct sftpjob *job);
+uint32_t sftp_vany_setstat(struct sftpjob *job);
+uint32_t sftp_vany_fsetstat(struct sftpjob *job);
+uint32_t sftp_vany_opendir(struct sftpjob *job);
+uint32_t sftp_vany_readdir(struct sftpjob *job);
+uint32_t sftp_vany_mkdir(struct sftpjob *job);
+uint32_t sftp_vany_extended(struct sftpjob *job);
 
 void v456_sendnames(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
@@ -86,15 +86,15 @@ uint32_t sftp_v345_realpath(struct sftpjob *job);
 uint32_t sftp_v56_open(struct sftpjob *job);
 uint32_t sftp_v56_rename(struct sftpjob *job);
 uint32_t sftp_v6_realpath(struct sftpjob *job);
-uint32_t sftp_link(struct sftpjob *job);
-uint32_t sftp_text_seek(struct sftpjob *job);
+uint32_t sftp_v6_link(struct sftpjob *job);
+uint32_t sftp_vany_text_seek(struct sftpjob *job);
 uint32_t generic_open(struct sftpjob *job, const char *path,
                   uint32_t desired_access, uint32_t flags,
                   struct sftpattr *attrs);
-uint32_t sftp_space_available(struct sftpjob *job);
-uint32_t sftp_version_select(struct sftpjob *job);
-uint32_t sftp_posix_rename(struct sftpjob *job);
-uint32_t sftp_statfs(struct sftpjob *job);
+uint32_t sftp_vany_space_available(struct sftpjob *job);
+uint32_t sftp_v6_version_select(struct sftpjob *job);
+uint32_t sftp_vany_posix_rename(struct sftpjob *job);
+uint32_t sftp_vany_statfs(struct sftpjob *job);
 
 void send_errno_status(struct sftpjob *job);
 /* Call send_status based on errno */
