@@ -122,6 +122,10 @@ void sftp_send_bytes(struct worker *w, const void *bytes, size_t n) {
   w->bufused += n;
 }
 
+void sftp_send_string(struct worker *w, const char *s) {
+  sftp_send_bytes(w, s, strlen(s));
+}
+
 void sftp_send_path(struct sftpjob *job, struct worker *w, const char *path) {
   if(protocol->encode(job, (char **)&path))
     fatal("cannot encode local path name '%s'", path);

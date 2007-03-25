@@ -32,10 +32,7 @@ void sftp_send_uint32(struct worker *w, uint32_t u);
 void sftp_send_uint64(struct worker *w, uint64_t u);
 void sftp_send_bytes(struct worker *w, const void *bytes, size_t n);
 void sftp_send_handle(struct worker *w, const struct handleid *id);
-#define sftp_send_string(JOB, S) do {                \
-  const char *s_ = (S);                         \
-  sftp_send_bytes(JOB, s_, strlen(s_));              \
-} while(0)
+void sftp_send_string(struct worker *w, const char *s);
 void sftp_send_path(struct sftpjob *job, struct worker *w, const char *path);
 
 size_t sftp_send_sub_begin(struct worker *w);
