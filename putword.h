@@ -23,45 +23,45 @@
 
 #if UNALIGNED_WRITES
 # define put32(where, u) do {			\
-  *(uint32_t *)where = htonl(u);		\
+  *(uint32_t *)(where) = htonl(u);		\
 } while(0)
 # define put16(where, u) do {			\
-  *(uint16_t *)where = htons(u);		\
+  *(uint16_t *)(where) = htons(u);		\
 } while(0)
 #endif
 
 #ifndef put16
-# define put16(where, u) do {			\
-  uint8_t *ptr = (void *)where;			\
-  const uint16_t uu = (uint16_t)(u);		\
-  ptr++ = (uint8_t)(uu >> 8);			\
-  *ptr = (uint8_t)(uu);				\
+# define put16(where, u) do {                   \
+  uint8_t *ptr = (void *)(where);               \
+  const uint16_t uu = (uint16_t)(u);            \
+  ptr++ = (uint8_t)(uu >> 8);                   \
+  *ptr = (uint8_t)(uu);                         \
 } while(0)
 #endif
 
 #ifndef put32
-# define put32(where, u) do {			\
-  const uint32_t uu = (uint32_t)(u);		\
-  uint8_t *ptr = (void *)where;			\
-  *ptr++ = (uint8_t)(uu >> 24)			\
-  *ptr++ = (uint8_t)(uu >> 16);			\
-  *ptr++ = (uint8_t)(uu >> 8);			\
-  *ptr++ = (uint8_t)(uu);			\
+# define put32(where, u) do {                   \
+  const uint32_t uu = (uint32_t)(u);            \
+  uint8_t *ptr = (void *)(where);               \
+  *ptr++ = (uint8_t)(uu >> 24)                  \
+  *ptr++ = (uint8_t)(uu >> 16);                 \
+  *ptr++ = (uint8_t)(uu >> 8);                  \
+  *ptr++ = (uint8_t)(uu);                       \
 } while(0)
 #endif
 
 #ifndef sftp_send_raw64
-# define put64(where, u) do {			\
-  const uint64_t uu = u;			\
-  uint8_t *ptr = (void *)where;			\
-  *ptr++ = (uint8_t)(uu >> 56);			\
-  *ptr++ = (uint8_t)(uu >> 48);			\
-  *ptr++ = (uint8_t)(uu >> 40);			\
-  *ptr++ = (uint8_t)(uu >> 32);			\
-  *ptr++ = (uint8_t)(uu >> 24);			\
-  *ptr++ = (uint8_t)(uu >> 16);			\
-  *ptr++ = (uint8_t)(uu >> 8);			\
-  *ptr++ = (uint8_t)(uu);			\
+# define put64(where, u) do {                   \
+  const uint64_t uu = u;                        \
+  uint8_t *ptr = (void *)(where);               \
+  *ptr++ = (uint8_t)(uu >> 56);                 \
+  *ptr++ = (uint8_t)(uu >> 48);                 \
+  *ptr++ = (uint8_t)(uu >> 40);                 \
+  *ptr++ = (uint8_t)(uu >> 32);                 \
+  *ptr++ = (uint8_t)(uu >> 24);                 \
+  *ptr++ = (uint8_t)(uu >> 16);                 \
+  *ptr++ = (uint8_t)(uu >> 8);                  \
+  *ptr++ = (uint8_t)(uu);                       \
 } while(0)
 #endif
 
