@@ -26,6 +26,7 @@
 #include "thread.h"
 #include "types.h"
 #include "globals.h"
+#include "putword.h"
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
@@ -37,48 +38,20 @@ static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int sftpout = 1;                        /* default is stdout */
 
-#if UNALIGNED_WRITES
-# define sftp_send_raw32(u) do {                             \
-  *(uint32_t *)&w->buffer[w->bufused] = htonl(u);       \
-  w->bufused += 4;                                      \
+#define sftp_send_raw16(u) do {                 \
+  put16(&w->buffer[w->bufused], u);             \
+  w->bufused += 2;                              \
 } while(0)
-# define sftp_send_raw16(u) do {                             \
-  *(uint16_t *)&w->buffer[w->bufused] = htons(u);       \
-  w->bufused += 2;                                      \
-} while(0)
-#endif
 
-#ifndef sftp_send_raw16
-# define sftp_send_raw16(u) do {                             \
-  const uint16_t uu = (uint16_t)(u);                    \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 8);         \
-  w->buffer[w->bufused++] = (uint8_t)(uu);              \
+#define sftp_send_raw32(u) do {                 \
+  put32(&w->buffer[w->bufused], u);             \
+  w->bufused += 4;                              \
 } while(0)
-#endif
 
-#ifndef sftp_send_raw32
-# define sftp_send_raw32(u) do {                             \
-  const uint32_t uu = (uint32_t)(u);                    \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 24)         \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 16);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 8);         \
-  w->buffer[w->bufused++] = (uint8_t)(uu);              \
+#define sftp_send_raw64(u) do {                 \
+  put64(&w->buffer[w->bufused], u);             \
+  w->bufused += 8;                              \
 } while(0)
-#endif
-
-#ifndef sftp_send_raw64
-# define sftp_send_raw64(u) do {                             \
-  const uint64_t uu = u;                                \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 56);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 48);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 40);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 32);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 24);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 16);        \
-  w->buffer[w->bufused++] = (uint8_t)(uu >> 8);         \
-  w->buffer[w->bufused++] = (uint8_t)(uu);              \
-} while(0)
-#endif
 
 void sftp_send_need(struct worker *w, size_t n) {
   assert(w->bufused < 0x80000000);
