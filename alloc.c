@@ -51,7 +51,7 @@ union block {
 
 #define NBLOCKS 512
 
-struct allocator *alloc_init(struct allocator *a) {
+struct allocator *sftp_alloc_init(struct allocator *a) {
   a->chunks = 0;
   return a;
 }
@@ -61,7 +61,7 @@ static inline size_t blocks(size_t nbytes) {
   return nbytes / sizeof (union block) + !!(nbytes % sizeof (union block));
 }
 
-void *alloc(struct allocator *a, size_t n) {
+void *sftp_alloc(struct allocator *a, size_t n) {
   /* calculate number of blocks */
   const size_t m = blocks(n);
   struct chunk *c;
@@ -94,7 +94,7 @@ void *alloc(struct allocator *a, size_t n) {
   return c->ptr - m;
 }
 
-void *allocmore(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
+void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
   const size_t oldm = blocks(oldn), newm = blocks(newn);
   void *newptr;
 
@@ -128,15 +128,15 @@ void *allocmore(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
       return ptr;
     }
     /* We have no choice but to allocate new space */
-    newptr = alloc(a, newn);
+    newptr = sftp_alloc(a, newn);
     memcpy(newptr, ptr, oldn);
     return newptr;
   } else
     /* There was no old allocation, just create a new one the easy way */
-    return alloc(a, newn);
+    return sftp_alloc(a, newn);
 }
 
-void alloc_destroy(struct allocator *a) {
+void sftp_alloc_destroy(struct allocator *a) {
   struct chunk *c, *d;
 
   c = a->chunks;

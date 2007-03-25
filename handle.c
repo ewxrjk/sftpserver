@@ -45,7 +45,7 @@ struct handle {
 static struct handle *handles;
 static size_t nhandles;
 static uint32_t sequence;
-static pthread_mutex_t handle_lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t sftp_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static void find_free_handle(struct handleid *id, int type) {
   size_t n;
@@ -67,29 +67,29 @@ static void find_free_handle(struct handleid *id, int type) {
   id->tag = handles[n].tag;
 }
 
-void handle_new_file(struct handleid *id, 
+void sftp_handle_new_file(struct handleid *id, 
                      int fd, const char *path, unsigned flags) {
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   find_free_handle(id, SSH_FXP_OPEN);
   handles[id->id].u.fd = fd;
   handles[id->id].path = xstrdup(path);
   handles[id->id].flags = flags;
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
 }
 
-void handle_new_dir(struct handleid *id, DIR *dp, const char *path) {
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+void sftp_handle_new_dir(struct handleid *id, DIR *dp, const char *path) {
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   find_free_handle(id, SSH_FXP_OPENDIR);
   handles[id->id].u.dir = dp;
   handles[id->id].path = xstrdup(path);
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
 }
 
-uint32_t handle_get_fd(const struct handleid *id,
+uint32_t sftp_handle_get_fd(const struct handleid *id,
                        int *fd, unsigned *flagsp) {
   uint32_t rc;
 
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   if(id->id < nhandles
      && id->tag == handles[id->id].tag
      && handles[id->id].type == SSH_FXP_OPEN) {
@@ -99,15 +99,15 @@ uint32_t handle_get_fd(const struct handleid *id,
     rc = 0;
   } else
     rc = SSH_FX_INVALID_HANDLE;
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
   return rc;
 }
 
-uint32_t handle_get_dir(const struct handleid *id,
+uint32_t sftp_handle_get_dir(const struct handleid *id,
                         DIR **dp, const char **pathp) {
   uint32_t rc;
 
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   if(id->id < nhandles
      && id->tag == handles[id->id].tag
      && handles[id->id].type == SSH_FXP_OPENDIR) {
@@ -117,14 +117,14 @@ uint32_t handle_get_dir(const struct handleid *id,
     rc = 0;
   } else
     rc = SSH_FX_INVALID_HANDLE;
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
   return rc;
 }
 
-uint32_t handle_close(const struct handleid *id) {
+uint32_t sftp_handle_close(const struct handleid *id) {
   uint32_t rc;
 
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   if(id->id < nhandles
      && id->tag == handles[id->id].tag) {
     handles[id->id].tag = 0;            /* free up */
@@ -148,20 +148,20 @@ uint32_t handle_close(const struct handleid *id) {
   }
   else
     rc = SSH_FX_INVALID_HANDLE;
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
   return rc;
 }
 
-unsigned handle_flags(const struct handleid *id) {
+unsigned sftp_handle_flags(const struct handleid *id) {
   unsigned rc;
 
-  ferrcheck(pthread_mutex_lock(&handle_lock));
+  ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   if(id->id < nhandles
      && id->tag == handles[id->id].tag)
     rc = handles[id->id].flags;
   else
     rc = 0;
-  ferrcheck(pthread_mutex_unlock(&handle_lock));
+  ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
   return rc;
 }
 

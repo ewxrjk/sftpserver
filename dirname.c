@@ -25,7 +25,7 @@
 #include <assert.h>
 #include <string.h>
 
-const char *my_dirname(struct allocator *a, const char *path) {
+const char *sftp_dirname(struct allocator *a, const char *path) {
   const char *ls = strrchr(path, '/');
   if(ls) {
     if(ls != path) {
@@ -33,7 +33,7 @@ const char *my_dirname(struct allocator *a, const char *path) {
       char *d;
 
       assert(len + 1 != 0);
-      d = alloc(a, len + 1);
+      d = sftp_alloc(a, len + 1);
       memcpy(d, path, len);
       return d;
     } else

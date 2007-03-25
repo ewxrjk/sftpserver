@@ -24,10 +24,10 @@
 #include <wchar.h>
 #include <iconv.h>
 
-wchar_t *convertm2w(const char *s);
+wchar_t *sftp_mbs2wcs(const char *s);
 /* Convert S to a wide character string */
 
-int iconv_wrapper(struct allocator *a, iconv_t cd, char **sp);
+int sftp_iconv(struct allocator *a, iconv_t cd, char **sp);
 /* Convert SP using CD and allocating memory with A */
 
 #endif /* CHARSET_H */

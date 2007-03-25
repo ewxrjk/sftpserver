@@ -142,7 +142,7 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
       newsize *= 2;
     if(!newsize)
       fatal("out of memory");
-    s = allocmore(a, s, *ns, newsize);
+    s = sftp_alloc_more(a, s, *ns, newsize);
     *ns = newsize;
   }
   memcpy(s + ls, t, lt);

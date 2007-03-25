@@ -65,7 +65,7 @@ const char *status_to_string(uint32_t status) {
   }
 }
 
-void send_status(struct sftpjob *job, 
+void sftp_send_status(struct sftpjob *job, 
                  uint32_t status,
                  const char *msg) {
   if(status == HANDLER_ERRNO) {
@@ -73,7 +73,7 @@ void send_status(struct sftpjob *job,
      * errno'.  This goes back via the protocol-specific status callback, so
      * statuses out of range for the current protocol version get properly
      * laundered. */
-    send_errno_status(job);
+    sftp_send_errno_status(job);
     return;
   }
   /* If there is no message, fill one in */
@@ -87,11 +87,11 @@ void send_status(struct sftpjob *job,
     default: status = SSH_FX_FAILURE; break;
     }
   }
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_STATUS);
-  send_uint32(job->worker, job->id);
-  send_uint32(job->worker, status);
-  send_path(job, job->worker, msg);     /* needs to be UTF-8 */
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_STATUS);
+  sftp_send_uint32(job->worker, job->id);
+  sftp_send_uint32(job->worker, status);
+  sftp_send_path(job, job->worker, msg);     /* needs to be UTF-8 */
   /* We are not I18N'd yet.  Doing so will require the following:
    *  - determine an RFC1766 interpretation of the current LC_MESSAGES
    *    setting
@@ -100,8 +100,8 @@ void send_status(struct sftpjob *job,
    *  - _if_ we have a localization for one of our own messages, send the
    *    right tag (otherwise still send "en")
    */
-  send_string(job->worker, "en");
-  send_end(job->worker);
+  sftp_send_string(job->worker, "en");
+  sftp_send_end(job->worker);
 }
 
 static const struct {
@@ -125,7 +125,7 @@ static const struct {
   { -1, SSH_FX_FAILURE },
 };
 
-void send_errno_status(struct sftpjob *job) {
+void sftp_send_errno_status(struct sftpjob *job) {
   int n;
   const int errno_value = errno;
 
@@ -133,7 +133,7 @@ void send_errno_status(struct sftpjob *job) {
       errnotab[n].errno_value != errno_value && errnotab[n].errno_value != -1;
       ++n)
     ;
-  send_status(job, errnotab[n].status_value, strerror(errno_value));
+  sftp_send_status(job, errnotab[n].status_value, strerror(errno_value));
 }
 
 /*

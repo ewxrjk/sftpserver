@@ -135,7 +135,7 @@ static uint32_t sftp_init(struct sftpjob *job) {
   /* Cannot initialize more than once */
   if(protocol != &sftppreinit)
     return SSH_FX_FAILURE;
-  pcheck(parse_uint32(job, &version));
+  pcheck(sftp_parse_uint32(job, &version));
   switch(version) {
   case 0: case 1: case 2:
     return SSH_FX_OP_UNSUPPORTED;
@@ -155,34 +155,34 @@ static uint32_t sftp_init(struct sftpjob *job) {
     protocol = &sftpv6;
     break;
   }
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_VERSION);
-  send_uint32(job->worker, protocol->version);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_VERSION);
+  sftp_send_uint32(job->worker, protocol->version);
   if(protocol->version >= 4) {
     /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
      * client always sends \n, freeing us from the burden of translating text
      * files.  However we still have to deal with the different rules for reads
      * and writes on text files.
      */
-    send_string(job->worker, "newline");
-    send_string(job->worker, "\n");
+    sftp_send_string(job->worker, "newline");
+    sftp_send_string(job->worker, "\n");
   }
   if(protocol->version == 5) {
     /* draft-ietf-secsh-filexfer-05.txt 4.4 */
-    send_string(job->worker, "supported");
-    offset = send_sub_begin(job->worker);
-    send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
+    sftp_send_string(job->worker, "supported");
+    offset = sftp_send_sub_begin(job->worker);
+    sftp_send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_PERMISSIONS
                               |SSH_FILEXFER_ATTR_ACCESSTIME
                               |SSH_FILEXFER_ATTR_MODIFYTIME
                               |SSH_FILEXFER_ATTR_OWNERGROUP
                               |SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
-    send_uint32(job->worker, 0);         /* supported-attribute-bits */
-    send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
+    sftp_send_uint32(job->worker, 0);         /* supported-attribute-bits */
+    sftp_send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
                               |SSH_FXF_APPEND_DATA
                               |SSH_FXF_APPEND_DATA_ATOMIC
                               |SSH_FXF_TEXT_MODE));
-    send_uint32(job->worker, 0xFFFFFFFF);
+    sftp_send_uint32(job->worker, 0xFFFFFFFF);
     /* If we send a non-0 max-read-size then we promise to return that many
      * bytes if asked for it and to mean EOF or error if we return less.
      *
@@ -192,16 +192,16 @@ static uint32_t sftp_init(struct sftpjob *job) {
      *
      * Therefore we send 0 here.
      */
-    send_uint32(job->worker, 0);
+    sftp_send_uint32(job->worker, 0);
     for(n = 0; n < protocol->nextensions; ++n)
-      send_string(job->worker, protocol->extensions[n].name);
-    send_sub_end(job->worker, offset);
+      sftp_send_string(job->worker, protocol->extensions[n].name);
+    sftp_send_sub_end(job->worker, offset);
   }
   if(protocol->version >= 6) {
     /* draft-ietf-secsh-filexfer-13.txt 5.4 */
-    send_string(job->worker, "supported2");
-    offset = send_sub_begin(job->worker);
-    send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
+    sftp_send_string(job->worker, "supported2");
+    offset = sftp_send_sub_begin(job->worker);
+    sftp_send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_PERMISSIONS
                               |SSH_FILEXFER_ATTR_ACCESSTIME
                               |SSH_FILEXFER_ATTR_MODIFYTIME
@@ -212,51 +212,51 @@ static uint32_t sftp_init(struct sftpjob *job) {
      * misnomer.  In particular we will send SSH_FILEXFER_ATTR_CTIME but cannot
      * set the ctime of files and so follow the SHOULD that tells us to reject
      * attempts to do so. */
-    send_uint32(job->worker, 0);         /* supported-attribute-bits */
-    send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
+    sftp_send_uint32(job->worker, 0);         /* supported-attribute-bits */
+    sftp_send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
                               |SSH_FXF_APPEND_DATA
                               |SSH_FXF_APPEND_DATA_ATOMIC
                               |SSH_FXF_TEXT_MODE
                               |SSH_FXF_NOFOLLOW
                               |SSH_FXF_DELETE_ON_CLOSE)); /* supported-open-flags */
-    send_uint32(job->worker, 0xFFFFFFFF); /* supported-access-mask */
-    send_uint32(job->worker, 0);        /* max-read-size - see above */
-    send_uint16(job->worker, 1);        /* supported-open-block-vector */
-    send_uint16(job->worker, 1);        /* supported-block-vector */
-    send_uint32(job->worker, 0);        /* attrib-extension-count */
+    sftp_send_uint32(job->worker, 0xFFFFFFFF); /* supported-access-mask */
+    sftp_send_uint32(job->worker, 0);        /* max-read-size - see above */
+    sftp_send_uint16(job->worker, 1);        /* supported-open-block-vector */
+    sftp_send_uint16(job->worker, 1);        /* supported-block-vector */
+    sftp_send_uint32(job->worker, 0);        /* attrib-extension-count */
     /* attrib-extensions would go here */
-    send_uint32(job->worker, protocol->nextensions); /* extension-count */
+    sftp_send_uint32(job->worker, protocol->nextensions); /* extension-count */
     for(n = 0; n < protocol->nextensions; ++n)
-      send_string(job->worker, protocol->extensions[n].name);
-    send_sub_end(job->worker, offset);
+      sftp_send_string(job->worker, protocol->extensions[n].name);
+    sftp_send_sub_end(job->worker, offset);
     /* e.g. draft-ietf-secsh-filexfer-13.txt, 5.5 */
-    send_string(job->worker, "versions");
-    send_string(job->worker, "3,4,5,6");
+    sftp_send_string(job->worker, "versions");
+    sftp_send_string(job->worker, "3,4,5,6");
   }
   {
     /* vendor-id is defined in some of the SFTP drafts but not all.
      * Whatever. */
-    send_string(job->worker, "vendor-id");
-    offset = send_sub_begin(job->worker);
-    send_string(job->worker, "Green End");
-    send_string(job->worker, "Green End SFTP Server");
-    send_string(job->worker, VERSION);
-    send_uint64(job->worker, 0);
-    send_sub_end(job->worker, offset);
+    sftp_send_string(job->worker, "vendor-id");
+    offset = sftp_send_sub_begin(job->worker);
+    sftp_send_string(job->worker, "Green End");
+    sftp_send_string(job->worker, "Green End SFTP Server");
+    sftp_send_string(job->worker, VERSION);
+    sftp_send_uint64(job->worker, 0);
+    sftp_send_sub_end(job->worker, offset);
   }
   /* This simple extension documents the order we expect for SSH_FXP_SYMLINK
    * args.  See the comment in v3.c for further details. */
-  send_string(job->worker, "symlink-order@rjk.greenend.org.uk");
+  sftp_send_string(job->worker, "symlink-order@rjk.greenend.org.uk");
   if(reverse_symlink)
-    send_string(job->worker, "targetpath-linkpath");
+    sftp_send_string(job->worker, "targetpath-linkpath");
   else
-    send_string(job->worker, "linkpath-targetpath");
+    sftp_send_string(job->worker, "linkpath-targetpath");
   if(protocol->version >= 6) {
     /* Just in case l-) */
-    send_string(job->worker, "link-order@rjk.greenend.org.uk");
-    send_string(job->worker, "linkpath-targetpath");
+    sftp_send_string(job->worker, "link-order@rjk.greenend.org.uk");
+    sftp_send_string(job->worker, "linkpath-targetpath");
   }
-  send_end(job->worker);
+  sftp_send_end(job->worker);
   if(protocol->version < 6) {
     /* Now we are initialized we can safely process other jobs in the
      * background.  We can't do this for v6 because the first request might be
@@ -328,7 +328,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   job->left = job->len;
   /* Empty messages are never valid */
   if(!job->left) {
-    send_status(job, SSH_FX_BAD_MESSAGE, "empty request");
+    sftp_send_status(job, SSH_FX_BAD_MESSAGE, "empty request");
     goto done;
   }
   /* Get the type */
@@ -336,8 +336,8 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   --job->left;
   /* Everything but SSH_FXP_INIT has an ID field */
   if(type != SSH_FXP_INIT)
-    if((rc = parse_uint32(job, &job->id)) != SSH_FX_OK) {
-      send_status(job, rc, "missing ID field");
+    if((rc = sftp_parse_uint32(job, &job->id)) != SSH_FX_OK) {
+      sftp_send_status(job, rc, "missing ID field");
       goto done;
     }
   /* Locate the handler for the command */
@@ -359,13 +359,13 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
       /* Send a response if necessary */
       switch(status) {
       case HANDLER_RESPONDED: break;
-      default: send_status(job, status, 0); break;
+      default: sftp_send_status(job, status, 0); break;
       }
       goto done;
     }
   }
   /* We did not find a handler */
-  send_status(job, SSH_FX_OP_UNSUPPORTED, 0);
+  sftp_send_status(job, SSH_FX_OP_UNSUPPORTED, 0);
 done:
   serialize_remove_job(job);
   free(job->data);
@@ -416,10 +416,10 @@ int main(int argc, char **argv) {
   if(strstr(bn, "-debug")) {
     const char *home = getenv("HOME");
 
-    debugpath = xmalloc(strlen(home) + 40);
-    sprintf((char *)debugpath, "%s/.gesftpserver.%ju", 
+    sftp_debugpath = xmalloc(strlen(home) + 40);
+    sprintf((char *)sftp_debugpath, "%s/.gesftpserver.%ju", 
             home, (uintmax_t)getpid());
-    debugging = 1;
+    sftp_debugging = 1;
   }
   /* Run in readonly mode */
   if(strstr(bn, "-ro"))
@@ -434,8 +434,8 @@ int main(int argc, char **argv) {
     switch(n) {
     case 'h': help();
     case 'V': version();
-    case 'd': debugging = 1; break;
-    case 'D': debugging = 1; debugpath = optarg; break;
+    case 'd': sftp_debugging = 1; break;
+    case 'D': sftp_debugging = 1; sftp_debugpath = optarg; break;
 #if DAEMON
     case 'r': root = optarg; break;
     case 'u': user = optarg; break;
@@ -610,9 +610,9 @@ static void sftp_service(void) {
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
       fatal("read error: unexpected eof");
-    if(debugging) {
+    if(sftp_debugging) {
       D(("request:"));
-      hexdump(job->data, job->len);
+      sftp_debug_hexdump(job->data, job->len);
     }
     /* See serialize.c for the serialization rules we follow */
     queue_serializable_job(job);
@@ -621,9 +621,9 @@ static void sftp_service(void) {
     if(workqueue)
       queue_add(workqueue, job);
     else {
-      alloc_init(&a);
+      sftp_alloc_init(&a);
       process_sftpjob(job, wdv, &a);
-      alloc_destroy(&a);
+      sftp_alloc_destroy(&a);
     }
     /* process_sftpjob() frees JOB when it has finished with it */
   }

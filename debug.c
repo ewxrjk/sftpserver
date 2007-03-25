@@ -30,26 +30,26 @@
 #include <string.h>
 
 static FILE *debugfp;
-const char *debugpath;
-int debugging;
+const char *sftp_debugpath;
+int sftp_debugging;
 
 static void opendebug(void) {
-  assert(debugging);
+  assert(sftp_debugging);
   if(!debugfp) {
-    if(debugpath) {
+    if(sftp_debugpath) {
       int fd;
 
-      if((fd = open(debugpath, O_WRONLY|O_CREAT|O_TRUNC, 0600)) >= 0)
+      if((fd = open(sftp_debugpath, O_WRONLY|O_CREAT|O_TRUNC, 0600)) >= 0)
         debugfp = fdopen(fd, "w");
       else
-        fprintf(stderr, "%s: %s\n", debugpath, strerror(errno));
+        fprintf(stderr, "%s: %s\n", sftp_debugpath, strerror(errno));
     }
     if(!debugfp)
       debugfp = stderr;
   }
 }
 
-void hexdump(const void *ptr, size_t n) {
+void sftp_debug_hexdump(const void *ptr, size_t n) {
   const unsigned char *p = ptr;
   size_t i, j;
   char buffer[80], *output;
@@ -77,7 +77,7 @@ void hexdump(const void *ptr, size_t n) {
   fflush(debugfp);
 }
 
-void debug_printf(const char *fmt, ...) {
+void sftp_debug_printf(const char *fmt, ...) {
   va_list ap;
   const int save_errno = errno;
 

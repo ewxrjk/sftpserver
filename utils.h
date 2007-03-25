@@ -46,10 +46,11 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
 /* Append T to S, expanding if need be.  NS tracks total size of S.  LT is the
  * length of T if present. */
 
-char *my_readlink(struct allocator *a, const char *path);
+char *sftp_do_readlink(struct allocator *a, const char *path);
 /* Wrapper for readlink.  Sets errno and returns a null pointer on error. */
 
-char *my_realpath(struct allocator *a, const char *path, unsigned flags);
+char *sftp_find_realpath(struct allocator *a, const char *path,
+                         unsigned flags);
 #define RP_READLINK 0x0001              /* follow symlinks */
 #define RP_MUST_EXIST 0x0002            /* path must exist */
 /* Return the real path name of PATH.  Sets errno and returns a null pointer on
@@ -67,10 +68,10 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags);
  * going to do an existence test.
  */
 
-char *my_getcwd(struct allocator *a);
+char *sftp_getcwd(struct allocator *a);
 /* Return the name of the current directory. */
 
-const char *my_dirname(struct allocator *a, const char *path);
+const char *sftp_dirname(struct allocator *a, const char *path);
 
 void fatal(const char *msg, ...)
   attribute((noreturn))

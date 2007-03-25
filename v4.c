@@ -31,164 +31,164 @@
 #include "serialize.h"
 #include <string.h>
 
-int v456_encode(struct sftpjob *job,
+int sftp_v456_encode(struct sftpjob *job,
 		char **path) {
   /* Translate local to UTF-8 */
-  return iconv_wrapper(job->a, job->worker->local_to_utf8, path);
+  return sftp_iconv(job->a, job->worker->local_to_utf8, path);
 }
 
-uint32_t v456_decode(struct sftpjob *job, 
+uint32_t sftp_v456_decode(struct sftpjob *job, 
                      char **path) {
   /* Translate UTF-8 to local */
-  if(iconv_wrapper(job->a, job->worker->utf8_to_local, path))
+  if(sftp_iconv(job->a, job->worker->utf8_to_local, path))
     return SSH_FX_INVALID_FILENAME;
   else
     return SSH_FX_OK;
 }
 
-void v456_sendattrs(struct sftpjob *job,
+void sftp_v456_sendattrs(struct sftpjob *job,
  		    const struct sftpattr *attrs) {
   const uint32_t valid = attrs->valid & protocol->attrmask;
 
-  send_uint32(job->worker, valid);
-  send_uint8(job->worker, attrs->type);
+  sftp_send_uint32(job->worker, valid);
+  sftp_send_uint8(job->worker, attrs->type);
   if(valid & SSH_FILEXFER_ATTR_SIZE)
-    send_uint64(job->worker, attrs->size);
+    sftp_send_uint64(job->worker, attrs->size);
   if(valid & SSH_FILEXFER_ATTR_OWNERGROUP) {
-    send_path(job, job->worker, attrs->owner);
-    send_path(job, job->worker, attrs->group);
+    sftp_send_path(job, job->worker, attrs->owner);
+    sftp_send_path(job, job->worker, attrs->group);
   }
   if(valid & SSH_FILEXFER_ATTR_PERMISSIONS)
-    send_uint32(job->worker, attrs->permissions);
+    sftp_send_uint32(job->worker, attrs->permissions);
   /* lftp 3.1.3 expects subsecond time fields even if the corresonding time is
    * absent.  It sends no identifying information so we cannot enable a
    * workaround for this bizarre bug.  lftp 3.5.9 gets this right as does
    * WinSCP. */
   if(valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    send_uint64(job->worker, attrs->atime.seconds);
+    sftp_send_uint64(job->worker, attrs->atime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job->worker, attrs->atime.nanoseconds);
+      sftp_send_uint32(job->worker, attrs->atime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_CREATETIME) {
-    send_uint64(job->worker, attrs->createtime.seconds);
+    sftp_send_uint64(job->worker, attrs->createtime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job->worker, attrs->createtime.nanoseconds);
+      sftp_send_uint32(job->worker, attrs->createtime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    send_uint64(job->worker, attrs->mtime.seconds);
+    sftp_send_uint64(job->worker, attrs->mtime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job->worker, attrs->mtime.nanoseconds);
+      sftp_send_uint32(job->worker, attrs->mtime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_CTIME) {
-    send_uint64(job->worker, attrs->ctime.seconds);
+    sftp_send_uint64(job->worker, attrs->ctime.seconds);
     if(valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      send_uint32(job->worker, attrs->ctime.nanoseconds);
+      sftp_send_uint32(job->worker, attrs->ctime.nanoseconds);
   }
   if(valid & SSH_FILEXFER_ATTR_ACL) {
-    send_string(job->worker, attrs->acl);
+    sftp_send_string(job->worker, attrs->acl);
   }
   if(valid & SSH_FILEXFER_ATTR_BITS) {
-    send_uint32(job->worker, attrs->attrib_bits);
+    sftp_send_uint32(job->worker, attrs->attrib_bits);
     if(protocol->version >= 6)
-      send_uint32(job->worker, attrs->attrib_bits_valid);
+      sftp_send_uint32(job->worker, attrs->attrib_bits_valid);
   }
   if(valid & SSH_FILEXFER_ATTR_TEXT_HINT) {
-    send_uint8(job->worker, attrs->text_hint);
+    sftp_send_uint8(job->worker, attrs->text_hint);
   }
   if(valid & SSH_FILEXFER_ATTR_MIME_TYPE) {
-    send_string(job->worker, attrs->mime_type);
+    sftp_send_string(job->worker, attrs->mime_type);
   }
   if(valid & SSH_FILEXFER_ATTR_LINK_COUNT) {
-    send_uint32(job->worker, attrs->link_count);
+    sftp_send_uint32(job->worker, attrs->link_count);
   }
   /* We don't implement untranslated-name yet */
 }
 
-uint32_t v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
+uint32_t sftp_v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n, rc;
 
   memset(attrs, 0, sizeof *attrs);
-  if((rc = parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
+  if((rc = sftp_parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
     return rc;
-  if((rc = parse_uint8(job, &attrs->type)) != SSH_FX_OK)
+  if((rc = sftp_parse_uint8(job, &attrs->type)) != SSH_FX_OK)
     return rc;
   if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
-    if((rc = parse_uint64(job, &attrs->size)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, &attrs->size)) != SSH_FX_OK)
       return rc;
   if(attrs->valid & SSH_FILEXFER_ATTR_OWNERGROUP) {
-    if((rc = parse_path(job, &attrs->owner)) != SSH_FX_OK)
+    if((rc = sftp_parse_path(job, &attrs->owner)) != SSH_FX_OK)
       return rc;
-    if((rc = parse_path(job, &attrs->group)) != SSH_FX_OK)
+    if((rc = sftp_parse_path(job, &attrs->group)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    if((rc = parse_uint32(job, &attrs->permissions)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->permissions)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    if((rc = parse_uint64(job, (uint64_t *)&attrs->atime.seconds)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, (uint64_t *)&attrs->atime.seconds)) != SSH_FX_OK)
       return rc;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if((rc = parse_uint32(job, &attrs->atime.nanoseconds)) != SSH_FX_OK)
+      if((rc = sftp_parse_uint32(job, &attrs->atime.nanoseconds)) != SSH_FX_OK)
         return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_CREATETIME) {
-    if((rc = parse_uint64(job, (uint64_t *)&attrs->createtime.seconds)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, (uint64_t *)&attrs->createtime.seconds)) != SSH_FX_OK)
       return rc;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if((rc = parse_uint32(job, &attrs->createtime.nanoseconds)) != SSH_FX_OK)
+      if((rc = sftp_parse_uint32(job, &attrs->createtime.nanoseconds)) != SSH_FX_OK)
         return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if((rc = parse_uint64(job, (uint64_t *)&attrs->mtime.seconds)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, (uint64_t *)&attrs->mtime.seconds)) != SSH_FX_OK)
       return rc;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if((rc = parse_uint32(job, &attrs->mtime.nanoseconds)) != SSH_FX_OK)
+      if((rc = sftp_parse_uint32(job, &attrs->mtime.nanoseconds)) != SSH_FX_OK)
         return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_CTIME) {
-    if((rc = parse_uint64(job, (uint64_t *)&attrs->ctime.seconds)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, (uint64_t *)&attrs->ctime.seconds)) != SSH_FX_OK)
       return rc;
     if(attrs->valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES)
-      if((rc = parse_uint32(job, &attrs->ctime.nanoseconds)) != SSH_FX_OK)
+      if((rc = sftp_parse_uint32(job, &attrs->ctime.nanoseconds)) != SSH_FX_OK)
         return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_ACL) {
-    if((rc = parse_string(job, &attrs->acl, 0)) != SSH_FX_OK)
+    if((rc = sftp_parse_string(job, &attrs->acl, 0)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_BITS) {
-    if((rc = parse_uint32(job, &attrs->attrib_bits)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->attrib_bits)) != SSH_FX_OK)
       return rc;
     if(protocol->version >= 6) {
-      if((rc = parse_uint32(job, &attrs->attrib_bits_valid)) != SSH_FX_OK)
+      if((rc = sftp_parse_uint32(job, &attrs->attrib_bits_valid)) != SSH_FX_OK)
         return rc;
     } else
       attrs->attrib_bits_valid = 0x7ff; /* -05 s5.8 */
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_TEXT_HINT) {
-    if((rc = parse_uint8(job, &attrs->text_hint)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint8(job, &attrs->text_hint)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MIME_TYPE) {
-    if((rc = parse_string(job, &attrs->mime_type, 0)) != SSH_FX_OK)
+    if((rc = sftp_parse_string(job, &attrs->mime_type, 0)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_LINK_COUNT) {
-    if((rc = parse_uint32(job, &attrs->link_count)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->link_count)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_UNTRANSLATED_NAME) {
-    if((rc = parse_string(job, &attrs->mime_type, 0)) != SSH_FX_OK)
+    if((rc = sftp_parse_string(job, &attrs->mime_type, 0)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
-    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &n)) != SSH_FX_OK)
       return rc;
     while(n-- > 0) {
-      if((rc = parse_string(job, 0, 0)) != SSH_FX_OK)
+      if((rc = sftp_parse_string(job, 0, 0)) != SSH_FX_OK)
         return rc;
-      if((rc = parse_string(job, 0, 0)) != SSH_FX_OK)
+      if((rc = sftp_parse_string(job, 0, 0)) != SSH_FX_OK)
         return rc;
     }
   }
@@ -197,12 +197,12 @@ uint32_t v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
 
 /* Send a filename list as found in an SSH_FXP_NAME response.  The response
  * header and so on must be generated by the caller. */
-void v456_sendnames(struct sftpjob *job, 
+void sftp_v456_sendnames(struct sftpjob *job, 
 		    int nnames, const struct sftpattr *names) {
   /* We'd like to know what year we're in for dates in longname */
-  send_uint32(job->worker, nnames);
+  sftp_send_uint32(job->worker, nnames);
   while(nnames > 0) {
-    send_path(job, job->worker, names->name);
+    sftp_send_path(job, job->worker, names->name);
     protocol->sendattrs(job, names);
     ++names;
     --nnames;
@@ -217,13 +217,13 @@ static uint32_t sftp_v456_stat_core(struct sftpjob *job, int rc,
   uint32_t flags;
 
   if(!rc) {
-    pcheck(parse_uint32(job, &flags));
-    stat_to_attrs(job->a, sb, &attrs, flags, path);
-    send_begin(job->worker);
-    send_uint8(job->worker, SSH_FXP_ATTRS);
-    send_uint32(job->worker, job->id);
+    pcheck(sftp_parse_uint32(job, &flags));
+    sftp_stat_to_attrs(job->a, sb, &attrs, flags, path);
+    sftp_send_begin(job->worker);
+    sftp_send_uint8(job->worker, SSH_FXP_ATTRS);
+    sftp_send_uint32(job->worker, job->id);
     protocol->sendattrs(job, &attrs);
-    send_end(job->worker);
+    sftp_send_end(job->worker);
     return HANDLER_RESPONDED;
   } else
     return HANDLER_ERRNO;
@@ -233,7 +233,7 @@ uint32_t sftp_v456_lstat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_lstat %s", path));
   return sftp_v456_stat_core(job, lstat(path, &sb), &sb, path);
 }
@@ -242,7 +242,7 @@ uint32_t sftp_v456_stat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_stat %s", path));
   return sftp_v456_stat_core(job, stat(path, &sb), &sb, path);
 }
@@ -253,9 +253,9 @@ uint32_t sftp_v456_fstat(struct sftpjob *job) {
   struct stat sb;
   uint32_t rc;
 
-  pcheck(parse_handle(job, &id));
+  pcheck(sftp_parse_handle(job, &id));
   D(("sftp_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0)))
+  if((rc = sftp_handle_get_fd(&id, &fd, 0)))
     return rc;
   return sftp_v456_stat_core(job, fstat(fd, &sb), &sb, 0);
 }
@@ -301,11 +301,11 @@ const struct sftpprotocol sftpv4 = {
    |SSH_FILEXFER_ATTR_OWNERGROUP
    |SSH_FILEXFER_ATTR_SUBSECOND_TIMES),
   SSH_FX_NO_MEDIA,
-  v456_sendnames,
-  v456_sendattrs,
-  v456_parseattrs,
-  v456_encode,
-  v456_decode,
+  sftp_v456_sendnames,
+  sftp_v456_sendattrs,
+  sftp_v456_parseattrs,
+  sftp_v456_encode,
+  sftp_v456_decode,
   sizeof v4_extensions / sizeof (struct sftpextension),
   v4_extensions,                        /* extensions */
 };

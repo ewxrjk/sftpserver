@@ -38,26 +38,26 @@ static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 int sftpout = 1;                        /* default is stdout */
 
 #if UNALIGNED_WRITES
-# define send_raw32(u) do {                             \
+# define sftp_send_raw32(u) do {                             \
   *(uint32_t *)&w->buffer[w->bufused] = htonl(u);       \
   w->bufused += 4;                                      \
 } while(0)
-# define send_raw16(u) do {                             \
+# define sftp_send_raw16(u) do {                             \
   *(uint16_t *)&w->buffer[w->bufused] = htons(u);       \
   w->bufused += 2;                                      \
 } while(0)
 #endif
 
-#ifndef send_raw16
-# define send_raw16(u) do {                             \
+#ifndef sftp_send_raw16
+# define sftp_send_raw16(u) do {                             \
   const uint16_t uu = (uint16_t)(u);                    \
   w->buffer[w->bufused++] = (uint8_t)(uu >> 8);         \
   w->buffer[w->bufused++] = (uint8_t)(uu);              \
 } while(0)
 #endif
 
-#ifndef send_raw32
-# define send_raw32(u) do {                             \
+#ifndef sftp_send_raw32
+# define sftp_send_raw32(u) do {                             \
   const uint32_t uu = (uint32_t)(u);                    \
   w->buffer[w->bufused++] = (uint8_t)(uu >> 24)         \
   w->buffer[w->bufused++] = (uint8_t)(uu >> 16);        \
@@ -66,8 +66,8 @@ int sftpout = 1;                        /* default is stdout */
 } while(0)
 #endif
 
-#ifndef send_raw64
-# define send_raw64(u) do {                             \
+#ifndef sftp_send_raw64
+# define sftp_send_raw64(u) do {                             \
   const uint64_t uu = u;                                \
   w->buffer[w->bufused++] = (uint8_t)(uu >> 56);        \
   w->buffer[w->bufused++] = (uint8_t)(uu >> 48);        \
@@ -80,7 +80,7 @@ int sftpout = 1;                        /* default is stdout */
 } while(0)
 #endif
 
-void send_need(struct worker *w, size_t n) {
+void sftp_send_need(struct worker *w, size_t n) {
   assert(w->bufused < 0x80000000);
   if(n > w->bufsize - w->bufused) {
     size_t newsize = w->bufsize ? w->bufsize : 64;
@@ -92,12 +92,12 @@ void send_need(struct worker *w, size_t n) {
   }
 }
 
-void send_begin(struct worker *w) {
+void sftp_send_begin(struct worker *w) {
   w->bufused = 0;
-  send_uint32(w, 0);                    /* placeholder for length */
+  sftp_send_uint32(w, 0);                    /* placeholder for length */
 }
 
-void send_end(struct worker *w) {
+void sftp_send_end(struct worker *w) {
   ssize_t n, written;
 
   assert(w->bufused < 0x80000000);
@@ -107,9 +107,9 @@ void send_end(struct worker *w) {
   /* Write the complete output, protecting stdout with a lock to avoid
    * interleaving different responses. */
   ferrcheck(pthread_mutex_lock(&output_lock));
-  if(debugging) {
+  if(sftp_debugging) {
     D(("%s:", sendtype));
-    hexdump(w->buffer + 4, w->bufused - 4);
+    sftp_debug_hexdump(w->buffer + 4, w->bufused - 4);
   }
   /* Write the whole buffer, coping with short writes */
   written = 0;
@@ -122,56 +122,56 @@ void send_end(struct worker *w) {
   w->bufused = 0x80000000;
 }
 
-void send_uint8(struct worker *w, int n) {
-  send_need(w, 1);
+void sftp_send_uint8(struct worker *w, int n) {
+  sftp_send_need(w, 1);
   w->buffer[w->bufused++] = (uint8_t)n;
 }
 
-void send_uint16(struct worker *w, uint16_t u) {
-  send_need(w, 2);
-  send_raw16(u);
+void sftp_send_uint16(struct worker *w, uint16_t u) {
+  sftp_send_need(w, 2);
+  sftp_send_raw16(u);
 }
 
-void send_uint32(struct worker *w, uint32_t u) {
-  send_need(w, 4);
-  send_raw32(u);
+void sftp_send_uint32(struct worker *w, uint32_t u) {
+  sftp_send_need(w, 4);
+  sftp_send_raw32(u);
 }
 
-void send_uint64(struct worker *w, uint64_t u) {
-  send_need(w, 8);
-  send_raw64(u);
+void sftp_send_uint64(struct worker *w, uint64_t u) {
+  sftp_send_need(w, 8);
+  sftp_send_raw64(u);
 }
 
-void send_bytes(struct worker *w, const void *bytes, size_t n) {
-  send_need(w, n + 4);
-  send_raw32(n);
+void sftp_send_bytes(struct worker *w, const void *bytes, size_t n) {
+  sftp_send_need(w, n + 4);
+  sftp_send_raw32(n);
   memcpy(w->buffer + w->bufused, bytes, n);
   w->bufused += n;
 }
 
-void send_path(struct sftpjob *job, struct worker *w, const char *path) {
+void sftp_send_path(struct sftpjob *job, struct worker *w, const char *path) {
   if(protocol->encode(job, (char **)&path))
     fatal("cannot encode local path name '%s'", path);
-  send_string(w, path);
+  sftp_send_string(w, path);
 }
 
-void send_handle(struct worker *w, const struct handleid *id) {
-  send_need(w, 12);
-  send_raw32(8);
-  send_raw32(id->id);
-  send_raw32(id->tag);
+void sftp_send_handle(struct worker *w, const struct handleid *id) {
+  sftp_send_need(w, 12);
+  sftp_send_raw32(8);
+  sftp_send_raw32(id->id);
+  sftp_send_raw32(id->tag);
 }
 
-size_t send_sub_begin(struct worker *w) {
-  send_need(w, 4);
+size_t sftp_send_sub_begin(struct worker *w) {
+  sftp_send_need(w, 4);
   w->bufused += 4;
   return w->bufused;
 }
 
-void send_sub_end(struct worker *w, size_t offset) {
+void sftp_send_sub_end(struct worker *w, size_t offset) {
   const size_t latest = w->bufused;
   w->bufused = offset - 4;
-  send_raw32(latest - offset);
+  sftp_send_raw32(latest - offset);
   w->bufused = latest;
 }
 

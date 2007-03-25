@@ -32,33 +32,33 @@
 /* We don't rely on the C library doing the right thing */
 static pthread_mutex_t user_lock = PTHREAD_MUTEX_INITIALIZER;
 
-char *uid2name(struct allocator *a, uid_t uid) {
+char *sftp_uid2name(struct allocator *a, uid_t uid) {
   char *s;
   const struct passwd *pw;
 
   ferrcheck(pthread_mutex_lock(&user_lock));
   if((pw = getpwuid(uid)))
-    s = strcpy(alloc(a, strlen(pw->pw_name) + 1), pw->pw_name);
+    s = strcpy(sftp_alloc(a, strlen(pw->pw_name) + 1), pw->pw_name);
   else
     s = 0;
   ferrcheck(pthread_mutex_unlock(&user_lock));
   return s;
 }
 
-char *gid2name(struct allocator *a, gid_t gid) {
+char *sftp_gid2name(struct allocator *a, gid_t gid) {
   char *s;
   const struct group *gr;
 
   ferrcheck(pthread_mutex_lock(&user_lock));
   if((gr = getgrgid(gid)))
-    s = strcpy(alloc(a, strlen(gr->gr_name) + 1), gr->gr_name);
+    s = strcpy(sftp_alloc(a, strlen(gr->gr_name) + 1), gr->gr_name);
   else
     s = 0;
   ferrcheck(pthread_mutex_unlock(&user_lock));
   return s;
 }
 
-uid_t name2uid(const char *name) {
+uid_t sftp_name2uid(const char *name) {
   const struct passwd *pw;
   uid_t uid;
 
@@ -71,7 +71,7 @@ uid_t name2uid(const char *name) {
   return uid;
 }
 
-gid_t name2gid(const char *name) {
+gid_t sftp_name2gid(const char *name) {
   const struct group *gr;
   gid_t gid;
 

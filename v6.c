@@ -40,15 +40,15 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   struct stat sb;
   struct sftpattr attrs;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   if(job->left) {
-    pcheck(parse_uint8(job, &control_byte));
+    pcheck(sftp_parse_uint8(job, &control_byte));
     while(job->left) {
-      pcheck(parse_path(job, &compose));
+      pcheck(sftp_parse_path(job, &compose));
       if(compose[0] == '/')
         path = compose;
       else {
-        char *newpath = alloc(job->a, strlen(path) + strlen(compose) + 2);
+        char *newpath = sftp_alloc(job->a, strlen(path) + strlen(compose) + 2);
 
         strcpy(newpath, path);
         strcat(newpath, "/");
@@ -74,7 +74,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   default:
     return SSH_FX_BAD_MESSAGE;
   }
-  if(!(resolvedpath = my_realpath(job->a, path, rpflags)))
+  if(!(resolvedpath = sftp_find_realpath(job->a, path, rpflags)))
     return HANDLER_ERRNO;
   D(("...real path is %s", resolvedpath));
   switch(control_byte) {
@@ -86,7 +86,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   case SSH_FXP_REALPATH_STAT_IF:
     /* stat as hard as we can but accept failure if it's just not there */
     if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
-      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
+      sftp_stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else {
       memset(&attrs, 0, sizeof attrs);
       attrs.name = resolvedpath;
@@ -95,17 +95,17 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   case SSH_FXP_REALPATH_STAT_ALWAYS:
     /* stat and error on failure */
     if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
-      stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
+      sftp_stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else
       /* Can only happen if path is deleted between realpath call and stat */
       return HANDLER_ERRNO;
     break;
   }
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_NAME);
-  send_uint32(job->worker, job->id);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_NAME);
+  sftp_send_uint32(job->worker, job->id);
   protocol->sendnames(job, 1, &attrs);
-  send_end(job->worker);
+  sftp_send_end(job->worker);
   return HANDLER_RESPONDED;
 }
 
@@ -117,9 +117,9 @@ uint32_t sftp_v6_link(struct sftpjob *job) {
   /* See also comment in v3.c for SSH_FXP_SYMLINK */
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &newlinkpath));
-  pcheck(parse_path(job, &oldpath));    /* aka existing-path/target-paths */
-  pcheck(parse_uint8(job, &symbolic));
+  pcheck(sftp_parse_path(job, &newlinkpath));
+  pcheck(sftp_parse_path(job, &oldpath));    /* aka existing-path/target-paths */
+  pcheck(sftp_parse_uint8(job, &symbolic));
   D(("sftp_link %s %s [%s]", oldpath, newlinkpath,
      symbolic ? "symbolic" : "hard"));
   if((symbolic ? symlink : link)(oldpath, newlinkpath) < 0) {
@@ -145,15 +145,15 @@ uint32_t sftp_v6_version_select(struct sftpjob *job) {
   /* If we've already created the work queue then this can't be the first
    * message. */
   if(!workqueue) {
-    pcheck(parse_path(job, &newversion));
+    pcheck(sftp_parse_path(job, &newversion));
     /* Handle known versions */
     if(!strcmp(newversion, "3")) { protocol = &sftpv3; return SSH_FX_OK; }
     if(!strcmp(newversion, "4")) { protocol = &sftpv4; return SSH_FX_OK; }
     if(!strcmp(newversion, "5")) { protocol = &sftpv5; return SSH_FX_OK; }
     if(!strcmp(newversion, "6")) { protocol = &sftpv6; return SSH_FX_OK; }
-    send_status(job, SSH_FX_INVALID_PARAMETER, "unknown version");
+    sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "unknown version");
   } else
-    send_status(job, SSH_FX_INVALID_PARAMETER, "badly timed version-select");
+    sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "badly timed version-select");
   /* We MUST close the channel.  (-13, s5.5). */
   exit(-1);
 }
@@ -205,11 +205,11 @@ const struct sftpprotocol sftpv6 = {
    |SSH_FILEXFER_ATTR_BITS
    |SSH_FILEXFER_ATTR_LINK_COUNT),
   SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK,
-  v456_sendnames,
-  v456_sendattrs,
-  v456_parseattrs,
-  v456_encode,
-  v456_decode,
+  sftp_v456_sendnames,
+  sftp_v456_sendattrs,
+  sftp_v456_parseattrs,
+  sftp_v456_encode,
+  sftp_v456_decode,
   sizeof sftp_v6_extensions / sizeof (struct sftpextension),
   sftp_v6_extensions,
 };

@@ -50,9 +50,9 @@
 # define DEFAULT_PERMISSIONS 0755
 #endif
 
-void send_status(struct sftpjob *job, 
-                 uint32_t status,
-                 const char *msg);
+void sftp_send_status(struct sftpjob *job, 
+                      uint32_t status,
+                      const char *msg);
 /* Send an SSH_FXP_STATUS */
 
 uint32_t sftp_vany_already_init(struct sftpjob *job);
@@ -69,14 +69,13 @@ uint32_t sftp_vany_opendir(struct sftpjob *job);
 uint32_t sftp_vany_readdir(struct sftpjob *job);
 uint32_t sftp_vany_mkdir(struct sftpjob *job);
 uint32_t sftp_vany_extended(struct sftpjob *job);
-
-void v456_sendnames(struct sftpjob *job, 
-                    int nnames, const struct sftpattr *names);
-void v456_sendattrs(struct sftpjob *job,
- 		    const struct sftpattr *attrs);
-uint32_t v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
-int v456_encode(struct sftpjob *job, char **path);
-uint32_t v456_decode(struct sftpjob *job, char **path);
+void sftp_v456_sendnames(struct sftpjob *job, 
+                         int nnames, const struct sftpattr *names);
+void sftp_v456_sendattrs(struct sftpjob *job,
+                         const struct sftpattr *attrs);
+uint32_t sftp_v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
+int sftp_v456_encode(struct sftpjob *job, char **path);
+uint32_t sftp_v456_decode(struct sftpjob *job, char **path);
 uint32_t sftp_v34_rename(struct sftpjob *job);
 uint32_t sftp_v34_open(struct sftpjob *job);
 uint32_t sftp_v456_lstat(struct sftpjob *job);
@@ -88,16 +87,16 @@ uint32_t sftp_v56_rename(struct sftpjob *job);
 uint32_t sftp_v6_realpath(struct sftpjob *job);
 uint32_t sftp_v6_link(struct sftpjob *job);
 uint32_t sftp_vany_text_seek(struct sftpjob *job);
-uint32_t generic_open(struct sftpjob *job, const char *path,
-                  uint32_t desired_access, uint32_t flags,
-                  struct sftpattr *attrs);
+uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
+                           uint32_t desired_access, uint32_t flags,
+                           struct sftpattr *attrs);
 uint32_t sftp_vany_space_available(struct sftpjob *job);
 uint32_t sftp_v6_version_select(struct sftpjob *job);
 uint32_t sftp_vany_posix_rename(struct sftpjob *job);
 uint32_t sftp_vany_statfs(struct sftpjob *job);
 
-void send_errno_status(struct sftpjob *job);
-/* Call send_status based on errno */
+void sftp_send_errno_status(struct sftpjob *job);
+/* Call sftp_send_status based on errno */
 
 #endif /* SFTPSERVER_H */
 

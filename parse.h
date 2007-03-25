@@ -21,13 +21,13 @@
 #ifndef PARSE_H
 #define PARSE_H
 
-uint32_t parse_uint8(struct sftpjob *job, uint8_t *ur);
-uint32_t parse_uint16(struct sftpjob *job, uint16_t *ur);
-uint32_t parse_uint32(struct sftpjob *job, uint32_t *ur);
-uint32_t parse_uint64(struct sftpjob *job, uint64_t *ur);
-uint32_t parse_string(struct sftpjob *job, char **strp, size_t *lenp);
-uint32_t parse_path(struct sftpjob *job, char **strp);
-uint32_t parse_handle(struct sftpjob *job, struct handleid *id);
+uint32_t sftp_parse_uint8(struct sftpjob *job, uint8_t *ur);
+uint32_t sftp_parse_uint16(struct sftpjob *job, uint16_t *ur);
+uint32_t sftp_parse_uint32(struct sftpjob *job, uint32_t *ur);
+uint32_t sftp_parse_uint64(struct sftpjob *job, uint64_t *ur);
+uint32_t sftp_parse_string(struct sftpjob *job, char **strp, size_t *lenp);
+uint32_t sftp_parse_path(struct sftpjob *job, char **strp);
+uint32_t sftp_parse_handle(struct sftpjob *job, struct handleid *id);
 /* Parse various values out of the remaining data of a job.  Return 0 on
  * success, non-0 on error. */
 
@@ -47,7 +47,7 @@ uint32_t parse_handle(struct sftpjob *job, struct handleid *id);
     return rc;                                                  \
   }                                                             \
 } while(0)
-/* error-checking wrapper for parse_ functions */
+/* error-checking wrapper for sftp_parse_ functions */
 #endif
 
 #endif /* PARSE_H */

@@ -70,10 +70,10 @@ static void v3_sendnames(struct sftpjob *job,
   /* We'd like to know what year we're in for dates in longname */
   time(&now);
   gmtime_r(&now, &nowtime);
-  send_uint32(job->worker, nnames);
+  sftp_send_uint32(job->worker, nnames);
   while(nnames > 0) {
-    send_path(job, job->worker, names->name);
-    send_string(job->worker, format_attr(job->a, names, nowtime.tm_year, 0));
+    sftp_send_path(job, job->worker, names->name);
+    sftp_send_string(job->worker, sftp_format_attr(job->a, names, nowtime.tm_year, 0));
     protocol->sendattrs(job, names);
     ++names;
     --nnames;
@@ -98,15 +98,15 @@ static void v3_sendattrs(struct sftpjob *job,
     v3bits = (attrs->valid & (SSH_FILEXFER_ATTR_SIZE
                               |SSH_FILEXFER_ATTR_UIDGID
                               |SSH_FILEXFER_ATTR_PERMISSIONS));
-  send_uint32(job->worker, v3bits);
+  sftp_send_uint32(job->worker, v3bits);
   if(v3bits & SSH_FILEXFER_ATTR_SIZE)
-    send_uint64(job->worker, attrs->size);
+    sftp_send_uint64(job->worker, attrs->size);
   if(v3bits & SSH_FILEXFER_ATTR_UIDGID) {
-    send_uint32(job->worker, attrs->uid);
-    send_uint32(job->worker, attrs->gid);
+    sftp_send_uint32(job->worker, attrs->uid);
+    sftp_send_uint32(job->worker, attrs->gid);
   }
   if(v3bits & SSH_FILEXFER_ATTR_PERMISSIONS)
-    send_uint32(job->worker, attrs->permissions);
+    sftp_send_uint32(job->worker, attrs->permissions);
   if(v3bits & SSH_FILEXFER_ACMODTIME) {
     m = attrs->mtime.seconds;
     a = attrs->atime.seconds;
@@ -119,8 +119,8 @@ static void v3_sendattrs(struct sftpjob *job,
       fatal("sending out-of-range mtime");
     if(a != attrs->atime.seconds)
       fatal("sending out-of-range mtime");
-    send_uint32(job->worker, m);
-    send_uint32(job->worker, a);
+    sftp_send_uint32(job->worker, m);
+    sftp_send_uint32(job->worker, a);
   }
   /* Note that we just discard unknown bits rather than reporting errors. */
 }
@@ -129,7 +129,7 @@ static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n, rc;
 
   memset(attrs, 0, sizeof *attrs);
-  if((rc = parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
+  if((rc = sftp_parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
     return rc;
   /* Translate v3 bits t v4+ bits */
   if(attrs->valid & SSH_FILEXFER_ACMODTIME)
@@ -137,16 +137,16 @@ static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
                      |SSH_FILEXFER_ATTR_MODIFYTIME);
   /* Read the v3 fields */
   if(attrs->valid & SSH_FILEXFER_ATTR_SIZE)
-    if((rc = parse_uint64(job, &attrs->size)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint64(job, &attrs->size)) != SSH_FX_OK)
       return rc;
   if(attrs->valid & SSH_FILEXFER_ATTR_UIDGID) {
-    if((rc = parse_uint32(job, &attrs->uid)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->uid)) != SSH_FX_OK)
       return rc;
-    if((rc = parse_uint32(job, &attrs->gid)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->gid)) != SSH_FX_OK)
       return rc;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
-    if((rc = parse_uint32(job, &attrs->permissions)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &attrs->permissions)) != SSH_FX_OK)
       return rc;
     /* Fake up type field */
     switch(attrs->permissions & S_IFMT) {
@@ -162,21 +162,21 @@ static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   } else
     attrs->type = SSH_FILEXFER_TYPE_UNKNOWN;
   if(attrs->valid & SSH_FILEXFER_ATTR_ACCESSTIME) {
-    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &n)) != SSH_FX_OK)
       return rc;
     attrs->atime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_MODIFYTIME) {
-    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &n)) != SSH_FX_OK)
       return rc;
     attrs->mtime.seconds = n;
   }
   if(attrs->valid & SSH_FILEXFER_ATTR_EXTENDED) {
-    if((rc = parse_uint32(job, &n)) != SSH_FX_OK)
+    if((rc = sftp_parse_uint32(job, &n)) != SSH_FX_OK)
       return rc;
     while(n-- > 0) {
-      if((rc = parse_string(job, 0, 0)) != SSH_FX_OK
-         || (rc = parse_string(job, 0, 0)) != SSH_FX_OK)
+      if((rc = sftp_parse_string(job, 0, 0)) != SSH_FX_OK
+         || (rc = sftp_parse_string(job, 0, 0)) != SSH_FX_OK)
         return rc;
     }
   }
@@ -196,7 +196,7 @@ uint32_t sftp_vany_remove(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_remove %s", path));
   if(unlink(path) < 0) {
     if(errno == EPERM) {
@@ -214,7 +214,7 @@ uint32_t sftp_vany_rmdir(struct sftpjob *job) {
   
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_rmdir %s", path));
   if(rmdir(path) < 0)
     if(errno == EEXIST)
@@ -230,8 +230,8 @@ uint32_t sftp_v34_rename(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &oldpath));
-  pcheck(parse_path(job, &newpath));
+  pcheck(sftp_parse_path(job, &oldpath));
+  pcheck(sftp_parse_path(job, &newpath));
   D(("sftp_v34_rename %s %s", oldpath, newpath));
   /* newpath is not allowed to exist.  We enforce this atomically by attempting
      to link() from oldpath to newpath and unlinking oldpath if it succeeds. */
@@ -327,11 +327,11 @@ uint32_t sftp_v345_symlink(struct sftpjob *job) {
    * extension documenting server behaviour is sent in that case too.
    */
   if(reverse_symlink) {
-    pcheck(parse_path(job, &targetpath));
-    pcheck(parse_path(job, &linkpath));
+    pcheck(sftp_parse_path(job, &targetpath));
+    pcheck(sftp_parse_path(job, &linkpath));
   } else {
-    pcheck(parse_path(job, &linkpath));
-    pcheck(parse_path(job, &targetpath));
+    pcheck(sftp_parse_path(job, &linkpath));
+    pcheck(sftp_parse_path(job, &targetpath));
   }
   D(("sftp_v345_symlink %s %s", targetpath, linkpath));
   if(symlink(targetpath, linkpath) < 0)
@@ -344,22 +344,22 @@ uint32_t sftp_vany_readlink(struct sftpjob *job) {
   char *path, *result;
   struct sftpattr attr;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_readlink %s", path));
-  if(!(result = my_readlink(job->a, path))) {
+  if(!(result = sftp_do_readlink(job->a, path))) {
     if(errno == E2BIG) {
-      send_status(job, SSH_FX_FAILURE, "link name is too long");
+      sftp_send_status(job, SSH_FX_FAILURE, "link name is too long");
       return HANDLER_RESPONDED;
     }
     return HANDLER_ERRNO;
   }
   memset(&attr, 0, sizeof attr);
   attr.name = result;
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_NAME);
-  send_uint32(job->worker, job->id);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_NAME);
+  sftp_send_uint32(job->worker, job->id);
   protocol->sendnames(job, 1, &attr);
-  send_end(job->worker);
+  sftp_send_end(job->worker);
   return HANDLER_RESPONDED;
 }
 
@@ -368,17 +368,17 @@ uint32_t sftp_vany_opendir(struct sftpjob *job) {
   DIR *dp;
   struct handleid id;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_opendir %s", path));
   if(!(dp = opendir(path)))
     return HANDLER_ERRNO;
-  handle_new_dir(&id, dp, path);
+  sftp_handle_new_dir(&id, dp, path);
   D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_HANDLE);
-  send_uint32(job->worker, job->id);
-  send_handle(job->worker, &id);
-  send_end(job->worker);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_HANDLE);
+  sftp_send_uint32(job->worker, job->id);
+  sftp_send_handle(job->worker, &id);
+  sftp_send_end(job->worker);
   return HANDLER_RESPONDED;
 }
 
@@ -393,10 +393,10 @@ uint32_t sftp_vany_readdir(struct sftpjob *job) {
   char *childpath, *fullpath;
   struct stat sb;
   
-  pcheck(parse_handle(job, &id));
+  pcheck(sftp_parse_handle(job, &id));
   D(("sftp_vany_readdir %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_dir(&id, &dp, &path))) {
-    send_status(job, rc, "invalid directory handle");
+  if((rc = sftp_handle_get_dir(&id, &dp, &path))) {
+    sftp_send_status(job, rc, "invalid directory handle");
     return HANDLER_RESPONDED;
   }
   memset(d, 0, sizeof d);
@@ -409,15 +409,15 @@ uint32_t sftp_vany_readdir(struct sftpjob *job) {
       break;
     /* We include . and .. in the list - if the cliient doesn't like them it
      * can filter them out itself. */
-    childpath = strcpy(alloc(job->a, strlen(de->d_name) + 1), de->d_name);
+    childpath = strcpy(sftp_alloc(job->a, strlen(de->d_name) + 1), de->d_name);
     /* We need the full path to be able to stat the file */
-    fullpath = alloc(job->a, strlen(path) + strlen(childpath) + 2);
+    fullpath = sftp_alloc(job->a, strlen(path) + strlen(childpath) + 2);
     strcpy(fullpath, path);
     strcat(fullpath, "/");
     strcat(fullpath, childpath);
     if(lstat(fullpath, &sb))
       return HANDLER_ERRNO;
-    stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF, childpath);
+    sftp_stat_to_attrs(job->a, &sb, &d[n], 0xFFFFFFFF, childpath);
     d[n].name = childpath;
     ++n;
     errno = 0;                          /* avoid error slippage from
@@ -427,11 +427,11 @@ uint32_t sftp_vany_readdir(struct sftpjob *job) {
   if(errno)
     return HANDLER_ERRNO;
   if(n) {
-    send_begin(job->worker);
-    send_uint8(job->worker, SSH_FXP_NAME);
-    send_uint32(job->worker, job->id);
+    sftp_send_begin(job->worker);
+    sftp_send_uint8(job->worker, SSH_FXP_NAME);
+    sftp_send_uint32(job->worker, job->id);
     protocol->sendnames(job, n, d);
-    send_end(job->worker);
+    sftp_send_end(job->worker);
     return HANDLER_RESPONDED;
   } else
     return SSH_FX_EOF;
@@ -440,26 +440,26 @@ uint32_t sftp_vany_readdir(struct sftpjob *job) {
 uint32_t sftp_vany_close(struct sftpjob *job) {
   struct handleid id;
   
-  pcheck(parse_handle(job, &id));
+  pcheck(sftp_parse_handle(job, &id));
   D(("sftp_vany_close %"PRIu32" %"PRIu32, id.id, id.tag));
-  return handle_close(&id);
+  return sftp_handle_close(&id);
 }
 
 uint32_t sftp_v345_realpath(struct sftpjob *job) {
   char *path;
   struct sftpattr attr;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_v345_realpath %s", path));
   memset(&attr, 0, sizeof attr);
-  attr.name = my_realpath(job->a, path, RP_READLINK);
+  attr.name = sftp_find_realpath(job->a, path, RP_READLINK);
   if(attr.name) {
     D(("...real path is %s", attr.name));
-    send_begin(job->worker);
-    send_uint8(job->worker, SSH_FXP_NAME);
-    send_uint32(job->worker, job->id);
+    sftp_send_begin(job->worker);
+    sftp_send_uint8(job->worker, SSH_FXP_NAME);
+    sftp_send_uint32(job->worker, job->id);
     protocol->sendnames(job, 1, &attr);
-    send_end(job->worker);
+    sftp_send_end(job->worker);
     return HANDLER_RESPONDED;
   } else
     return HANDLER_ERRNO;
@@ -474,13 +474,13 @@ static uint32_t sftp_v3_stat_core(struct sftpjob *job, int rc,
   if(!rc) {
     /* We suppress owner/group name lookup since there is no way to communicate
      * it in protocol version 3 */
-    stat_to_attrs(job->a, sb, &attrs,
+    sftp_stat_to_attrs(job->a, sb, &attrs,
                   ~(uint32_t)SSH_FILEXFER_ATTR_OWNERGROUP, 0);
-    send_begin(job->worker);
-    send_uint8(job->worker, SSH_FXP_ATTRS);
-    send_uint32(job->worker, job->id);
+    sftp_send_begin(job->worker);
+    sftp_send_uint8(job->worker, SSH_FXP_ATTRS);
+    sftp_send_uint32(job->worker, job->id);
     protocol->sendattrs(job, &attrs);
-    send_end(job->worker);
+    sftp_send_end(job->worker);
     return HANDLER_RESPONDED;
   } else
     return HANDLER_ERRNO;
@@ -490,7 +490,7 @@ static uint32_t sftp_v3_lstat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_v3_lstat %s", path));
   return sftp_v3_stat_core(job, lstat(path, &sb), &sb);
 }
@@ -499,7 +499,7 @@ static uint32_t sftp_v3_stat(struct sftpjob *job) {
   char *path;
   struct stat sb;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_v3_stat %s", path));
   return sftp_v3_stat_core(job, stat(path, &sb), &sb);
 }
@@ -510,9 +510,9 @@ static uint32_t sftp_v3_fstat(struct sftpjob *job) {
   struct stat sb;
   uint32_t rc;
 
-  pcheck(parse_handle(job, &id));
+  pcheck(sftp_parse_handle(job, &id));
   D(("sftp_v3_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
-  if((rc = handle_get_fd(&id, &fd, 0)))
+  if((rc = sftp_handle_get_fd(&id, &fd, 0)))
     return rc;
   return sftp_v3_stat_core(job, fstat(fd, &sb), &sb);
 }
@@ -524,13 +524,13 @@ uint32_t sftp_vany_setstat(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_vany_setstat %s", path));
   /* Check owner/group */
-  if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
+  if((rc = sftp_normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
     return rc;
-  return set_status(job->a, path, &attrs, 0);
+  return sftp_set_status(job->a, path, &attrs, 0);
 }
 
 uint32_t sftp_vany_fsetstat(struct sftpjob *job) {
@@ -541,15 +541,15 @@ uint32_t sftp_vany_fsetstat(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_handle(job, &id));
+  pcheck(sftp_parse_handle(job, &id));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_vany_fsetstat %"PRIu32" %"PRIu32, id.id, id.tag));
   /* Check owner/group */
-  if((rc = normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
+  if((rc = sftp_normalize_ownergroup(job->a, &attrs)) != SSH_FX_OK)
     return rc;
-  if((rc = handle_get_fd(&id, &fd, 0))) 
+  if((rc = sftp_handle_get_fd(&id, &fd, 0))) 
     return rc;
-  return set_fstatus(job->a, fd, &attrs, 0);
+  return sftp_set_fstatus(job->a, fd, &attrs, 0);
 }
 
 uint32_t sftp_vany_mkdir(struct sftpjob *job) {
@@ -559,7 +559,7 @@ uint32_t sftp_vany_mkdir(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_vany_mkdir %s", path));
   attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* makes no sense */
@@ -577,7 +577,7 @@ uint32_t sftp_vany_mkdir(struct sftpjob *job) {
     if(mkdir(path, DEFAULT_PERMISSIONS) < 0)
       return HANDLER_ERRNO;
   }
-  if((rc = set_status(job->a, path, &attrs, 0))) {
+  if((rc = sftp_set_status(job->a, path, &attrs, 0))) {
     const int save_errno = errno;
     /* If we can't have the desired permissions, don't have the directory at
      * all */
@@ -595,8 +595,8 @@ uint32_t sftp_v34_open(struct sftpjob *job) {
   uint32_t desired_access = 0;
   uint32_t flags;
 
-  pcheck(parse_path(job, &path));
-  pcheck(parse_uint32(job, &pflags));
+  pcheck(sftp_parse_path(job, &path));
+  pcheck(sftp_parse_uint32(job, &pflags));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_v34_open %s %#"PRIx32, path, pflags));
   /* Translate to v5/6 bits */
@@ -633,7 +633,7 @@ uint32_t sftp_v34_open(struct sftpjob *job) {
     flags |= SSH_FXF_APPEND_DATA;
     desired_access |= ACE4_APPEND_DATA;
   }
-  return generic_open(job, path, desired_access, flags, &attrs);
+  return sftp_generic_open(job, path, desired_access, flags, &attrs);
 }
 
 uint32_t sftp_vany_read(struct sftpjob *job) {
@@ -644,20 +644,20 @@ uint32_t sftp_vany_read(struct sftpjob *job) {
   int fd;
   unsigned flags;
 
-  pcheck(parse_handle(job, &id));
-  pcheck(parse_uint64(job, &offset));
-  pcheck(parse_uint32(job, &len));
+  pcheck(sftp_parse_handle(job, &id));
+  pcheck(sftp_parse_uint64(job, &offset));
+  pcheck(sftp_parse_uint32(job, &len));
   D(("sftp_vany_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
   if(len > MAXREAD)
     len = MAXREAD;
-  if((rc = handle_get_fd(&id, &fd, &flags)))
+  if((rc = sftp_handle_get_fd(&id, &fd, &flags)))
     return rc;
   /* We read straight into our own output buffer to save a copy. */
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_DATA);
-  send_uint32(job->worker, job->id);
-  send_need(job->worker, len + 4);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_DATA);
+  sftp_send_uint32(job->worker, job->id);
+  sftp_send_need(job->worker, len + 4);
   if(flags & (HANDLE_TEXT|HANDLE_APPEND))
     n = read(fd, job->worker->buffer + job->worker->bufused + 4, len);
   else
@@ -665,12 +665,12 @@ uint32_t sftp_vany_read(struct sftpjob *job) {
   /* Short reads are allowed so we don't try to read more */
   if(n > 0) {
     /* Fix up the buffer */
-    send_uint32(job->worker, n);
+    sftp_send_uint32(job->worker, n);
     job->worker->bufused += n;
-    send_end(job->worker);
+    sftp_send_end(job->worker);
     return HANDLER_RESPONDED;
   }
-  /* The error-sending code calls send_begin(), so we don't get half a
+  /* The error-sending code calls sftp_send_begin(), so we don't get half a
    * SSH_FXP_DATA response first */
   if(n == 0)
     return SSH_FX_EOF;
@@ -688,14 +688,14 @@ uint32_t sftp_vany_write(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_handle(job, &id));
-  pcheck(parse_uint64(job, &offset));
-  pcheck(parse_uint32(job, &len));
+  pcheck(sftp_parse_handle(job, &id));
+  pcheck(sftp_parse_uint64(job, &offset));
+  pcheck(sftp_parse_uint32(job, &len));
   if(len > job->left)
     return SSH_FX_BAD_MESSAGE;
   D(("sftp_vany_write %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
      id.id, id.tag, len, offset));
-  if((rc = handle_get_fd(&id, &fd, &flags)))
+  if((rc = sftp_handle_get_fd(&id, &fd, &flags)))
     return rc;
   while(len > 0) {
     /* Short writes aren't allowed so we loop around writing more */
@@ -718,8 +718,8 @@ uint32_t sftp_vany_posix_rename(struct sftpjob *job) {
 
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
-  pcheck(parse_path(job, &oldpath));
-  pcheck(parse_path(job, &newpath));
+  pcheck(sftp_parse_path(job, &oldpath));
+  pcheck(sftp_parse_path(job, &newpath));
   D(("sftp_vany_posix_rename %s %s", oldpath, newpath));
   if(rename(oldpath, newpath) < 0) 
     return HANDLER_ERRNO;
@@ -731,23 +731,23 @@ uint32_t sftp_vany_statfs(struct sftpjob *job) {
   char *path;
   struct statvfs fs;
 
-  pcheck(parse_path(job, &path));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_statfs %s", path));
   if(statvfs(path, &fs) < 0)
     return HANDLER_ERRNO;
-  send_begin(job->worker);
-  send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
-  send_uint32(job->worker, job->id);
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
+  sftp_send_uint32(job->worker, job->id);
   /* FUSE's version uses 'struct statfs', we use 'struct statvfs'.  So some of
    * the names are a little different.  However the overall semantics should be
    * the same. */
-  send_uint32(job->worker, fs.f_frsize);
-  send_uint64(job->worker, fs.f_blocks);
-  send_uint64(job->worker, fs.f_bfree);
-  send_uint64(job->worker, fs.f_bavail);
-  send_uint64(job->worker, fs.f_files);
-  send_uint64(job->worker, fs.f_ffree);
-  send_end(job->worker);
+  sftp_send_uint32(job->worker, fs.f_frsize);
+  sftp_send_uint64(job->worker, fs.f_blocks);
+  sftp_send_uint64(job->worker, fs.f_bfree);
+  sftp_send_uint64(job->worker, fs.f_bavail);
+  sftp_send_uint64(job->worker, fs.f_files);
+  sftp_send_uint64(job->worker, fs.f_ffree);
+  sftp_send_end(job->worker);
   return HANDLER_RESPONDED;
 }
 

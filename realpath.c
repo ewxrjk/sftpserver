@@ -32,11 +32,11 @@
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
 			  const char *path, unsigned flags);
 
-char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
+char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags) {
   char *cwd, *abspath, *result = 0;
   size_t nresult = 0;
 
-  D(("my_realpath '%s' %#x", path, flags));
+  D(("sftp_find_realpath '%s' %#x", path, flags));
 
   /* Default is current directory */
   if(path[0] == 0)
@@ -44,10 +44,10 @@ char *my_realpath(struct allocator *a, const char *path, unsigned flags) {
 
   /* Convert relative paths to absolute paths */
   if(path[0] != '/') {
-    if(!(cwd = my_getcwd(a)))
+    if(!(cwd = sftp_getcwd(a)))
       return 0;
     assert(cwd[0] == '/');
-    abspath = alloc(a, strlen(cwd) + strlen(path) + 2);
+    abspath = sftp_alloc(a, strlen(cwd) + strlen(path) + 2);
     strcpy(abspath, cwd);
     strcat(abspath, "/");
     strcat(abspath, path);
@@ -94,7 +94,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
         /* If we're following symlinks, see if the path so far points to a
          * link */
         if(flags & RP_READLINK) {
-          const char *const target = my_readlink(a, result);
+          const char *const target = sftp_do_readlink(a, result);
         
           if(target) {
             if(target[0] == '/')

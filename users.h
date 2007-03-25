@@ -25,10 +25,10 @@
 
 struct allocator;
 
-char *uid2name(struct allocator *a, uid_t uid);
-char *gid2name(struct allocator *a, gid_t gid);
-uid_t name2uid(const char *name);
-gid_t name2gid(const char *name);
+char *sftp_uid2name(struct allocator *a, uid_t uid);
+char *sftp_gid2name(struct allocator *a, gid_t gid);
+uid_t sftp_name2uid(const char *name);
+gid_t sftp_name2gid(const char *name);
 
 #endif /* USERS_H */
 

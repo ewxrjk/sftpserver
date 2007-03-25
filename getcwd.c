@@ -26,12 +26,12 @@
 #include <unistd.h>
 #include <string.h>
 
-char *my_getcwd(struct allocator *a) {
+char *sftp_getcwd(struct allocator *a) {
   char *buffer = 0;
   size_t size = 32, oldsize = 0;
 
   do {
-    buffer = allocmore(a, buffer, oldsize, size);
+    buffer = sftp_alloc_more(a, buffer, oldsize, size);
     if(getcwd(buffer, size))
       return buffer;
     else if(errno != ERANGE) {

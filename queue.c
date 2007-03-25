@@ -60,9 +60,9 @@ static void *queue_thread(void *vq) {
         q->jobstail = &q->jobs;
       /* Don't hold lock while executing job */
       ferrcheck(pthread_mutex_unlock(&q->m));
-      alloc_init(&a);
+      sftp_alloc_init(&a);
       q->details->worker(qj->job, workerdata, &a);
-      alloc_destroy(&a);
+      sftp_alloc_destroy(&a);
       free(qj);
       ferrcheck(pthread_mutex_lock(&q->m));
     } else {

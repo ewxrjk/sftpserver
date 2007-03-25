@@ -28,7 +28,7 @@
 #include <errno.h>
 #include <stdio.h>
 
-wchar_t *convertm2w(const char *s) {
+wchar_t *sftp_mbs2wcs(const char *s) {
   wchar_t *ws;
   size_t len;
   mbstate_t ps;
@@ -43,7 +43,7 @@ wchar_t *convertm2w(const char *s) {
   return ws;
 }
 
-int iconv_wrapper(struct allocator *a, iconv_t cd, char **sp) {
+int sftp_iconv(struct allocator *a, iconv_t cd, char **sp) {
   const char *const input = *sp;
   const size_t inputsize = strlen(input);
   size_t outputsize = 2 * strlen(input) + 1;
@@ -54,7 +54,7 @@ int iconv_wrapper(struct allocator *a, iconv_t cd, char **sp) {
   
   assert(cd != 0);
   do {
-    output = alloc(a, outputsize);
+    output = sftp_alloc(a, outputsize);
     iconv(cd, 0, 0, 0, 0);
     inbuf = input;
     inbytesleft = inputsize;

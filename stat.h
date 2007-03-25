@@ -21,28 +21,28 @@
 #ifndef STAT_H
 #define STAT_H
 
-const char *format_attr(struct allocator *a,
-			const struct sftpattr *attrs, int thisyear,
-			unsigned long flags);
+const char *sftp_format_attr(struct allocator *a,
+                             const struct sftpattr *attrs, int thisyear,
+                             unsigned long flags);
 #define FORMAT_PREFER_NUMERIC_UID 0x00000001
 #define FORMAT_PREFER_LOCALTIME 0x00000002
 #define FORMAT_ATTRS 0x00000004
 /* Prefer numeric UID instead of names */
 
-uint32_t normalize_ownergroup(struct allocator *a,
-                              struct sftpattr *attrs);
+uint32_t sftp_normalize_ownergroup(struct allocator *a,
+                                   struct sftpattr *attrs);
 
-uint32_t set_status(struct allocator *a,
-                    const char *path,
-                    const struct sftpattr *attrs,
-                    const char **whyp);
-uint32_t set_fstatus(struct allocator *a,
-                     int fd,
-                     const struct sftpattr *attrs,
-                     const char **whyp);
-void stat_to_attrs(struct allocator *a,
-		   const struct stat *sb, struct sftpattr *attrs,
-                   uint32_t flags, const char *path);
+uint32_t sftp_set_status(struct allocator *a,
+                         const char *path,
+                         const struct sftpattr *attrs,
+                         const char **whyp);
+uint32_t sftp_set_fstatus(struct allocator *a,
+                          int fd,
+                          const struct sftpattr *attrs,
+                          const char **whyp);
+void sftp_stat_to_attrs(struct allocator *a,
+                        const struct stat *sb, struct sftpattr *attrs,
+                        uint32_t flags, const char *path);
 
 #endif /* STAT_H */
 

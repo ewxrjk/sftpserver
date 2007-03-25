@@ -23,14 +23,14 @@
 
 /* Debug support */
 
-extern int debugging;
-extern const char *debugpath;
+extern int sftp_debugging;
+extern const char *sftp_debugpath;
 
-void hexdump(const void *ptr, size_t n);
-void debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
+void sftp_debug_hexdump(const void *ptr, size_t n);
+void sftp_debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
 #define D(x) do {                               \
-  if(debugging)                                 \
-    debug_printf x;				\
+  if(sftp_debugging)                            \
+    sftp_debug_printf x;                        \
 } while(0)
 
 #endif /* DEBUG_H */

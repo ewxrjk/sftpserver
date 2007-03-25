@@ -36,7 +36,7 @@
 int futimes(int fd, const struct timeval *times);
 #endif
 
-void stat_to_attrs(struct allocator *a,
+void sftp_stat_to_attrs(struct allocator *a,
 		   const struct stat *sb, struct sftpattr *attrs,
                    uint32_t flags, const char *path) {
   memset(attrs, 0, sizeof *attrs);
@@ -64,8 +64,8 @@ void stat_to_attrs(struct allocator *a,
   attrs->allocation_size = (uint64_t)sb->st_blksize * sb->st_blocks;
   /* Only look up owner/group info if wanted */
   if((flags & SSH_FILEXFER_ATTR_OWNERGROUP)
-     && (attrs->owner = uid2name(a, sb->st_uid))
-     && (attrs->group = gid2name(a, sb->st_gid)))
+     && (attrs->owner = sftp_uid2name(a, sb->st_uid))
+     && (attrs->group = sftp_gid2name(a, sb->st_gid)))
     attrs->valid |= SSH_FILEXFER_ATTR_OWNERGROUP;
   attrs->uid = sb->st_uid;
   attrs->gid = sb->st_gid;
@@ -125,7 +125,7 @@ static const struct {
   { SSH_FILEXFER_ATTR_FLAGS_TRANSLATION_ERR, "trans" }
 };
 
-const char *format_attr(struct allocator *a,
+const char *sftp_format_attr(struct allocator *a,
 			const struct sftpattr *attrs, int thisyear,
 			unsigned long flags) {
   char perms[64], linkcount[64], size[64], date[64], nowner[64], ngroup[64];
@@ -227,7 +227,7 @@ const char *format_attr(struct allocator *a,
     strcat(bits, "]");
   }
   /* Format the result */
-  formatted = alloc(a, 80 + strlen(attrs->name));
+  formatted = sftp_alloc(a, 80 + strlen(attrs->name));
 
   /* The draft is pretty specific about field widths */
   sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s%s%s%s%s",
@@ -240,20 +240,20 @@ const char *format_attr(struct allocator *a,
   return formatted;
 }
 
-uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
+uint32_t sftp_normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
   uint32_t rc = SSH_FX_OK;
 
   switch(attrs->valid & (SSH_FILEXFER_ATTR_UIDGID
                          |SSH_FILEXFER_ATTR_OWNERGROUP)) {
   case SSH_FILEXFER_ATTR_UIDGID:
-    if((attrs->owner = uid2name(a, attrs->uid))
-       && (attrs->group = gid2name(a, attrs->gid)))
+    if((attrs->owner = sftp_uid2name(a, attrs->uid))
+       && (attrs->group = sftp_gid2name(a, attrs->gid)))
       attrs->valid |= SSH_FILEXFER_ATTR_OWNERGROUP;
     break;
   case SSH_FILEXFER_ATTR_OWNERGROUP:
-    if((attrs->uid = name2uid(attrs->owner)) == (uid_t)-1)
+    if((attrs->uid = sftp_name2uid(attrs->owner)) == (uid_t)-1)
       rc = SSH_FX_OWNER_INVALID;
-    if((attrs->gid = name2gid(attrs->group)) == (gid_t)-1)
+    if((attrs->gid = sftp_name2gid(attrs->group)) == (gid_t)-1)
       rc = SSH_FX_GROUP_INVALID;
     if(rc == SSH_FX_OK)
       attrs->valid |= SSH_FILEXFER_ATTR_UIDGID;
@@ -262,7 +262,7 @@ uint32_t normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) {
   return rc;
 }
 
-struct set_status_callbacks {
+struct sftp_set_status_callbacks {
   int (*do_truncate)(const void *what, off_t size);
   int (*do_chown)(const void *what, uid_t uid, gid_t gid);
   int (*do_chmod)(const void *what, mode_t mode);
@@ -284,10 +284,10 @@ struct set_status_callbacks {
 #define SET_STATUS_NANOSEC ((void)0)
 #endif
 
-static uint32_t do_set_status(struct allocator *a,
+static uint32_t do_sftp_set_status(struct allocator *a,
                               const void *what,
                               const struct sftpattr *attrsp,
-                              const struct set_status_callbacks *cb,
+                              const struct sftp_set_status_callbacks *cb,
                               const char **whyp) {
   struct timeval times[2];
   struct stat current;
@@ -329,7 +329,7 @@ static uint32_t do_set_status(struct allocator *a,
       return HANDLER_ERRNO;
     }
   }
-  normalize_ownergroup(a, &attrs);
+  sftp_normalize_ownergroup(a, &attrs);
   if(attrs.valid & SSH_FILEXFER_ATTR_UIDGID) {
     D(("...chown to %"PRId32"/%"PRId32, attrs.uid, attrs.gid));
     if(cb->do_chown(what, attrs.uid, attrs.gid) < 0) {
@@ -402,7 +402,7 @@ static int name_utimes(const void *what, struct timeval *tv) {
   return utimes(what, tv);
 }
 
-static const struct set_status_callbacks name_callbacks = {
+static const struct sftp_set_status_callbacks name_callbacks = {
   name_truncate,
   name_chown,
   name_chmod,
@@ -410,11 +410,11 @@ static const struct set_status_callbacks name_callbacks = {
   name_utimes
 };
 
-uint32_t set_status(struct allocator *a,
+uint32_t sftp_set_status(struct allocator *a,
                     const char *path,
                     const struct sftpattr *attrsp,
                     const char **whyp) {
-  return do_set_status(a, path, attrsp, &name_callbacks, whyp);
+  return do_sftp_set_status(a, path, attrsp, &name_callbacks, whyp);
 }
 
 static int fd_truncate(const void *what, off_t size) {
@@ -437,7 +437,7 @@ static int fd_utimes(const void *what, struct timeval *tv) {
   return futimes(*(const int *)what, tv);
 }
 
-static const struct set_status_callbacks fd_callbacks = {
+static const struct sftp_set_status_callbacks fd_callbacks = {
   fd_truncate,
   fd_chown,
   fd_chmod,
@@ -445,11 +445,11 @@ static const struct set_status_callbacks fd_callbacks = {
   fd_utimes
 };
 
-uint32_t set_fstatus(struct allocator *a,
+uint32_t sftp_set_fstatus(struct allocator *a,
                      int fd,
                      const struct sftpattr *attrsp,
                      const char **whyp) {
-  return do_set_status(a, &fd, attrsp, &fd_callbacks, whyp);
+  return do_sftp_set_status(a, &fd, attrsp, &fd_callbacks, whyp);
 }
 
 /*

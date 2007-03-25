@@ -127,15 +127,15 @@ void queue_serializable_job(struct sftpjob *job) {
 
   job->ptr = job->data;
   job->left = job->len;
-  if(!parse_uint8(job, &type)
+  if(!sftp_parse_uint8(job, &type)
      && (type == SSH_FXP_READ || type == SSH_FXP_WRITE)
-     && parse_uint32(job, &id) == SSH_FX_OK
-     && parse_handle(job, &hid) == SSH_FX_OK
-     && parse_uint64(job, &offset) == SSH_FX_OK
-     && parse_uint32(job, &len) == SSH_FX_OK) {
+     && sftp_parse_uint32(job, &id) == SSH_FX_OK
+     && sftp_parse_handle(job, &hid) == SSH_FX_OK
+     && sftp_parse_uint64(job, &offset) == SSH_FX_OK
+     && sftp_parse_uint32(job, &len) == SSH_FX_OK) {
     /* This is a well-formed read or write operation */
     len64 = len;
-    handleflags = handle_flags(&hid);
+    handleflags = sftp_handle_flags(&hid);
   } else {
     /* Anything else has dummy values */
     memset(&hid, 0, sizeof hid);
