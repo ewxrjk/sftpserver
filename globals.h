@@ -24,7 +24,8 @@
 extern struct queue *workqueue;
 /* Queue to which jobs are sent */
 
-extern const struct sftpprotocol sftpv6, sftpv5, sftpv4, sftpv3, sftppreinit;
+extern const struct sftpprotocol sftp_v6, sftp_v5, sftp_v4, sftp_v3;
+extern const struct sftpprotocol sftp_preinit;
 extern const struct sftpprotocol *protocol;
 extern const char sendtype[];
 extern int readonly;

@@ -290,7 +290,7 @@ static const struct sftpextension v4_extensions[] = {
   { "text-seek", sftp_vany_text_seek },
 };
 
-const struct sftpprotocol sftpv4 = {
+const struct sftpprotocol sftp_v4 = {
   sizeof sftpv4tab / sizeof (struct sftpcmd),
   sftpv4tab,
   4,

@@ -780,7 +780,7 @@ static const struct sftpextension v3_extensions[] = {
   { "statfs@openssh.org", sftp_vany_statfs },
 };
 
-const struct sftpprotocol sftpv3 = {
+const struct sftpprotocol sftp_v3 = {
   sizeof sftpv3tab / sizeof (struct sftpcmd), /* ncommands */
   sftpv3tab,                                  /* commands */
   3,                                          /* version */

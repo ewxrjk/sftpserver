@@ -89,7 +89,7 @@ static int stoponerror;
 static int echo;
 static uint32_t attrmask;
 
-const struct sftpprotocol *protocol = &sftpv3;
+const struct sftpprotocol *protocol = &sftp_v3;
 const char sendtype[] = "request";
 
 /* Command line */
@@ -338,16 +338,16 @@ static int sftp_init(void) {
   cpcheck(sftp_parse_uint32(&fakejob, &version));
   switch(version) {
   case 3:
-    protocol = &sftpv3;
+    protocol = &sftp_v3;
     break;
   case 4:
-    protocol = &sftpv4;
+    protocol = &sftp_v4;
     break;
   case 5:
-    protocol = &sftpv5;
+    protocol = &sftp_v5;
     break;
   case 6:
-    protocol = &sftpv6;
+    protocol = &sftp_v6;
     break;
   default:
     return error("server wanted protocol version %"PRIu32, version);
@@ -2004,10 +2004,10 @@ static int cmd_version(int ac,
     sftp_send_end(&fakeworker);
     getresponse(SSH_FXP_STATUS, id, "version-select");
     if(status()) return -1;
-    if(!strcmp(av[0], "3")) protocol = &sftpv3;
-    else if(!strcmp(av[0], "4")) protocol = &sftpv4;
-    else if(!strcmp(av[0], "5")) protocol = &sftpv5;
-    else if(!strcmp(av[0], "6")) protocol = &sftpv6;
+    if(!strcmp(av[0], "3")) protocol = &sftp_v3;
+    else if(!strcmp(av[0], "4")) protocol = &sftp_v4;
+    else if(!strcmp(av[0], "5")) protocol = &sftp_v5;
+    else if(!strcmp(av[0], "6")) protocol = &sftp_v6;
     else fatal("unknown protocol %s", av[0]);
     return 0;
   } else {

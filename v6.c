@@ -147,10 +147,10 @@ uint32_t sftp_v6_version_select(struct sftpjob *job) {
   if(!workqueue) {
     pcheck(sftp_parse_path(job, &newversion));
     /* Handle known versions */
-    if(!strcmp(newversion, "3")) { protocol = &sftpv3; return SSH_FX_OK; }
-    if(!strcmp(newversion, "4")) { protocol = &sftpv4; return SSH_FX_OK; }
-    if(!strcmp(newversion, "5")) { protocol = &sftpv5; return SSH_FX_OK; }
-    if(!strcmp(newversion, "6")) { protocol = &sftpv6; return SSH_FX_OK; }
+    if(!strcmp(newversion, "3")) { protocol = &sftp_v3; return SSH_FX_OK; }
+    if(!strcmp(newversion, "4")) { protocol = &sftp_v4; return SSH_FX_OK; }
+    if(!strcmp(newversion, "5")) { protocol = &sftp_v5; return SSH_FX_OK; }
+    if(!strcmp(newversion, "6")) { protocol = &sftp_v6; return SSH_FX_OK; }
     sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "unknown version");
   } else
     sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "badly timed version-select");
@@ -191,7 +191,7 @@ static const struct sftpextension sftp_v6_extensions[] = {
   { "version-select", sftp_v6_version_select },
 };
 
-const struct sftpprotocol sftpv6 = {
+const struct sftpprotocol sftp_v6 = {
   sizeof sftpv6tab / sizeof (struct sftpcmd),
   sftpv6tab,
   6,

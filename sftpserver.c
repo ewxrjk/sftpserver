@@ -74,7 +74,7 @@ static const struct queuedetails workqueue_details = {
   worker_cleanup
 };
 
-const struct sftpprotocol *protocol = &sftppreinit;
+const struct sftpprotocol *protocol = &sftp_preinit;
 const char sendtype[] = "response";
 
 /* Options */
@@ -133,26 +133,26 @@ static uint32_t sftp_init(struct sftpjob *job) {
   int n;
 
   /* Cannot initialize more than once */
-  if(protocol != &sftppreinit)
+  if(protocol != &sftp_preinit)
     return SSH_FX_FAILURE;
   pcheck(sftp_parse_uint32(job, &version));
   switch(version) {
   case 0: case 1: case 2:
     return SSH_FX_OP_UNSUPPORTED;
   case 3:
-    protocol = &sftpv3;
+    protocol = &sftp_v3;
 #if REVERSE_SYMLINK
     reverse_symlink = 1;
 #endif
     break;
   case 4:
-    protocol = &sftpv4;
+    protocol = &sftp_v4;
     break;
   case 5:
-    protocol = &sftpv5;
+    protocol = &sftp_v5;
     break;
   default:
-    protocol = &sftpv6;
+    protocol = &sftp_v6;
     break;
   }
   sftp_send_begin(job->worker);
@@ -271,7 +271,7 @@ static const struct sftpcmd sftppreinittab[] = {
   { SSH_FXP_INIT, sftp_init }
 };
 
-const struct sftpprotocol sftppreinit = {
+const struct sftpprotocol sftp_preinit = {
   sizeof sftppreinittab / sizeof (struct sftpcmd),
   sftppreinittab,
   3,
