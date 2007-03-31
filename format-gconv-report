@@ -28,7 +28,7 @@ while len(args) > 0:
 
 for line in sys.stdin:
   line = line[:-1]
-  r = re.match("File `(?:.*/)?([^/]+.c)'", line)
+  r = re.match("File ['`](?:.*/)?([^/]+.c)'", line)
   if r:
     name = r.group(1)
   r = re.match("Lines executed:([0-9\\.]+)% of ([0-9]+)", line)
