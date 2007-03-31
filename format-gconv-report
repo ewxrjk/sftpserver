@@ -26,6 +26,7 @@ while len(args) > 0:
   else:
     fatal("unknown option '%s'" % args[0])
 
+name = None
 for line in sys.stdin:
   line = line[:-1]
   r = re.match("File ['`](?:.*/)?([^/]+.c)'", line)
@@ -33,11 +34,13 @@ for line in sys.stdin:
     name = r.group(1)
   r = re.match("Lines executed:([0-9\\.]+)% of ([0-9]+)", line)
   if r:
-    this_pc = float(r.group(1))
-    this_lines = int(r.group(2))
-    percent[name] = this_pc
-    total_lines += this_lines
-    covered_lines += this_lines * this_pc / 100.0
+    if name:
+      this_pc = float(r.group(1))
+      this_lines = int(r.group(2))
+      percent[name] = this_pc
+      total_lines += this_lines
+      covered_lines += this_lines * this_pc / 100.0
+    name = None
 
 def cmp(a,b):
   if percent[a] < percent[b]: return -1 
