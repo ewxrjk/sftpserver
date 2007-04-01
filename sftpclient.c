@@ -1510,7 +1510,7 @@ static int cmd_get(int ac,
         break;
       case 'L':
         seek = 1;
-        line = (uint64_t)strtoumax(s, 0, 10);
+        line = (uint64_t)strtoull(s, 0, 10);
         s = "";
         break;
       default:
@@ -2673,13 +2673,17 @@ next:
 
 int main(int argc, char **argv) {
   int n;
+#if HAVE_GETADDRINFO
   struct addrinfo hints;
+#endif
   const char *host = 0, *port = 0;
 
+#if HAVE_GETADDRINFO
   memset(&hints, 0, sizeof hints);
   hints.ai_flags = 0;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
+#endif
 
   setlocale(LC_ALL, "");
 
@@ -2725,8 +2729,10 @@ int main(int argc, char **argv) {
     case 263: sftpversion = atoi(optarg); forceversion = 1; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
+#if HAVE_GETADDRINFO
     case '4': hints.ai_family = PF_INET; break;
     case '6': hints.ai_family = PF_INET6; break;
+#endif
     default: exit(1);
     }
   }
@@ -2745,6 +2751,7 @@ int main(int argc, char **argv) {
     fatal("unknown SFTP version %d", sftpversion);
   
   if(host || port) {
+#if HAVE_GETADDRINFO
     struct addrinfo *res;
     int rc, fd;
 
@@ -2760,6 +2767,10 @@ int main(int argc, char **argv) {
       fatal("error connecting to host %s port %s: %s",
             host, port, strerror(errno));
     sftpin = sftpout = fd;
+#else
+    /* It's hardly a core feature... */
+    fatal("--host is not supported on this platform");
+#endif
   } else {
     const char *cmdline[2048];
     int ncmdline = 0;

@@ -237,6 +237,27 @@ AC_DEFUN([RJK_GETOPT],[
   ])
 ])
 
+AC_DEFUN([RJK_PYTHON24],[
+  AC_CACHE_CHECK([for Python 2.4 or better],[rjk_cv_python24],[
+    if python24 -V >/dev/null 2>&1; then
+      rjk_cv_python24=python24
+    elif python -V >confpyver 2>&1; then
+      read p v < confpyver
+      case $v in
+      1* | 2.[0123]* )
+        ;;
+      * )
+        rjk_cv_python24=python
+        ;;
+      esac
+    fi
+    if test "$rjk_cv_python24" = ""; then
+      AC_MSG_ERROR([cannot find Python 2.4 or better])
+    fi
+  ])
+  AC_SUBST([PYTHON24],[$rjk_cv_python24])
+])
+
 dnl Local Variables:
 dnl mode:autoconf
 dnl indent-tabs-mode:nil

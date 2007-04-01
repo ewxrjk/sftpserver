@@ -45,7 +45,7 @@ AC_DEFINE([_GNU_SOURCE], [1], [required for e.g. strsignal])
 AC_C_INLINE
 AC_SYS_LARGEFILE
 AC_REPLACE_FUNCS([daemon futimes])
-AC_CHECK_FUNCS([futimesat])
+AC_CHECK_FUNCS([futimesat getaddrinfo])
 
 RJK_UNALIGNED_WRITES
 RJK_GCC_WARNINGS
@@ -53,6 +53,7 @@ RJK_GCC_ATTRS
 RJK_STAT_TIMESPEC
 RJK_SIZE_MAX
 RJK_GETOPT
+RJK_PYTHON24
 
 dnl See commentary in v3.c for what's going on here
 AC_MSG_CHECKING([whether to reverse SSH_FXP_SYMLINK arguments])
