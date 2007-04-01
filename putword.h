@@ -34,7 +34,7 @@
 # define put16(where, u) do {                   \
   uint8_t *ptr = (void *)(where);               \
   const uint16_t uu = (uint16_t)(u);            \
-  ptr++ = (uint8_t)(uu >> 8);                   \
+  *ptr++ = (uint8_t)(uu >> 8);                   \
   *ptr = (uint8_t)(uu);                         \
 } while(0)
 #endif
@@ -43,7 +43,7 @@
 # define put32(where, u) do {                   \
   const uint32_t uu = (uint32_t)(u);            \
   uint8_t *ptr = (void *)(where);               \
-  *ptr++ = (uint8_t)(uu >> 24)                  \
+  *ptr++ = (uint8_t)(uu >> 24);                 \
   *ptr++ = (uint8_t)(uu >> 16);                 \
   *ptr++ = (uint8_t)(uu >> 8);                  \
   *ptr++ = (uint8_t)(uu);                       \
