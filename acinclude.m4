@@ -228,7 +228,13 @@ AC_DEFUN([RJK_SIZE_MAX],[
 # endif
 #endif
   ])
-  
+])
+
+AC_DEFUN([RJK_GETOPT],[
+  AC_CHECK_FUNC([getopt_long],[],[
+    AC_LIBOBJ([getopt])
+    AC_LIBOBJ([getopt1])
+  ])
 ])
 
 dnl Local Variables:

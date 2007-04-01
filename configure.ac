@@ -52,6 +52,7 @@ RJK_GCC_WARNINGS
 RJK_GCC_ATTRS
 RJK_STAT_TIMESPEC
 RJK_SIZE_MAX
+RJK_GETOPT
 
 dnl See commentary in v3.c for what's going on here
 AC_MSG_CHECKING([whether to reverse SSH_FXP_SYMLINK arguments])
