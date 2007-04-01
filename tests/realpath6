@@ -60,6 +60,6 @@ realpath6 no-check /
 realpath6 no-check /..
 #/
 realpath6 stat-if root
-#d......... +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ /
+#d......... +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +(\d+:\d+|\d+) /
 realpath6 stat-if root-wonky
-#d......... +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +\d+:\d+ /
+#d......... +\d+ +\S+ +\S+ +\d+ +\S+ +\d+ +(\d+:\d+|\d+) /
