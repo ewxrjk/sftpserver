@@ -20,12 +20,14 @@
 
 #include <config.h>
 #include <sys/time.h>
+#include <errno.h>
 
 int futimes(int fd, const struct timeval *times) {
 #if HAVE_FUTIMESAT
   return futimesat(fd, 0, times);
 #else
-# error Cannot emulate futimes on this platform
+  errno = ENOSYS;
+  return -1;
 #endif
 }
 

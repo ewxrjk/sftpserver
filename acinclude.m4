@@ -194,6 +194,43 @@ AC_DEFUN([RJK_THREADS],[
   AC_DEFINE([_REENTRANT],[1],[define for re-entrant functions])
 ])
 
+AC_DEFUN([RJK_SIZE_MAX],[
+  AC_CHECK_SIZEOF([unsigned short])
+  AC_CHECK_SIZEOF([unsigned int])
+  AC_CHECK_SIZEOF([unsigned long])
+  AC_CHECK_SIZEOF([unsigned long long])
+  AC_CHECK_SIZEOF([size_t])
+  AC_CHECK_HEADERS([stdint.h])
+  AC_CACHE_CHECK([for SIZE_MAX],[rjk_cv_size_max],[
+    AC_TRY_COMPILE([#include <limits.h>
+                    #include <stddef.h>
+                    #if HAVE_STDINT_H
+                    # include <stdint.h>
+                    #endif],
+                   [size_t x = SIZE_MAX;++x;],
+                   [rjk_cv_size_max=yes],
+                   [rjk_cv_size_max=no])
+  ])
+  if test "$rjk_cv_size_max" = yes; then
+    AC_DEFINE([HAVE_SIZE_MAX],[1], [define if you have SIZE_MAX])
+  fi
+  AH_BOTTOM([#if ! HAVE_SIZE_MAX
+# if SIZEOF_SIZE_T == SIZEOF_UNSIGNED_SHORT
+#  define SIZE_MAX USHRT_MAX
+# elif SIZEOF_SIZE_T == SIZEOF_UNSIGNED_INT
+#  define SIZE_MAX UINT_MAX
+# elif SIZEOF_SIZE_T == SIZEOF_UNSIGNED_LONG
+#  define SIZE_MAX ULONG_MAX
+# elif SIZEOF_SIZE_T == SIZEOF_UNSIGNED_LONG_LONG
+#  define SIZE_MAX ULLONG_MAX
+# else
+#  error Cannot deduce SIZE_MAX
+# endif
+#endif
+  ])
+  
+])
+
 dnl Local Variables:
 dnl mode:autoconf
 dnl indent-tabs-mode:nil

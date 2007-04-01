@@ -29,6 +29,7 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <syslog.h>
+#include <limits.h>
 
 int log_syslog;
 
