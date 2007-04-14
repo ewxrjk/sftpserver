@@ -28,3 +28,4 @@ gesftpserver.8
 gesftpserver-ro
 gesftpserver-ro-debug
 gesftpserver-valgrind
+.bzr.backup
