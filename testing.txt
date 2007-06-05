@@ -67,7 +67,7 @@ repurpose their own tests, where they exist.
 
 ** Graphical Clients
 
-Graphical clients such as WinSCP less convenient to test this way;
+Graphical clients such as WinSCP are less convenient to test this way;
 instead it is necessary to build up a library of activities which
 tests as many protocol features as possible in the minimum number of
 user actions.  This hasn't been done yet l-)
