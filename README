@@ -16,7 +16,7 @@ Installation
   The general procedure is:
 
      ./configure
-     make check       # builds software and runs tests
+     make             # builds software and runs tests
      make install     # probably as root
 
   See INSTALL for generic instructions.  Local configure options include:
@@ -31,6 +31,10 @@ Installation
        this but end users probably don't care.
 
   You will need iconv and readline libraries.
+
+  It's best to run 'make check' before installing, but this requires
+  Python (see http://www.python.org/) and the Paramiko SSH module
+  (see http://www.lag.net/paramiko/) to be installed.
 
 Status
 ------
