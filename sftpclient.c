@@ -1335,15 +1335,15 @@ static void *reader_thread(void *arg) {
         r->eof = 1;
       }
       sftp_send_uint32(&fakeworker, len);
-      /* Don't hold the lock while doing the send itself */
-      ferrcheck(pthread_mutex_unlock(&r->m));
-      sftp_send_end(&fakeworker);
-      ferrcheck(pthread_mutex_lock(&r->m));
-      /* Only fill in the outstanding_read once we've sent it */
+      /* Fill in the outstanding_read once we've sent it */
       r->reqs[n].id = id;
       r->reqs[n].offset = r->next_offset;
       ++r->outstanding;
       r->next_offset += buffersize;
+      /* Don't hold the lock while doing the send itself */
+      ferrcheck(pthread_mutex_unlock(&r->m));
+      sftp_send_end(&fakeworker);
+      ferrcheck(pthread_mutex_lock(&r->m));
       /* Notify the main threader that we set off a request */
       ferrcheck(pthread_cond_signal(&r->c2));
     }
