@@ -52,6 +52,7 @@ check: all aliases
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests $(TESTS)
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
 	${GCOV} ${srcdir}/*.c  | ${PYTHON24} ${srcdir}/format-gconv-report --html .
+	${srcdir}/paramiko-test
 
 check-valgrind: all aliases
 	rm -f ,valgrind*

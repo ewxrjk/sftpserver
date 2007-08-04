@@ -1,0 +1,24 @@
+#! /usr/bin/env python
+
+import socket,subprocess,os
+import paramiko
+
+# SFTPClient wants something that looks like a socket, so we give it
+# exactly that.
+s,t = socket.socketpair()
+p = subprocess.Popen(["./gesftpserver"],
+                     stdin=t.fileno(),
+                     stdout=t.fileno(),
+                     close_fds = True)
+del t
+
+c = paramiko.SFTPClient(s)
+
+c.chdir(os.getcwd())
+
+remote_files = c.listdir(".")
+remote_files.sort()
+local_files = os.listdir(".")
+local_files.sort()
+
+assert remote_files == local_files
