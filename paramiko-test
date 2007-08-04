@@ -3,22 +3,44 @@
 import socket,subprocess,os
 import paramiko
 
-# SFTPClient wants something that looks like a socket, so we give it
-# exactly that.
-s,t = socket.socketpair()
-p = subprocess.Popen(["./gesftpserver"],
-                     stdin=t.fileno(),
-                     stdout=t.fileno(),
-                     close_fds = True)
-del t
+hostname = os.getenv("SELF", socket.gethostname())
 
-c = paramiko.SFTPClient(s)
+print "+ cleanup"
+os.system("rm -rf ,ptestroot")
 
+print "+ creating client"
+ssh = paramiko.SSHClient()
+print "+ loading host keys"
+ssh.load_host_keys("%s/.ssh/known_hosts" % os.getenv("HOME"))
+print "+ connecting to: %s" % hostname
+ssh.connect(hostname)
+
+print "+ opening SFTP session"
+c = ssh.open_sftp()
+
+print "+ chdir to: %s" % os.getcwd()
 c.chdir(os.getcwd())
 
+print "+ comparing file list"
 remote_files = c.listdir(".")
 remote_files.sort()
 local_files = os.listdir(".")
 local_files.sort()
-
 assert remote_files == local_files
+
+print "+ creating test directory"
+c.mkdir(",ptestroot")
+
+print "+ chdir to test directory"
+c.chdir(",ptestroot")
+os.chdir(",ptestroot")
+
+print "+ check test directory is empty"
+assert c.listdir(".") == []
+
+print "+ upload a file"
+c.put("../gesftpserver", "uploaded")
+
+print "+ check it arrived"
+assert c.listdir(".") == ["uploaded"]
+assert os.listdir(".") == ["uploaded"]
