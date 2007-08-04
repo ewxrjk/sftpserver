@@ -43,7 +43,7 @@
 #define SSH_FXP_SYMLINK            20   /* 0x14 */
 #define SSH_FXP_LINK               21   /* 0x15 */
 #define SSH_FXP_BLOCK              22   /* 0x16 */
-#define SSH_FXP_UNBLOCK            23   /* 0x7 */
+#define SSH_FXP_UNBLOCK            23   /* 0x17 */
 #define SSH_FXP_STATUS            101   /* 0x65 */
 #define SSH_FXP_HANDLE            102   /* 0x66 */
 #define SSH_FXP_DATA              103   /* 0x67 */
