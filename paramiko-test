@@ -42,5 +42,7 @@ print "+ upload a file"
 c.put("../gesftpserver", "uploaded")
 
 print "+ check it arrived"
-assert c.listdir(".") == ["uploaded"]
+print "++ via local"
 assert os.listdir(".") == ["uploaded"]
+print "++ via paramiko"
+assert c.listdir(".") == ["uploaded"]

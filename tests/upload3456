@@ -6,3 +6,8 @@ get uploaded downloaded
 put -m601 original upload2
 ls -l upload2
 #-rw------x +\S+ +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ upload2
+!if type seq >/dev/null 2>/dev/null; then seq 999999; else jot 999999; fi > original
+put original uploaded
+!diff -u original uploaded
+get uploaded downloaded
+!diff -u original downloaded
