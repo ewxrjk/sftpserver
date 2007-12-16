@@ -230,7 +230,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id,
     if(expected_id && fakejob.id != expected_id)
       fatal("wrong ID in response to %s (want %"PRIu32
             " got %"PRIu32" type was %d)",
-            what,  expected_id, fakejob.id, type);
+            what, expected_id, fakejob.id, type);
   }
   if(expected > 0 && type != expected) {
     if(type == SSH_FXP_STATUS)
@@ -2332,6 +2332,93 @@ static int cmd_truncate(int attribute((unused)) ac,
   return sftp_setstat(av[1], &attrs);
 }
 
+static int cmd_overlap(int attribute((unused)) ac,
+                       char attribute((unused)) **av) {
+  struct sftpattr attrs;
+  static const char a[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  static const char b[] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  static const char c[] = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  static const char d[] = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  static const char expect[] = "aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  char buffer[128];
+  int n, r;
+  uint32_t ida, idb, idc, idd;
+  int fd;
+  struct handle h;
+
+  memset(&attrs, 0, sizeof attrs);
+  if(sftp_open("dest", ACE4_WRITE_DATA,
+               SSH_FXF_CREATE_TRUNCATE, &attrs, &h))
+    return -1;
+  if((fd = open("dest", O_RDWR)) < 0) {
+    perror("open dest");
+    return -1;
+  }
+  for(n = 0; n < 1024; ++n) {
+    sftp_send_begin(&fakeworker);
+    sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
+    sftp_send_uint32(&fakeworker, ida = newid());
+    sftp_send_bytes(&fakeworker, h.data, h.len);
+    sftp_send_uint64(&fakeworker, 0);
+    sftp_send_bytes(&fakeworker, a, 64);
+    sftp_send_end(&fakeworker);
+    
+    sftp_send_begin(&fakeworker);
+    sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
+    sftp_send_uint32(&fakeworker, idb = newid());
+    sftp_send_bytes(&fakeworker, h.data, h.len);
+    sftp_send_uint64(&fakeworker, 16);
+    sftp_send_bytes(&fakeworker, b, 64);
+    sftp_send_end(&fakeworker);
+    
+    sftp_send_begin(&fakeworker);
+    sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
+    sftp_send_uint32(&fakeworker, idc = newid());
+    sftp_send_bytes(&fakeworker, h.data, h.len);
+    sftp_send_uint64(&fakeworker, 32);
+    sftp_send_bytes(&fakeworker, c, 64);
+    sftp_send_end(&fakeworker);
+    
+    sftp_send_begin(&fakeworker);
+    sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
+    sftp_send_uint32(&fakeworker, idd = newid());
+    sftp_send_bytes(&fakeworker, h.data, h.len);
+    sftp_send_uint64(&fakeworker, 48);
+    sftp_send_bytes(&fakeworker, d, 64);
+    sftp_send_end(&fakeworker);
+
+    /* Await responses */
+    getresponse(SSH_FXP_STATUS, 0, "SSH_FXP_WRITE");
+    getresponse(SSH_FXP_STATUS, 0, "SSH_FXP_WRITE");
+    getresponse(SSH_FXP_STATUS, 0, "SSH_FXP_WRITE");
+    getresponse(SSH_FXP_STATUS, 0, "SSH_FXP_WRITE");
+
+    if(lseek(fd, 0, SEEK_SET) < 0) {
+      perror("lseek");
+      return -1;
+    }
+    r = read(fd, buffer, 128);
+    if(r != 48+64) {
+      fprintf(stderr, "expected %d bytes got %d\n", 48+64, r);
+      return -1;
+    }
+    if(memcmp(buffer, expect, 48+64)) {
+      fprintf(stderr, "buffer contents mismatch\n"
+              "expect: %s\n"
+              "   got: %.112s\n",
+              expect, buffer);
+      return -1;
+    }
+    if(ftruncate(fd, 0) < 0) {
+      perror("ftruncate");
+      return -1;
+    }
+  }
+  close(fd);
+  return 0;
+}
+
+
 /* Table of command line operations */
 static const struct command commands[] = {
   {
@@ -2368,6 +2455,11 @@ static const struct command commands[] = {
     "_lrealpath", 2, 2, cmd_lrealpath,
     "CONTROL PATH",
     "expand a local path name"
+  },
+  {
+    "_overlap", 0, 0, cmd_overlap,
+    "",
+    "test overlapping writes"
   },
   {
     "_unsupported", 0, 0, cmd_unsupported,
