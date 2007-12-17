@@ -96,6 +96,9 @@ static int ranges_overlap(const struct sqnode *a,
 /* Return true iff it's acceptable to re-order Q1 with respect to Q2 */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
+  /* Re-ordering either doesn't work properly or confuses paramiko/bzr.  So for
+   * the time being we don't do it. */
+  return 0;
   if((q1->type == SSH_FXP_READ || q1->type == SSH_FXP_WRITE)
      && (q2->type == SSH_FXP_READ || q2->type == SSH_FXP_WRITE)) {
     /* We allow reads and writes to be re-ordered up to a point */
