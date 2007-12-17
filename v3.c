@@ -647,8 +647,8 @@ uint32_t sftp_vany_read(struct sftpjob *job) {
   pcheck(sftp_parse_handle(job, &id));
   pcheck(sftp_parse_uint64(job, &offset));
   pcheck(sftp_parse_uint32(job, &len));
-  D(("sftp_vany_read %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
-     id.id, id.tag, len, offset));
+  D(("sftp_vany_read %"PRIx32" %"PRIu32" %"PRIu32": %"PRIu32" bytes at %"PRIu64,
+     job->id, id.id, id.tag, len, offset));
   if(len > MAXREAD)
     len = MAXREAD;
   if((rc = sftp_handle_get_fd(&id, &fd, &flags)))
