@@ -394,7 +394,7 @@ static void sigchld_handler(int attribute((unused)) sig) {
 int main(int argc, char **argv) {
   int n;
   const char *bn;
-#if DAEAMON
+#if DAEMON
   iconv_t cd;
   int listenfd = -1;
   const char *root = 0, *user = 0;
