@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <syslog.h>
 #include <limits.h>
+#include <assert.h>
 
 int log_syslog;
 
@@ -145,7 +146,11 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
       fatal("out of memory");
     s = sftp_alloc_more(a, s, *ns, newsize);
     *ns = newsize;
+  } else {
+    // need should always be at least 1 so need<=*ns => *ns > 0 => s != 0.
+    assert(s);
   }
+
   memcpy(s + ls, t, lt);
   s[ls + lt] = 0;
   return s;
