@@ -1039,7 +1039,8 @@ static int cmd_ls(int ac,
       sorter = sort_by_mtime;
     else
       sorter = sort_by_name;
-    qsort(allattrs, nallattrs, sizeof *allattrs, sorter);
+    if(nallattrs)
+      qsort(allattrs, nallattrs, sizeof *allattrs, sorter);
     if(strchr(options, 'r'))
       reverse(allattrs, nallattrs, sizeof *allattrs);
   }
