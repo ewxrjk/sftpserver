@@ -56,7 +56,7 @@ void *xmalloc(size_t n) {
 
   if(n) {
     if(!(ptr = malloc(n)))
-      fatal("out of memory");
+      fatal("xmalloc: out of memory (%zu)", n);
     return ptr;
   } else
     return 0;
@@ -67,7 +67,7 @@ void *xcalloc(size_t n, size_t size) {
 
   if(n && size) {
     if(!(ptr = calloc(n, size)))
-      fatal("out of memory");
+      fatal("xcalloc: out of memory (%zu, %zu)", n, size);
     return ptr;
   } else
     return 0;
@@ -75,11 +75,11 @@ void *xcalloc(size_t n, size_t size) {
 
 void *xrecalloc(void *ptr, size_t n, size_t size) {
   if(n > SIZE_MAX / size)
-      fatal("out of memory");
+    fatal("xrecalloc: out of memory (%zu, %zu)", n, size);
   n *= size;
   if(n) {
     if(!(ptr = realloc(ptr, n)))
-      fatal("out of memory");
+      fatal("xrecalloc: out of memory (%zu)", n);
     return ptr;
   } else {
     free(ptr);
@@ -90,7 +90,7 @@ void *xrecalloc(void *ptr, size_t n, size_t size) {
 void *xrealloc(void *ptr, size_t n) {
   if(n) {
     if(!(ptr = realloc(ptr, n)))
-      fatal("out of memory");
+      fatal("xrealloc: out of memory (%zu)", n);
     return ptr;
   } else {
     free(ptr);
@@ -143,7 +143,7 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
     while(need > newsize && newsize)
       newsize *= 2;
     if(!newsize)
-      fatal("out of memory");
+      fatal("appendn: out of memory (%zu, %zu)", ls, need);
     s = sftp_alloc_more(a, s, *ns, newsize);
     *ns = newsize;
   } else {
