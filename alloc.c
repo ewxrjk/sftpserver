@@ -77,7 +77,7 @@ void *sftp_alloc(struct allocator *a, size_t n) {
     union block *nb;
 
     if(!cs)
-      fatal("out of memory");
+      fatal("sftp_alloc: out of memory (%zu)", m);
     nb = xcalloc(cs, sizeof (union block));
     c = &nb->c;
     c->next = a->chunks;

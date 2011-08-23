@@ -60,7 +60,7 @@ void sftp_send_need(struct worker *w, size_t n) {
     while(newsize && newsize < w->bufsize + n)
       newsize <<= 1;
     if(!newsize)
-      fatal("out of memory");
+      fatal("sftp_send_need: out of memory (%zu)", n);
     w->buffer = xrealloc(w->buffer, w->bufsize = newsize);
   }
 }
