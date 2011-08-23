@@ -113,6 +113,7 @@ static char *sftp_realpath(const char *path);
 static const struct option options[] = {
   { "help", no_argument, 0, 'h' },
   { "version", no_argument, 0, 'V' },
+  { "dropbear", no_argument, 0, 'r' },
   { "buffer", required_argument, 0, 'B' },
   { "batch", required_argument, 0, 'b' },
   { "program", required_argument, 0, 'P' },
@@ -152,6 +153,7 @@ static void help(void) {
   xprintf("Options:\n"
           "  --help, -h               Display usage message\n"
           "  --version, -V            Display version number\n"
+          "  -r, --dropbear           Use dbclient instead of ssh\n"
           "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
           "  -b, --batch PATH         Read batch file\n"
           "  -P, --program PATH       Execute program as SFTP server\n");
@@ -2770,6 +2772,7 @@ int main(int argc, char **argv) {
   struct addrinfo hints;
 #endif
   const char *host = 0, *port = 0;
+  int dropbear = 0;
 
 #if HAVE_GETADDRINFO
   memset(&hints, 0, sizeof hints);
@@ -2793,11 +2796,12 @@ int main(int argc, char **argv) {
       terminal_width = 80;
   }
 
-  while((n = getopt_long(argc, argv, "hVB:b:P:R:s:S:12CF:o:vdH:p:46D:",
+  while((n = getopt_long(argc, argv, "hVrB:b:P:R:s:S:12CF:o:vdH:p:46D:",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
     case 'V': version();
+    case 'r': dropbear++; break;
     case 'B': buffersize = atoi(optarg); break;
     case 'b': batchfile = optarg; stoponerror = 1; progress_indicators = 0; break;
     case 'P': program = optarg; break;
@@ -2873,25 +2877,29 @@ int main(int argc, char **argv) {
     if(program) {
       cmdline[ncmdline++] = program;
     } else {
-      cmdline[ncmdline++] = "ssh";
       if(optind >= argc)
         fatal("missing USER@HOST argument");
-      if(sshversion == 1)
-        cmdline[ncmdline++] = "-1";
-      if(sshversion == 2)
-        cmdline[ncmdline++] = "-2";
-      if(compress)
-        cmdline[ncmdline++] = "-C";
-      if(sshconf) {
-        cmdline[ncmdline++] = "-F";
-        cmdline[ncmdline++] = sshconf;
+      if(dropbear) {
+        cmdline[ncmdline++] = "dbclient";
+      } else {
+        cmdline[ncmdline++] = "ssh";
+        if(sshversion == 1)
+          cmdline[ncmdline++] = "-1";
+        if(sshversion == 2)
+          cmdline[ncmdline++] = "-2";
+        if(compress)
+          cmdline[ncmdline++] = "-C";
+        if(sshconf) {
+          cmdline[ncmdline++] = "-F";
+          cmdline[ncmdline++] = sshconf;
+        }
+        for(n = 0; n < nsshoptions; ++n) {
+          cmdline[ncmdline++] = "-o";
+          cmdline[ncmdline++] = sshoptions[n++];
+        }
+        while(sshverbose-- > 0)
+          cmdline[ncmdline++] = "-v";
       }
-      for(n = 0; n < nsshoptions; ++n) {
-        cmdline[ncmdline++] = "-o";
-        cmdline[ncmdline++] = sshoptions[n++];
-      }
-      while(sshverbose-- > 0)
-        cmdline[ncmdline++] = "-v";
       cmdline[ncmdline++] = "-s";
       cmdline[ncmdline++] = argv[optind++];
       cmdline[ncmdline++] = subsystem ? subsystem : "sftp";
