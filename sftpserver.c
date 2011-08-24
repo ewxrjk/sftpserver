@@ -77,6 +77,11 @@ static const struct queuedetails workqueue_details = {
 const struct sftpprotocol *protocol = &sftp_preinit;
 const char sendtype[] = "response";
 
+/* All four drafts demand support for requests of at least 34000 bytes
+ * including header.  We offer up to a megabyte.  This could easily be made an
+ * command line option if necessary. */
+static const uint32_t max_request_len = 1048576;
+
 /* Options */
 
 static const struct option options[] = {
@@ -603,8 +608,8 @@ static void sftp_service(void) {
   while(!do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
-    if(!job->len)
-      fatal("zero length job");         /* that's not cricket */
+    if(!job->len || job->len > max_request_len)
+      fatal("invalid request size");
     job->data = xmalloc(job->len);
     if(do_read(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
