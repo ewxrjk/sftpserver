@@ -40,6 +40,9 @@ def fatal(msg):
     sys.stderr.write("%s\n" % msg)
     sys.exit(1)
 
+if os.getuid() == 0:
+    fatal("These tests are not suitable for running as root.")
+
 os.umask(022)                           # for consistent permissions
 failed = 0
 protocols = ['3', '4', '5', '6', '7']
