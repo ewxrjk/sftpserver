@@ -5,7 +5,7 @@ set -x
 
 # Find an automake
 if [ -z "$AUTOMAKE" ]; then
-  for prog in automake automake-1.10 automake-1.9 automake-1.8 automake-1.7; do
+  for prog in automake automake-1.11 automake-1.10 automake-1.9 automake-1.8 automake-1.7; do
     if type $prog >/dev/null 2>&1; then
       AUTOMAKE=$prog
       break
@@ -19,7 +19,6 @@ fi
 ACLOCAL=${AUTOMAKE/automake/aclocal}
 
 srcdir=$(dirname $0)
-here=$(pwd)
 cd $srcdir
 if [ ! -e COPYING ]; then
   rm -f COPYING
@@ -41,5 +40,3 @@ autoconf
 autoheader
 ${AUTOMAKE} -a || true		# for INSTALL
 ${AUTOMAKE} --foreign -a
-cd "$here"
-$srcdir/configure -C "$@" --sysconfdir=/etc --localstatedir=/var
