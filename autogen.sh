@@ -20,15 +20,6 @@ ACLOCAL=${AUTOMAKE/automake/aclocal}
 
 srcdir=$(dirname $0)
 cd $srcdir
-if [ ! -e COPYING ]; then
-  rm -f COPYING
-  for f in /usr/share/common-licenses/GPL-2 $HOME/doc/GPL-2; do
-    if test -e "$f"; then
-      ln -s "$f" COPYING
-      break
-    fi
-  done
-fi
 if test -d $HOME/share/aclocal; then
   ${ACLOCAL} --acdir=$HOME/share/aclocal
 else

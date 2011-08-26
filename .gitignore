@@ -17,7 +17,6 @@ Makefile.in
 config.log
 INSTALL
 sftpclient
-COPYING
 gesftpserver
 gesftpserver-debug
 gesftpserverro
