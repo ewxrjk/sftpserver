@@ -21,7 +21,7 @@
 #ifndef PUTWORD_H
 #define PUTWORD_H
 
-#if UNALIGNED_WRITES
+#if UNALIGNED_ACCESS
 # define put32(where, u) do {			\
   *(uint32_t *)(where) = htonl(u);		\
 } while(0)

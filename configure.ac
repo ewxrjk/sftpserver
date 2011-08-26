@@ -46,8 +46,7 @@ AC_SYS_LARGEFILE
 AC_REPLACE_FUNCS([daemon futimes])
 AC_CHECK_FUNCS([futimesat getaddrinfo])
 
-dnl RJK_UNALIGNED_WRITES
-dnl - disabled because testing can produce the wrong answer
+RJK_UNALIGNED_ACCESS
 RJK_SIZE_MAX
 RJK_GCC_WARNINGS
 RJK_GCC_ATTRS
