@@ -31,3 +31,4 @@ gesftpserver-valgrind
 *.o
 *.a
 confpyver
+*~
