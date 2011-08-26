@@ -29,3 +29,6 @@ gesftpserver-ro
 gesftpserver-ro-debug
 gesftpserver-valgrind
 .bzr.backup
+*.o
+*.a
+confpyver
