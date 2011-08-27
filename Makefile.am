@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007 Richard Kettlewell
+# Copyright (C) 2007, 2011 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -77,7 +77,7 @@ gesftpserver-ro-debug:
 gesftpserver-valgrind:
 	echo "#! /bin/sh" > $@.new
 	echo "set -e" >> $@.new
-	echo "exec valgrind --leak-check=full --logfile=`pwd`/,valgrind --num-callers=64 `pwd`/gesftpserver \"\$$@\"" >> $@.new
+	echo "exec valgrind --leak-check=full -q --log-file=/dev/tty --num-callers=50 `pwd`/gesftpserver \"\$$@\"" >> $@.new
 	chmod +x $@.new
 	mv $@.new $@
 
