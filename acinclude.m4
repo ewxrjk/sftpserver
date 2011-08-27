@@ -113,7 +113,7 @@ AC_DEFUN([RJK_UNALIGNED_ACCESS],[
   AC_CACHE_CHECK([whether unaligned accesses work],[rjk_cv_unaligned],[
     AC_CANONICAL_HOST
     case $host_cpu in
-    x86_64 | i686 )
+    x86_64 | i?86 )
       rjk_cv_unaligned=yes
       ;;
     * )
