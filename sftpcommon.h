@@ -25,6 +25,10 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
+#if HAVE_ENDIAN_H
+# include <endian.h>
+#endif
+
 struct queue;
 struct allocator;
 struct handleid;

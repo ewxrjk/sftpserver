@@ -30,6 +30,12 @@
 } while(0)
 #endif
 
+#if UNALIGNED_ACCESS && HAVE_DECL_HTOBE64
+# define put64(where, u) do {                   \
+  *(uint64_t *)(where) = htobe64(u);            \
+} while(0)
+#endif
+
 #ifndef put16
 # define put16(where, u) do {                   \
   uint8_t *ptr = (void *)(where);               \

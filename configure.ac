@@ -35,6 +35,7 @@ RJK_BUILDSYS_MISC
 AC_PROG_RANLIB
 
 RJK_THREADS
+AC_CHECK_HEADERS([endian.h])
 AC_CHECK_LIB([socket],[socket])
 AC_CHECK_LIB([readline],[readline],
              [AC_SUBST([LIBREADLINE],[-lreadline])
@@ -45,6 +46,7 @@ AC_C_INLINE
 AC_SYS_LARGEFILE
 AC_REPLACE_FUNCS([daemon futimes])
 AC_CHECK_FUNCS([futimesat getaddrinfo])
+AC_CHECK_DECLS([be64toh, htobe64])
 
 RJK_UNALIGNED_ACCESS
 RJK_SIZE_MAX
