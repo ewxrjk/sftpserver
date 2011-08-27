@@ -45,7 +45,7 @@ if os.getuid() == 0:
 
 os.umask(022)                           # for consistent permissions
 failed = 0
-protocols = ['3', '4', '5', '6', '7']
+protocols = ['2', '3', '4', '5', '6', '7']
 dir = 'tests'
 
 args = sys.argv[1:]

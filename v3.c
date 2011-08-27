@@ -50,8 +50,8 @@ int reverse_symlink;
 /* Encode/decode path names.  v3 does not know what encoding filenames use.  I
  * assume that the client and the server use the same encoding and so don't
  * perform any translation. */
-static int v3_encode(struct sftpjob attribute((unused)) *job,
-                     char attribute((unused)) **path) {
+int sftp_v3_encode(struct sftpjob attribute((unused)) *job,
+                   char attribute((unused)) **path) {
   return 0;
 }
 
@@ -793,7 +793,7 @@ const struct sftpprotocol sftp_v3 = {
   v3_sendnames,
   v3_sendattrs,
   v3_parseattrs,
-  v3_encode,
+  sftp_v3_encode,
   v3_decode,
   sizeof v3_extensions / sizeof (struct sftpextension),
   v3_extensions,                        /* extensions */

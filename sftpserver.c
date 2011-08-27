@@ -285,7 +285,7 @@ const struct sftpprotocol sftp_preinit = {
   0,
   0,
   0,
-  0,
+  sftp_v3_encode,
   0,
   0,
   0
