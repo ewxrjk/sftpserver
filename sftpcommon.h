@@ -34,24 +34,23 @@
   ({uint64_t __n = (N); __asm__("bswap %0" : "+q"(__n)); __n;})
 #endif
 
-#if __GNUC__ && __i386__
-/* This is not entirely satisfactory: the xchgl would be unnecessary, if only
- * we had some way of communicating the detailed input and output assignments
- * of the registers to the compiler. */
-#define BSWAP64(N)                                      \
-({uint64_t __n = (N); __asm__("xchgl %%eax,%%edx\n"     \
-                              "\tbswap %%eax\n"         \
-                              "\tbswap %%edx"           \
-                              : "+A"(__n));             \
-  __n;})
+#if __GNUC__ && !defined BSWAP64
+#define BSWAP64(N) \
+  ({uint64_t __n = (N); __n = ntohl(__n >> 32) | ((uint64_t)ntohl(__n) << 32); __n;})
 #endif
 
-#if HAVE_DECL_BE64TOH
+#if WORDS_BIGENDIAN
+# define NTOHLL(n) (n)
+# define HTONLL(n) (n)
+#endif
+
+#if HAVE_DECL_BE64TOH && !defined NTOHLL
 # define NTOHLL be64toh
 #endif
-#if HAVE_DECL_HTOBE64
+#if HAVE_DECL_HTOBE64 && !defined HTONLL
 #define HTONLL htobe64
 #endif
+
 #if defined BSWAP64 && !defined NTOHLL
 # define NTOHLL BSWAP64
 #endif
