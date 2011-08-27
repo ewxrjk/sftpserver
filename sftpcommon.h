@@ -38,8 +38,8 @@
 /* This is not entirely satisfactory: the xchgl would be unnecessary, if only
  * we had some way of communicating the detailed input and output assignments
  * of the registers to the compiler. */
-#define BSWAP64(N)                                        \
-({uint64_t __n = (N); __asm__("xchgl %%eax,%%edx\n"      \
+#define BSWAP64(N)                                      \
+({uint64_t __n = (N); __asm__("xchgl %%eax,%%edx\n"     \
                               "\tbswap %%eax\n"         \
                               "\tbswap %%edx"           \
                               : "+A"(__n));             \
