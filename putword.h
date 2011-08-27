@@ -30,9 +30,9 @@
 } while(0)
 #endif
 
-#if UNALIGNED_ACCESS && HAVE_DECL_HTOBE64
+#if UNALIGNED_ACCESS && defined HTONLL
 # define put64(where, u) do {                   \
-  *(uint64_t *)(where) = htobe64(u);            \
+  *(uint64_t *)(where) = HTONLL(u);             \
 } while(0)
 #endif
 
@@ -56,7 +56,7 @@
 } while(0)
 #endif
 
-#ifndef sftp_send_raw64
+#ifndef put64
 # define put64(where, u) do {                   \
   const uint64_t uu = u;                        \
   uint8_t *ptr = (void *)(where);               \

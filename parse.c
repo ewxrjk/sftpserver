@@ -76,8 +76,8 @@ uint32_t sftp_parse_uint32(struct sftpjob *job, uint32_t *ur) {
 uint32_t sftp_parse_uint64(struct sftpjob *job, uint64_t *ur) {
   if(job->left < 8)
     return SSH_FX_BAD_MESSAGE;
-#if UNALIGNED_ACCESS && HAVE_DECL_BE64TOH
-  *ur = be64toh(*(uint64_t *)job->ptr);
+#if UNALIGNED_ACCESS && defined NTOHLL
+  *ur = NTOHLL(*(uint64_t *)job->ptr);
   job->ptr += 8;
 #else
   {

@@ -29,6 +29,24 @@
 # include <endian.h>
 #endif
 
+#if __GNUC__ && __amd64__
+#define BSWAP64(N)				\
+  ({uint64_t __n = (N); __asm__("bswap %0" : "+q"(__n)); __n;})
+#endif
+
+#if HAVE_DECL_BE64TOH
+# define NTOHLL be64toh
+#endif
+#if HAVE_DECL_HTOBE64
+#define HTONLL htobe64
+#endif
+#if defined BSWAP64 && !defined NTOHLL
+# define NTOHLL BSWAP64
+#endif
+#if defined BSWAP64 && !defined HTONLL
+# define HTONLL BSWAP64
+#endif
+
 struct queue;
 struct allocator;
 struct handleid;
