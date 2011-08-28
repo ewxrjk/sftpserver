@@ -55,10 +55,16 @@ struct handleid {
 void sftp_handle_new_file(struct handleid *id, int fd, const char *path, 
                           unsigned flags);
 
-/** @brief Handle flag for text files */
+/** @brief Handle flag for text files
+ *
+ * See sftp_handle_new_file().
+ */
 #define HANDLE_TEXT 0x0001
 
-/** @brief Handle flag for append-mode files */
+/** @brief Handle flag for append-mode files
+ *
+ * See sftp_handle_new_file().
+ */
 #define HANDLE_APPEND 0x0002
 
 /** @brief Create a new directory handle

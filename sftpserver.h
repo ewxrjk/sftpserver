@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file sftpserver.h @brief SFTP server parameters and common declarations */
+
 #ifndef SFTPSERVER_H
 #define SFTPSERVER_H
 
@@ -25,35 +27,41 @@
 
 #include <sys/types.h>
 
-/* Maximum numbers in a response to SSH_FXP_READDIR */
 #ifndef MAXNAMES
+/** @brief Maximum size of an @ref SSH_FXP_READDIR response */
 # define MAXNAMES 32
 #endif
 
-/* Maximum number of concurrent handles supported */
 #ifndef MAXHANDLES
+/** @brief Maximum number of concurrent handles */
 # define MAXHANDLES 128
 #endif
 
-/* Maximum read size */
 #ifndef MAXREAD
+/** @brief Maximum read size */
 # define MAXREAD 1048576
 #endif
 
-/* Maximum request size (NOT IMPLEMENTED!) */
 #ifndef MAXREQUEST
+/** @brief Maximum request size
+ *
+ * @todo Needs to be tied in with @ref max_request_len. */
 # define MAXREQUEST 1048576
 #endif
 
-/* Default file permissions */
 #ifndef DEFAULT_PERMISSIONS
+/** @brief Default file permissions */
 # define DEFAULT_PERMISSIONS 0755
 #endif
 
+/** @brief Send an @ref SSH_FXP_STATUS message
+ * @param job Job
+ * @param status Status code
+ * @param msg Human-readable message
+ */
 void sftp_send_status(struct sftpjob *job, 
                       uint32_t status,
                       const char *msg);
-/* Send an SSH_FXP_STATUS */
 
 uint32_t sftp_vany_already_init(struct sftpjob *job);
 uint32_t sftp_vany_remove(struct sftpjob *job);
@@ -96,8 +104,10 @@ uint32_t sftp_v6_version_select(struct sftpjob *job);
 uint32_t sftp_vany_posix_rename(struct sftpjob *job);
 uint32_t sftp_vany_statfs(struct sftpjob *job);
 
+/** @brief Send an @ref SSH_FXP_STATUS message based on @c errno
+ * @param job Job
+ */
 void sftp_send_errno_status(struct sftpjob *job);
-/* Call sftp_send_status based on errno */
 
 #endif /* SFTPSERVER_H */
 

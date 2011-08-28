@@ -24,29 +24,91 @@
 #define UTILS_H
 
 
+/** @brief Read bytes from @p fd
+ * @param fd File descriptor to read from
+ * @param buffer Buffer to store data in
+ * @param size Number of bytes to read
+ * @return 0 on success, non-0 if EOF before @p size bytes read
+ *
+ * Loops if necessary to cope with short reads.  Calls fatal() on error.
+ */
 int do_read(int fd, void *buffer, size_t size);
-/* Error-checking workalike for read().  Returns 0 on success, non-0 at
- * EOF. */
 
 /* libreadliine contains xmalloc/xrealloc!  We use some #defines to work around
  * the problem. */
 #define xmalloc sftp__xmalloc
 #define xrealloc sftp__xrealloc
 
+/** @brief Allocate memory
+ * @param n Number of bytes to allocate
+ * @return Pointer to allocated memory
+ *
+ * Equivalent to @c malloc() but calls fatal() on error.
+ *
+ * Does not zero-fill.
+ */
 void *xmalloc(size_t n);
-void *xcalloc(size_t n, size_t size);
-void *xrealloc(void *ptr, size_t n);
-void *xrecalloc(void *ptr, size_t n, size_t size);
-char *xstrdup(const char *s);
-/* Error-checking workalikes for malloc() etc.  recalloc() does not
- * 0-fill expansion. */
 
+/** @brief Allocate memory
+ * @param n Number of objects to allocate
+ * @param size Size of one object
+ * @return Pointer to allocated memory
+ *
+ * Equivalent to @c calloc() but calls fatal() on error.
+ */
+void *xcalloc(size_t n, size_t size);
+
+/** @brief Reallocate memory
+ * @param ptr Existing allocation
+ * @param n Number of bytes to allocate
+ * @return Pointer to allocated memory
+ *
+ * Equivalent to @c realloc() but calls fatal() on error.
+ *
+ * Does not zero-fill.
+ */
+void *xrealloc(void *ptr, size_t n);
+
+/** @brief Reallocate memory
+ * @param ptr Existing allocation
+ * @param n Number of objects to allocate
+ * @param size Size of one object
+ * @return Pointer to allocated memory
+ *
+ * Equivalent to @c realloc() but calls fatal() on error.
+ *
+ * Does not zero-fill.
+ */
+void *xrecalloc(void *ptr, size_t n, size_t size);
+
+/** @brief Duplicate a string
+ * @param s String to duplicate
+ * @return Duplicated string
+ *
+ * Equivalent to @c strdup() but calls fatal() on error.
+ */
+char *xstrdup(const char *s);
+
+/** @brief Append to a string
+ * @param a Allocator
+ * @param s Existing string
+ * @param ns Where length of @p s is stored
+ * @param t String to append
+ * @return New string
+ */
 char *append(struct allocator *a, char *s, size_t *ns, 
              const char *t);
+
+/** @brief Append to a string
+ * @param a Allocator
+ * @param s Existing string
+ * @param ns Where length of @p s is stored
+ * @param t String to append
+ * @param lt Length of @p t
+ * @return New string
+ */
 char *appendn(struct allocator *a, char *s, size_t *ns, 
               const char *t, size_t lt);
-/* Append T to S, expanding if need be.  NS tracks total size of S.  LT is the
- * length of T if present. */
 
 /** @brief Convenient wrapper for readlink(2)
  * @param a Allocator to store result
@@ -71,13 +133,13 @@ char *sftp_do_readlink(struct allocator *a, const char *path);
  * are
  * not and the transformation is purely lexical.
  *
- * If @ref RP_MAY_NOT_EXIST is set then the path will be converted even if it
+ * If @ref RP_MUST_EXIST is set then the path will be converted even if it
  * does
  * not exist or cannot be accessed.  If it is clear but the path does not exist
  * or cannot be accessed then an error _may_ be returned (but this is not
  * guaranteed).
  *
- * Leaving @ref RP_MAY_NOT_EXIST is an optimization for the case where you're
+ * Setting @ref RP_MUST_EXIST is an optimization for the case where you're
  * later
  * going to do an existence test.
  *
@@ -86,10 +148,16 @@ char *sftp_do_readlink(struct allocator *a, const char *path);
 char *sftp_find_realpath(struct allocator *a, const char *path,
                          unsigned flags);
 
-/** @brief Follow symlinks */
+/** @brief Follow symlinks
+ *
+ * See sftp_find_realpath().
+ */
 #define RP_READLINK 0x0001
 
-/** @brief Path must exist */
+/** @brief Path must exist
+ *
+ * See sftp_find_realpath().
+ */
 #define RP_MUST_EXIST 0x0002
 
 /** @brief Compute the name of the current directory
@@ -109,15 +177,35 @@ const char *sftp_dirname(struct allocator *a, const char *path);
  * @param msg Format string as per @c printf(3)
  * @param ... Arguments
  *
+ * The error is written either to standard error or syslog; see @ref
+ * log_syslog.
+ *
  * Terminates the process.
  */
 void fatal(const char *msg, ...)
   attribute((noreturn))
   attribute((format(printf,1,2)));
 
+/** @brief Fork a subprocess
+ * @return 0 in the child, process ID in the parent
+ *
+ * Calls fatal() on error.
+ */
 pid_t xfork(void);
+
+/** @brief Called after forking
+ *
+ * Affects the way that fatal() terminates the process.
+ *
+ * xfork() already calls it, any other calls to @c fork() should call it
+ * explicitly.
+ */
 void forked(void);
 
+/** @brief Whether to log to syslog
+ *
+ * Affects where fatal() writes to.
+ */
 extern int log_syslog;
 
 #endif /* UTILS_H */
