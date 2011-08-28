@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file handle.c @brief File handle implementation */
+
 #include "sftpserver.h"
 #include "debug.h"
 #include "utils.h"
@@ -30,23 +32,34 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+/** @brief Handle data structure */
 struct handle {
-  int type;                             /* SSH_FXP_OPEN/OPENDIR */
-  uint32_t tag;                         /* unique tag */
+  int type;                             /**< @brief @ref SSH_FXP_OPEN or @ref SSH_FXP_OPENDIR */
+  uint32_t tag;                         /**< @brief Unique tag or 0 for unused */
   union {
-    int fd;                             /* file descriptor for a file */
-    DIR *dir;                           /* directory handle */
+    int fd;                             /**< @brief File descriptor for a file */
+    DIR *dir;                           /**< @brief Directory stream */
   } u;
-  char *path;                           /* name of file or directory */
-  unsigned flags;                       /* flags */
+  char *path;                           /**< @brief Name of file or directory */
+  unsigned flags;                       /**< @brief Flags */
 };
-/* A file handle */
 
+/** @brief Table of handles */
 static struct handle *handles;
+
+/** @brief Size of @p handles array */
 static size_t nhandles;
+
+/** @brief Next sequence number */
 static uint32_t sequence;
+
+/** @brief Lock protecting handles data structure */
 static pthread_mutex_t sftp_handle_lock = PTHREAD_MUTEX_INITIALIZER;
 
+/** @brief Find a free slot in @ref handles
+ * @param id Where to store handle
+ * @param type @ref SSH_FXP_OPEN or @ref SSH_FXP_OPENDIR
+ */
 static void find_free_handle(struct handleid *id, int type) {
   size_t n;
 

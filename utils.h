@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
  * USA
  */
+
+/** @brief file utils.h @brief Utility functions interface */
 
 #ifndef UTILS_H
 #define UTILS_H
@@ -68,9 +70,17 @@ char *sftp_find_realpath(struct allocator *a, const char *path,
  * going to do an existence test.
  */
 
+/** @brief Compute the name of the current directory
+ * @param a Allocator to store result
+ * @return Name of current directory, or a null pointer
+ */
 char *sftp_getcwd(struct allocator *a);
-/* Return the name of the current directory. */
 
+/** @brief Compute the directory name part of @p path
+ * @param a Allocator to store result
+ * @param path Path name to extract directory from
+ * @return Directory name
+ */
 const char *sftp_dirname(struct allocator *a, const char *path);
 
 void fatal(const char *msg, ...)

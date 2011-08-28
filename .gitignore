@@ -32,3 +32,4 @@ gesftpserver-valgrind
 *.a
 confpyver
 *~
+dox

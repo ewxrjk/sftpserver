@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file alloc.c @brief Allocator implementation */
+
 #include "sftpserver.h"
 #include "alloc.h"
 #include "utils.h"
@@ -28,16 +30,32 @@
 
 union block;
 
+/** @brief One chunk in an allocator
+ *
+ * A chunk is a contiguous region of memory, divided into @ref block objects,
+ * supporting efficient allocation.
+ */
 struct chunk {
+  /** @brief Next chunk */
   struct chunk *next;
+
+  /** @brief Pointer to next allocatable block */
   union block *ptr;
+
+  /** @brief Number of blocks left in this chunk */
   size_t left;
-  /* size_t will usually have the same size as a pointer; by chucking an extra
+
+  /** @brief Padding
+   *
+   * size_t will usually have the same size as a pointer; by chucking an extra
    * one in we become 4 * the size of a pointer, which is much more likely to
-   * be a power of 2 than 3 *. */
+   * be a power of 2 than 3 *.
+   */
   size_t spare;
 };
 
+/** @brief Alignment block for an allocator
+ */
 union block {
   int i;
   long l;
@@ -49,6 +67,10 @@ union block {
   struct chunk c;
 };
 
+/** @brief Default number of blocks in a new chunk
+ *
+ * A chunk may be bigger than this if a large allocation was requested.
+ */
 #define NBLOCKS 512
 
 struct allocator *sftp_alloc_init(struct allocator *a) {
@@ -56,7 +78,10 @@ struct allocator *sftp_alloc_init(struct allocator *a) {
   return a;
 }
 
-/* Convert NBYTES to a block count */
+/** @brief Convert @p nbytes to a block count
+ * @param nbytes Number of bytes
+ * @return Number of blocks necessary to contain @p nbytes
+ */
 static inline size_t blocks(size_t nbytes) {
   return nbytes / sizeof (union block) + !!(nbytes % sizeof (union block));
 }

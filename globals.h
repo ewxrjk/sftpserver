@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,17 +18,43 @@
  * USA
  */
 
+/** @file globals.h @brief Global variables interface */
+
 #ifndef GLOBALS_H
 #define GLOBALS_H
 
+/** @brief Work queue for the thread pool */
 extern struct queue *workqueue;
-/* Queue to which jobs are sent */
 
-extern const struct sftpprotocol sftp_v6, sftp_v5, sftp_v4, sftp_v3;
+/** @brief V6 protocol callbacks */
+extern const struct sftpprotocol sftp_v6;
+
+/** @brief V5 protocol callbacks */
+extern const struct sftpprotocol sftp_v5;
+
+/** @brief V4 protocol callbacks */
+extern const struct sftpprotocol sftp_v4;
+
+/** @brief V3 protocol callbacks */
+extern const struct sftpprotocol sftp_v3;
+
+/** @brief Pre-initialization protocol callbacks */
 extern const struct sftpprotocol sftp_preinit;
+
+/** @brief Selected protocol */
 extern const struct sftpprotocol *protocol;
+
+/** @brief What messages this process sends
+ *
+ * Separately defined as @c request or @c response in the client and server
+ * respectively.
+ */
 extern const char sendtype[];
+
+/** @brief Read-only mode */
 extern int readonly;
+
+/** @brief Reverse symlink arguments */
 extern int reverse_symlink;
 
 #endif /* GLOBALS_H */

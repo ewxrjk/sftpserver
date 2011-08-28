@@ -18,16 +18,44 @@
  * USA
  */
 
+/** @file debug.h @brief Debug support interface */
+
 #ifndef DEBUG_H
 #define DEBUG_H
 
 /* Debug support */
 
+/** @brief True if debug information is to be written */
 extern int sftp_debugging;
+
+/** @brief Filename for debug information */
 extern const char *sftp_debugpath;
 
+/** @brief Debug output of bytes in hex
+ * @param ptr Start of region to dump
+ * @param n Number of bytes to dump
+ *
+ * @ref sftp_debugging must be nonzero.
+ */
 void sftp_debug_hexdump(const void *ptr, size_t n);
+
+/** @brief Write a debug message
+ * @param fmt Format string as per printf(3)
+ * @param ... Arguments
+ *
+ * @ref sftp_debugging must be nonzero.
+ */
 void sftp_debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
+
+/** @brief Issue a debug message
+ * @param x Parenthesized format string and arguments
+ *
+ * Typical usage would be:
+ *
+ * @code
+ * D(("the value of x is %d", x));
+ * @endcode
+ */
 #define D(x) do {                               \
   if(sftp_debugging)                            \
     sftp_debug_printf x;                        \

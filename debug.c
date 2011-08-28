@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file debug.c @brief Debug support implementation */
+
 #include "sftpserver.h"
 
 #include "debug.h"
@@ -29,10 +31,14 @@
 #include <fcntl.h>
 #include <string.h>
 
+/** @brief Output file for debug information */
 static FILE *debugfp;
+
 const char *sftp_debugpath;
+
 int sftp_debugging;
 
+/** @brief Ensure that @ref debugfp is open */
 static void opendebug(void) {
   assert(sftp_debugging);
   if(!debugfp) {

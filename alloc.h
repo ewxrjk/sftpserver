@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,26 +18,65 @@
  * USA
  */
 
+/** @file alloc.h @brief Allocator interface */
+
 #ifndef ALLOC_H
 #define ALLOC_H
 
 struct chunk;
 
+/** @brief An allocator
+ *
+ * This kind of allocator supports quick allocation but does not support
+ * freeing of single allocations.  The only way to release resources is to free
+ * all allocations.  It is not thread safe.
+ */
 struct allocator {
+  /** @brief Head of linked list of chunks
+   *
+   * This is the most recently created chunk, or a null pointer.
+   */
   struct chunk *chunks;
 };
 
+/** @brief Initialize an allocator
+ * @param Allocator to initialize
+ * @return @p a
+ */
 struct allocator *sftp_alloc_init(struct allocator *a);
-/* Initialize allocator A */
 
+/** @brief Allocate space from an allocator
+ * @param a Allocator
+ * @param n Number of bytes to allocate
+ * @return Pointer to allocated memory
+ *
+ * If @p n is 0 then the return value is a null pointer.
+ * If memory cannot be allocated, the process is terminated.
+ *
+ * Newly allocate memory is always 0-filled.
+ */
 void *sftp_alloc(struct allocator *a, size_t n);
-/* Allocate N bytes from A.  The new space is 0-filled. */
 
+/** @brief Expand an allocation within an allocator
+ * @param a Allocator
+ * @param ptr Allocation to expand, or a null pointer
+ * @param oldn Old size in bytes
+ * @param newn New size in bytes
+ * @return New allocation
+ *
+ * If @p ptr is a null pointer then @p oldn must be 0.  The new allocation may
+ * be the same or different to @p ptr.  If the new allocation is larger then
+ * the extra space is 0-filled.
+ */
 void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn, size_t newn);
-/* Expand from OLDN bytes to NEWN bytes.  May move the contents. */
 
+/** @brief Destroy an allocator
+ * @param a Allocator
+ *
+ * All memory allocated through the allocator is freed.  The allocator remains
+ * initialized.
+ */
 void sftp_alloc_destroy(struct allocator *a);
-/* Free all memory used by A and re-initialize */
 
 #endif /* ALLOC_H */
 
