@@ -43,9 +43,7 @@
 #endif
 
 #ifndef MAXREQUEST
-/** @brief Maximum request size
- *
- * @todo Needs to be tied in with @ref max_request_len. */
+/** @brief Maximum request size */
 # define MAXREQUEST 1048576
 #endif
 
