@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* Implement serialization requirements as per draft-ietf-secsh-filexfer-02.txt
+/** @file serialize.c @brief Request serialization implementation
+ *
+ * Implement serialization requirements as per draft-ietf-secsh-filexfer-02.txt
  * s6, or -13.txt s4.1.  Two points worth noting:
  *
  * 1) The language there is in terms of 'files'.  That implies that there's
@@ -51,34 +53,61 @@
  * to be clever and allow re-ordering of operations where different orders
  * couldn't make a difference.
  *
- * 4) Reads don't include SSH_FXP_READDIR.  Therefore such requests are always
+ * 4) Reads don't include @ref SSH_FXP_READDIR.  Therefore such requests are always
  * serialized, which saves us having to worry about the thread safety of the
  * <dirent.h> functions.  Indeed you could say this about any other operation
  * but readdir() is the most obvious one to worry about.
  *
  */
 
+/** @brief One job in the serialization queue */
 struct sqnode {
+  /** @brief The next job in the queue */
   struct sqnode *older;
+
+  /** @brief This job */
   struct sftpjob *job;
+
+  /** @brief Handle used by this job */
   struct handleid hid;
+
+  /** @brief Flags for the handle */
   unsigned handleflags;
+
+  /** @brief Offset of the read or write */
   uint64_t offset;
+
+  /** @brief Length of the read or write */
   uint64_t len;
+
+  /** @brief Request type */
   uint8_t type;
 };
 
+/** @brief The newest job in the queue */
 static struct sqnode *newest;
+
+/** @brief Lock protecting the serialization queue */
 static pthread_mutex_t sq_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+/** @brief Condition variable signaling changes to the queue */
 static pthread_cond_t sq_cond = PTHREAD_COND_INITIALIZER;
 
-/* Return true iff two handles match */
+/** @brief Test whether two handles are identical
+ * @param h1 Handle
+ * @param h2 Handle
+ * @return Nonzero if @p h1 matches @p h2
+ */
 static inline int handles_equal(const struct handleid *h1,
                                 const struct handleid *h2) {
   return h1->id == h2->id && h1->tag == h2->tag;
 }
 
-/* Return true iff two byte ranges overlap */
+/** @brief Test whether two IO ranges overlap
+ * @param a Serialization queue entry
+ * @param b Serialization queue entry
+ * @return Nonzero if the IO ranges for @p a and @p b overlap
+ */
 static int ranges_overlap(const struct sqnode *a, 
                           const struct sqnode *b) {
   if(a->len && b->len) {
@@ -93,7 +122,13 @@ static int ranges_overlap(const struct sqnode *a,
   return 0;
 }
 
-/* Return true iff it's acceptable to re-order Q1 with respect to Q2 */
+/** @brief Test wether two jobs may be re-ordered
+ * @param q1 Serialization queue entry
+ * @param q2 Serialization queue entry
+ * @return Nonzero if the @p q1 and @p q2 may be re-ordered
+ *
+ * @todo Reordering is currently disabled.
+ */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
   /* Re-ordering either doesn't work properly or confuses paramiko/bzr.  So for

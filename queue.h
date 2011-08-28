@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,30 +18,56 @@
  * USA
  */
 
+/** @file queue.h @brief Thread pool/queue interface */
+
 #ifndef QUEUE_H
 #define QUEUE_H
 
 struct allocator;
 
+/** brief Queue-specific callbacks */
 struct queuedetails {
-  void *(*init)();                      /* returns workerdata */
+  /** @brief Per-thread initialization
+   * @return Per-thread value to be passed to other callbacks
+   */
+  void *(*init)();
+
+  /** @brief Worker method
+   * @param job Job to process
+   * @param workerdata Per-thread value from @c init()
+   * @param a Per-thread allocator to use for any memory requirements
+   */
   void (*worker)(void *job, void *workerdata, struct allocator *a);
+
+  /** @brief Per-thread cleanup
+   * @param workerdata Per-thread value from @c init()
+   */
   void (*cleanup)(void *workerdata);
 };
 
+/** @brief Create a thread pool and queue
+ * @param qp Where store queue pointer
+ * @param details Queue-specific callbacks (not copied)
+ * @param nthreads Number of threads to create
+ */
 void queue_init(struct queue **qp,
 		const struct queuedetails *details,
 		int nthreads);
-/* Create a new queue with up to NTHREADS threads.  All jobs will be
- * executed via WORKER with a private allocator. */
 
-void queue_add(struct queue *q, void *job);
-/* Add a JOB to Q.  Jobs are executed in order but if NTHREADS>1 then
+/** @brief Add a job to a thread pool's queue
+ * @param q Queue pointer
+ * @param job Job to add to queue
+ *
+ * Add a JOB to Q.  Jobs are executed in order but if NTHREADS>1 then
  * their processing may overlap in time.  On non-threaded systems, the
  * job is executed before returning from queue_add(). */
+void queue_add(struct queue *q, void *job);
 
+/** @brief Destroy a queue
+ * @param q Queue pointer
+ *
+ * All unprocessed jobs are executed before completion. */
 void queue_destroy(struct queue *q);
-/* Destroy Q.  All unprocess jobs are executed before completion. */
 
 #endif /* QUEUE_H */
 

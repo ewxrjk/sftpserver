@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file queue.h @brief Thread pool/queue implementation */
+
 #include "sftpserver.h"
 
 #include "queue.h"
@@ -28,22 +30,46 @@
 #include <stdlib.h>
 #include <string.h>
 
+/** @brief One job in a queue */
 struct queuejob {
+  /** @brief Next job or a null pointer */
   struct queuejob *next;
+
+  /** @brief Job */
   void *job;
 };
 
+/** @brief Definition of a queue */
 struct queue {
-  struct queuejob *jobs, **jobstail;
+  /** @brief Head of queue */
+  struct queuejob *jobs;
+
+  /** @brief Where to store new tail of queue */
+  struct queuejob **jobstail;
+
+  /** @brief Mutex protecting queue */
   pthread_mutex_t m;
+
+  /** @brief Condition variable for signaling changes to queue */
   pthread_cond_t c;
+
+  /** @brief Queue-specific callbacks */
   const struct queuedetails *details;
+
+  /** @brief Number of worker threads */
   int nthreads;
+
+  /** @brief Table of worker thread IDs */
   pthread_t *threads;
+
+  /** @brief Set when queue is being destroyed */
   int join;
 };
 
-/* Worker thread */
+/** @brief Implementation of worker thread
+ * @param vq Queue pointer
+ * @return A null pointer
+ */
 static void *queue_thread(void *vq) {
   struct queue *const q = vq;
   struct queuejob *qj;

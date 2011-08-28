@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,20 +18,31 @@
  * USA
  */
 
+/** @file serialize.h @brief Request serialization interface */
+
 #ifndef SERIALIZE_H
 #define SERIALIZE_H
 
+/** @brief Establish a job's place in the serialization queue
+ * @param job Job to establish
+ *
+ * Called for @ref SSH_FXP_READ and @ref SSH_FXP_WRITE. */
 void queue_serializable_job(struct sftpjob *job);
-/* Called for SSH_FXP_READ and SSH_FXP_WRITE to establish the job's place in
- * the serialization queue */
 
+/** @brief Serialize a job
+ * @param job Job to serialize
+ *
+ * Wait until there are no jobs conflicting with @p job that were established
+ * before it in the serialization queue.
+ */
 void serialize(struct sftpjob *job);
-/* Wait until there are no olderjobs address the same offset via the same
- * handle */
 
+/** @brief Remove a job from the serialization queue
+ * @param job Job to remove
+ *
+ * Called when the job is completed.
+ */
 void serialize_remove_job(struct sftpjob *job);
-/* Called when any job is completed to remove it from the serialization
- * queue */
 
 #endif /* SERIALIZE_H */
 

@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,13 +18,15 @@
  * USA
  */
 
+/** @file thread.h @brief Thread utilities */
+
 #ifndef THREAD_H
 #define THREAD_H
 
 #include <pthread.h>
 #include <stdio.h>
 
-/* Error-checking for pthreads functions */
+/** @brief Error-checking macro for @c pthread_... functions */
 #define ferrcheck(E) do {                                       \
   const int frc = (E);                                          \
   if(frc) {                                                     \

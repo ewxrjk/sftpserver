@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
  * USA
  */
+
+/** @file realpath.c @brief Implementation of sftp_find_realpath() */
 
 #include "sftpcommon.h"
 #include "utils.h"
@@ -62,6 +64,14 @@ char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags) 
   return process_path(a, result, &nresult, path, flags);
 }
 
+/** @brief Canonicalize a path
+ * @param a Allocator for result
+ * @param result Result so far
+ * @param nresult Size of current result
+ * @param path Path to process
+ * @param flags Flags as for sftp_find_realpath()
+ * @return Modified result
+ */
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
 			  const char *path, unsigned flags) {
   D(("process_path path='%s' result='%s'", path, result));

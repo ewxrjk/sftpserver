@@ -21,6 +21,8 @@
 #ifndef SFTPCOMMON_H
 #define SFTPCOMMON_H
 
+/** @file sftpcommon.h @brief Common definitions */
+
 #include <config.h>
 #include <inttypes.h>
 #include <sys/types.h>
@@ -30,31 +32,39 @@
 #endif
 
 #if __GNUC__ && __amd64__
+/** @brief Byte-swap a 64-bit value */
 #define BSWAP64(N)				\
   ({uint64_t __n = (N); __asm__("bswap %0" : "+q"(__n)); __n;})
 #endif
 
 #if __GNUC__ && !defined BSWAP64
+/** @brief Byte-swap a 64-bit value */
 #define BSWAP64(N) \
   ({uint64_t __n = (N); __n = ntohl(__n >> 32) | ((uint64_t)ntohl(__n) << 32); __n;})
 #endif
 
 #if WORDS_BIGENDIAN
+/** @brief Convert a 64-bit value to network byte order */
 # define NTOHLL(n) (n)
+/** @brief Convert a 64-bit value to host byte order */
 # define HTONLL(n) (n)
 #endif
 
 #if HAVE_DECL_BE64TOH && !defined NTOHLL
+/** @brief Convert a 64-bit value to network byte order */
 # define NTOHLL be64toh
 #endif
 #if HAVE_DECL_HTOBE64 && !defined HTONLL
+/** @brief Convert a 64-bit value to host byte order */
 #define HTONLL htobe64
 #endif
 
 #if defined BSWAP64 && !defined NTOHLL
+/** @brief Convert a 64-bit value to network byte order */
 # define NTOHLL BSWAP64
 #endif
 #if defined BSWAP64 && !defined HTONLL
+/** @brief Convert a 64-bit value to host byte order */
 # define HTONLL BSWAP64
 #endif
 
@@ -66,6 +76,10 @@ struct sftpattr;
 struct worker;
 struct stat;
 
+/** @brief Return a human-readable description of @p status
+ * @param status SFTP status code
+ * @return Human-readable string
+ */
 const char *status_to_string(uint32_t status);
 
 #endif /* SFTPCOMMON_H */

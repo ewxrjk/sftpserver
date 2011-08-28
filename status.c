@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +17,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
  * USA
  */
+
+/** @file status.c @brief Status code implementation */
 
 #include "sftpserver.h"
 #include "sftp.h"
@@ -104,6 +106,7 @@ void sftp_send_status(struct sftpjob *job,
   sftp_send_end(job->worker);
 }
 
+/** @brief Mapping of @c errno values to SFTP status codes */
 static const struct {
   int errno_value;
   uint32_t status_value;

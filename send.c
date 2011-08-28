@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file send.c @brief Message sending implementation */
+
 #include "sftpserver.h"
 #include "debug.h"
 #include "utils.h"
@@ -34,20 +36,24 @@
 #include <stdlib.h>
 #include <unistd.h>
 
+/** @brief Mutex to serialize IO */
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 
 int sftpout = 1;                        /* default is stdout */
 
+/** @brief Store a 16-bit value */
 #define sftp_send_raw16(u) do {                 \
   put16(&w->buffer[w->bufused], u);             \
   w->bufused += 2;                              \
 } while(0)
 
+/** @brief Store a 32-bit value */
 #define sftp_send_raw32(u) do {                 \
   put32(&w->buffer[w->bufused], u);             \
   w->bufused += 4;                              \
 } while(0)
 
+/** @brief Store a 64-bit value */
 #define sftp_send_raw64(u) do {                 \
   put64(&w->buffer[w->bufused], u);             \
   w->bufused += 8;                              \
