@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file stat.c @brief SFTP attribute support implementation */
+
 #include "sftpserver.h"
 #include "types.h"
 #include "users.h"
@@ -107,6 +109,7 @@ void sftp_stat_to_attrs(struct allocator *a,
   attrs->name = path;
 }
 
+/** @brief Table of attribute bit names */
 static const struct {
   uint32_t bit;
   const char *description;
@@ -262,16 +265,48 @@ uint32_t sftp_normalize_ownergroup(struct allocator *a, struct sftpattr *attrs) 
   return rc;
 }
 
+/** @brief Callbacks for do_sftp_set_status() */
 struct sftp_set_status_callbacks {
+  /** @brief Truncate callback
+   * @param what Object to truncate
+   * @param size New size
+   * @return 0 on success, -ve on error
+   */
   int (*do_truncate)(const void *what, off_t size);
+
+  /** @brief Change ownership callback
+   * @param what Object to modify
+   * @param uid New UID
+   * @param gid New GID
+   * @return 0 on success, -ve on error
+   */
   int (*do_chown)(const void *what, uid_t uid, gid_t gid);
+
+  /** @brief Change mode callback
+   * @param what Object to modify
+   * @param mode New mode
+   * @return 0 on success, -ve on error
+   */
   int (*do_chmod)(const void *what, mode_t mode);
+
+  /** @brief Get attributes callback
+   * @param what Object to inspect
+   * @param sb Where to store information
+   * @return 0 on success, -ve on error
+   */
   int (*do_stat)(const void *what, struct stat *sb);
+
+  /** @brief Set file times
+   * @param what Object to modify
+   * @param tv New times
+   * @return 0 on success, -ve on error
+   */
   int (*do_utimes)(const void *what, struct timeval *tv);
 };
 
 /* Horrendous ugliness for SETSTAT/FSETSTAT */
 #if HAVE_STAT_TIMESPEC
+/** @brief Helper macro to set fractional part of timestamps */
 #define SET_STATUS_NANOSEC do {                                         \
     times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)    \
                         ? (long)attrs.atime.nanoseconds                 \
@@ -284,6 +319,14 @@ struct sftp_set_status_callbacks {
 #define SET_STATUS_NANOSEC ((void)0)
 #endif
 
+/** @brief Implementation of sftp_set_status() and sftp_set_fstatus()
+ * @param a Allocator
+ * @param what Object to modify
+ * @param attrsp Attributes to set
+ * @param cb Callbacks for object type
+ * @param whyp Where to store error string, or a null pointer
+ * @return 0 on success or an error code on failure
+ */
 static uint32_t do_sftp_set_status(struct allocator *a,
                               const void *what,
                               const struct sftpattr *attrsp,
@@ -382,26 +425,53 @@ static uint32_t do_sftp_set_status(struct allocator *a,
   return SSH_FX_OK;
 }
 
+/** @brief Truncate a file by name
+ * @param what Object to truncate
+ * @param size New size
+ * @return 0 on success, -ve on error
+ */
 static int name_truncate(const void *what, off_t size) {
   return truncate(what, size);
 }
 
+/** @brief Change ownership by name
+ * @param what Object to modify
+ * @param uid New UID
+ * @param gid New GID
+ * @return 0 on success, -ve on error
+ */
 static int name_chown(const void *what, uid_t uid, gid_t gid) {
   return chown(what, uid, gid);
 }
 
+/** @brief Change mode by name
+ * @param what Object to modify
+ * @param mode New mode
+ * @return 0 on success, -ve on error
+ */
 static int name_chmod(const void *what, mode_t mode) {
   return chmod(what, mode);
 }
 
+/** @brief Get attributes by name
+ * @param what Object to inspect
+ * @param sb Where to store information
+ * @return 0 on success, -ve on error
+ */
 static int name_lstat(const void *what, struct stat *sb) {
   return lstat(what, sb);
 }
 
+/** @brief Set file times by name
+ * @param what Object to modify
+ * @param tv New times
+ * @return 0 on success, -ve on error
+ */
 static int name_utimes(const void *what, struct timeval *tv) {
   return utimes(what, tv);
 }
 
+/** @brief Table of callbacks for sftp_set_status() */
 static const struct sftp_set_status_callbacks name_callbacks = {
   name_truncate,
   name_chown,
@@ -417,26 +487,53 @@ uint32_t sftp_set_status(struct allocator *a,
   return do_sftp_set_status(a, path, attrsp, &name_callbacks, whyp);
 }
 
+/** @brief Truncate a file by fd
+ * @param what Object to truncate
+ * @param size New size
+ * @return 0 on success, -ve on error
+ */
 static int fd_truncate(const void *what, off_t size) {
   return ftruncate(*(const int *)what, size);
 }
 
+/** @brief Change ownership by fd
+ * @param what Object to modify
+ * @param uid New UID
+ * @param gid New GID
+ * @return 0 on success, -ve on error
+ */
 static int fd_chown(const void *what, uid_t uid, gid_t gid) {
   return fchown(*(const int *)what, uid, gid);
 }
 
+/** @brief Change mode by fd
+ * @param what Object to modify
+ * @param mode New mode
+ * @return 0 on success, -ve on error
+ */
 static int fd_chmod(const void *what, mode_t mode) {
   return fchmod(*(const int *)what, mode);
 }
 
+/** @brief Get attributes by fd
+ * @param what Object to inspect
+ * @param sb Where to store information
+ * @return 0 on success, -ve on error
+ */
 static int fd_stat(const void *what, struct stat *sb) {
   return fstat(*(const int *)what, sb);
 }
 
+/** @brief Set file times by fd
+ * @param what Object to modify
+ * @param tv New times
+ * @return 0 on success, -ve on error
+ */
 static int fd_utimes(const void *what, struct timeval *tv) {
   return futimes(*(const int *)what, tv);
 }
 
+/** @brief Table of callbacks for sftp_set_fstatus() */
 static const struct sftp_set_status_callbacks fd_callbacks = {
   fd_truncate,
   fd_chown,

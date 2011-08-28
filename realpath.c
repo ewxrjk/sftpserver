@@ -67,7 +67,7 @@ char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags) 
 /** @brief Canonicalize a path
  * @param a Allocator for result
  * @param result Result so far
- * @param nresult Size of current result
+ * @param nresultp Size of current result
  * @param path Path to process
  * @param flags Flags as for sftp_find_realpath()
  * @return Modified result

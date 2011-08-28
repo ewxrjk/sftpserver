@@ -77,7 +77,7 @@ uint32_t sftp_parse_path(struct sftpjob *job, char **strp);
 
 /** @brief Retrieve the next handle value from a message
  * @param job Job containing message
- * @param ur Where to store byte value
+ * @param id Where to store handle
  * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
  *
  * No attempt is made to validate the handle

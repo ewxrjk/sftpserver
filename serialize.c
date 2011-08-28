@@ -125,6 +125,7 @@ static int ranges_overlap(const struct sqnode *a,
 /** @brief Test wether two jobs may be re-ordered
  * @param q1 Serialization queue entry
  * @param q2 Serialization queue entry
+ * @param flags Flags for @ref q1
  * @return Nonzero if the @p q1 and @p q2 may be re-ordered
  *
  * @todo Reordering is currently disabled.

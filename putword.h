@@ -26,14 +26,14 @@
 #if UNALIGNED_ACCESS
 /** @brief Unaligned 32-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put32(where, u) do {			\
   *(uint32_t *)(where) = htonl(u);		\
 } while(0)
 /** @brief Unaligned 16-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put16(where, u) do {			\
   *(uint16_t *)(where) = htons(u);		\
@@ -43,7 +43,7 @@
 #if UNALIGNED_ACCESS && defined HTONLL
 /** @brief Unaligned 64-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put64(where, u) do {                   \
   *(uint64_t *)(where) = HTONLL(u);             \
@@ -53,7 +53,7 @@
 #ifndef put16
 /** @brief Unaligned 16-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put16(where, u) do {                   \
   uint8_t *ptr = (void *)(where);               \
@@ -66,7 +66,7 @@
 #ifndef put32
 /** @brief Unaligned 32-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put32(where, u) do {                   \
   const uint32_t uu = (uint32_t)(u);            \
@@ -81,7 +81,7 @@
 #ifndef put64
 /** @brief Unaligned 64-bit network-order store
  * @param where Where to store value
- * @param Value to store
+ * @param u Value to store
  */
 # define put64(where, u) do {                   \
   const uint64_t uu = u;                        \

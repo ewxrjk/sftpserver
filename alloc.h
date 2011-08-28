@@ -40,7 +40,7 @@ struct allocator {
 };
 
 /** @brief Initialize an allocator
- * @param Allocator to initialize
+ * @param a Allocator to initialize
  * @return @p a
  */
 struct allocator *sftp_alloc_init(struct allocator *a);
