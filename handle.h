@@ -86,7 +86,7 @@ unsigned sftp_handle_flags(const struct handleid *id);
  * @param id Handle
  * @param fd Where to store file descriptor
  * @param flagsp Where to store flags, or a null pointer
- * @return 0 on success, @ref SSH_FXP_INVALID_HANDLE on error
+ * @return 0 on success, @ref SSH_FX_INVALID_HANDLE on error
  */
 uint32_t sftp_handle_get_fd(const struct handleid *id, 
                             int *fd,
@@ -96,7 +96,7 @@ uint32_t sftp_handle_get_fd(const struct handleid *id,
  * @param id Handle
  * @param dp Where to store directory stream
  * @param pathp Where to store path, or a null pointer
- * @return 0 on success, @ref SSH_FXP_INVALID_HANDLE on error
+ * @return 0 on success, @ref SSH_FX_INVALID_HANDLE on error
  *
  * If @p pathp is not a null pointer then the value assigned to @c *pathp
  * points to the handle's copy of the path name.  It will not outlive the

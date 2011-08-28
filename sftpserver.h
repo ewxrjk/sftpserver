@@ -61,19 +61,83 @@ void sftp_send_status(struct sftpjob *job,
                       uint32_t status,
                       const char *msg);
 
+/** @brief @ref SSH_FXP_INIT stub for use after initialization
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_already_init(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_REMOVE implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_remove(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_RMDIR implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_rmdir(struct sftpjob *job);
 uint32_t sftp_v345_symlink(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_READLINK implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_readlink(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_CLOSE implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_close(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_READ implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_read(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_WRITE implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_write(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_SETSTAT implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_setstat(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_FSETSTAT implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_fsetstat(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_OPENDIR implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_opendir(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_READDIR implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_readdir(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_MKDIR implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_mkdir(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_EXTENDED implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_extended(struct sftpjob *job);
 void sftp_v456_sendnames(struct sftpjob *job, 
                          int nnames, const struct sftpattr *names);

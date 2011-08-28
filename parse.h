@@ -26,28 +26,28 @@
 /** @brief Retrieve the next byte from a message
  * @param job Job containing message
  * @param ur Where to store value
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  */
 uint32_t sftp_parse_uint8(struct sftpjob *job, uint8_t *ur);
 
 /** @brief Retrieve the next 16-bit value from a message
  * @param job Job containing message
  * @param ur Where to store value
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  */
 uint32_t sftp_parse_uint16(struct sftpjob *job, uint16_t *ur);
 
 /** @brief Retrieve the next 32-bit value from a message
  * @param job Job containing message
  * @param ur Where to store value
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  */
 uint32_t sftp_parse_uint32(struct sftpjob *job, uint32_t *ur);
 
 /** @brief Retrieve the next 64-bit value from a message
  * @param job Job containing message
  * @param ur Where to store byte value
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  */
 uint32_t sftp_parse_uint64(struct sftpjob *job, uint64_t *ur);
 
@@ -55,7 +55,7 @@ uint32_t sftp_parse_uint64(struct sftpjob *job, uint64_t *ur);
  * @param job Job containing message
  * @param strp Where to store string
  * @param lenp Where to store length
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  *
  * The string will be allocated using the job's allocator and will not be
  * 0-terminated.
@@ -78,7 +78,7 @@ uint32_t sftp_parse_path(struct sftpjob *job, char **strp);
 /** @brief Retrieve the next handle value from a message
  * @param job Job containing message
  * @param id Where to store handle
- * @return 0 on success, @ref SSH_FXP_BAD_MESSAGE on error
+ * @return 0 on success, @ref SSH_FX_BAD_MESSAGE on error
  *
  * No attempt is made to validate the handle
  */
