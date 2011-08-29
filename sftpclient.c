@@ -67,7 +67,7 @@ struct command {
   const char *help;
 };
 
-struct handle {
+struct client_handle {
   size_t len;
   char *data;
 };
@@ -499,7 +499,7 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
   return 0;
 }
 
-static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
+static int sftp_fstat(const struct client_handle *hp, struct sftpattr *attrs) {
   uint32_t id;
 
   sftp_send_begin(&fakeworker);
@@ -515,7 +515,7 @@ static int sftp_fstat(const struct handle *hp, struct sftpattr *attrs) {
   return 0;
 }
 
-static int sftp_opendir(const char *path, struct handle *hp) {
+static int sftp_opendir(const char *path, struct client_handle *hp) {
   uint32_t id;
 
   remote_cwd();
@@ -530,7 +530,7 @@ static int sftp_opendir(const char *path, struct handle *hp) {
   return 0;
 }
 
-static int sftp_readdir(const struct handle *hp,
+static int sftp_readdir(const struct client_handle *hp,
                         struct sftpattr **attrsp,
                         size_t *nattrsp) {
   uint32_t id, n;
@@ -575,7 +575,7 @@ static int sftp_readdir(const struct handle *hp,
   }
 }
 
-static int sftp_close(const struct handle *hp) {
+static int sftp_close(const struct client_handle *hp) {
   uint32_t id;
 
   sftp_send_begin(&fakeworker);
@@ -602,7 +602,7 @@ static int sftp_setstat(const char *path,
   return status();
 }
 
-static int sftp_fsetstat(const struct handle *hp,
+static int sftp_fsetstat(const struct client_handle *hp,
                          const struct sftpattr *attrs) {
   uint32_t id;
 
@@ -711,7 +711,7 @@ static int sftp_link(const char *targetpath, const char *linkpath,
 static int sftp_open(const char *path, 
                      uint32_t desired_access, uint32_t flags,
                      const struct sftpattr *attrs,
-                     struct handle *hp) {
+                     struct client_handle *hp) {
   uint32_t id, pflags = 0;
 
   remote_cwd();
@@ -848,7 +848,7 @@ static char *sftp_readlink(const char *path) {
   return resolved;
 }
 
-static int sftp_text_seek(const struct handle *hp, uint64_t line) {
+static int sftp_text_seek(const struct client_handle *hp, uint64_t line) {
   uint32_t id;
 
   sftp_send_begin(&fakeworker);
@@ -985,7 +985,7 @@ static int cmd_ls(int ac,
   const char *options, *path;
   struct sftpattr *attrs, *allattrs = 0, fileattrs;
   size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
-  struct handle h;
+  struct client_handle h;
   size_t cols, rows;
   int singlefile;
 
@@ -1296,7 +1296,7 @@ struct reader_data {
   pthread_mutex_t m;                    /* protects everything here */
   pthread_cond_t c1;                    /* signaled when a response received */
   pthread_cond_t c2;                    /* signaled when a request sent */
-  struct handle h;                      /* target handle */
+  struct client_handle h;               /* target handle */
   struct outstanding_read *reqs;        /* in-flight requests */
   uint64_t next_offset;                 /* next offset */
   int outstanding, eof, failed;
@@ -1712,7 +1712,7 @@ static int cmd_put(int ac,
   struct sftpattr attrs;
   struct stat sb;
   int fd = -1, i, preserve = 0, failed = 0, eof = 0;
-  struct handle h;
+  struct client_handle h;
   off_t offset;
   ssize_t n;
   struct writer_data w;
@@ -2186,7 +2186,7 @@ static int cmd_lrealpath(int attribute((unused)) ac,
 
 static int cmd_bad_handle(int attribute((unused)) ac,
                           char attribute((unused)) **av) {
-  struct handle h;
+  struct client_handle h;
 
   h.len = 8;
   h.data = (void *)"\x0\x0\x0\x0\x0\x0\x0\x0";
@@ -2347,7 +2347,7 @@ static int cmd_overlap(int attribute((unused)) ac,
   int n, r;
   uint32_t ida, idb, idc, idd;
   int fd;
-  struct handle h;
+  struct client_handle h;
 
   memset(&attrs, 0, sizeof attrs);
   if(sftp_open("dest", ACE4_WRITE_DATA,
