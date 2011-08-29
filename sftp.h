@@ -18,10 +18,22 @@
  * USA
  */
 
-/** @file sftp.h @brief SFTP definitions */
+/** @file sftp.h @brief SFTP definitions
+ *
+ * See also:
+ * - @ref type
+ * - @ref valid_attribute_flags
+ * - @ref attrib_bits
+ * - @ref text_hint
+ * - @ref status
+ */
 
 #ifndef SFTP_H
 #define SFTP_H
+
+/** @defgroup type SFTP 'type' definitions
+ * @{
+ */
 
 /** @brief Protocol initialization */
 #define SSH_FXP_INIT                1
@@ -119,12 +131,18 @@
 /** @brief Extended response format */
 #define SSH_FXP_EXTENDED_REPLY    201   /* 0xC9 */
 
+/** @} */
+
 #define SSH_ACL_CAP_ALLOW                       0x00000001
 #define SSH_ACL_CAP_DENY                        0x00000002
 #define SSH_ACL_CAP_AUDIT                       0x00000004
 #define SSH_ACL_CAP_ALARM                       0x00000008
 #define SSH_ACL_CAP_INHERIT_ACCESS              0x00000010
 #define SSH_ACL_CAP_INHERIT_AUDIT_ALARM         0x00000020
+
+/** @defgroup valid_attribute_flags SFTP 'valid-attribute-flags' definitions
+ * @{
+ */
 
 /** @brief @c size field is present */
 #define SSH_FILEXFER_ATTR_SIZE              0x00000001
@@ -189,6 +207,12 @@
 /** @brief Extended attributes present */
 #define SSH_FILEXFER_ATTR_EXTENDED          0x80000000
 
+/** @} */
+
+/** @defgroup file_type SFTP file types
+ * @{
+ */
+
 #define SSH_FILEXFER_TYPE_REGULAR          1
 #define SSH_FILEXFER_TYPE_DIRECTORY        2
 #define SSH_FILEXFER_TYPE_SYMLINK          3
@@ -198,6 +222,8 @@
 #define SSH_FILEXFER_TYPE_CHAR_DEVICE      7
 #define SSH_FILEXFER_TYPE_BLOCK_DEVICE     8
 #define SSH_FILEXFER_TYPE_FIFO             9
+
+/** @} */
 
 #define SFX_ACL_CONTROL_INCLUDED        0x00000001
 #define SFX_ACL_CONTROL_PRESENT         0x00000002
@@ -235,6 +261,10 @@
 #define ACE4_WRITE_OWNER       0x00080000
 #define ACE4_SYNCHRONIZE       0x00100000
 
+/** @defgroup attrib_bits SFTP 'attrib-bits' definitions
+ * @{
+ */
+
 /** @brief File is read-only (advisory) */
 #define SSH_FILEXFER_ATTR_FLAGS_READONLY         0x00000001
 
@@ -271,10 +301,25 @@
 /** @brief Filename could not be converted to UTF-8 */
 #define SSH_FILEXFER_ATTR_FLAGS_TRANSLATION_ERR  0x00000800
 
+/** @} */
+
+/** @defgroup text_hint SFTP 'text-hint' definitions
+ * @{
+ */
+
+/** @brief Server knows file is a text file */
 #define SSH_FILEXFER_ATTR_KNOWN_TEXT        0x00
+
+/** @brief Server believes file is a text file */
 #define SSH_FILEXFER_ATTR_GUESSED_TEXT      0x01
+
+/** @brief Server knows file is a binary file */
 #define SSH_FILEXFER_ATTR_KNOWN_BINARY      0x02
+
+/** @brief Server believes file is a binary file */
 #define SSH_FILEXFER_ATTR_GUESSED_BINARY    0x03
+
+/** @} */
 
 #define SSH_FXF_ACCESS_DISPOSITION       0x00000007
 #define SSH_FXF_CREATE_NEW           0x00000000
@@ -311,6 +356,10 @@
 #define SSH_FXF_TRUNC           0x00000010
 #define SSH_FXF_EXCL            0x00000020
 #define SSH_FXF_TEXT            0x00000040
+
+/** @defgroup status SFTP error/status codes
+ * @{
+ */
 
 /** @brief Success */
 #define SSH_FX_OK                            0
@@ -407,6 +456,8 @@
 
 /** @brief Specified lock range has not been granted */
 #define SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK   31 /* 0x1F */
+
+/** @} */
 
 #endif /* SFTP_H */
 

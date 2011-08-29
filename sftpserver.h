@@ -78,6 +78,13 @@ uint32_t sftp_vany_remove(struct sftpjob *job);
  * @return Error code
  */
 uint32_t sftp_vany_rmdir(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_SYMLINK implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This for protocols 4 and above.
+ */
 uint32_t sftp_v345_symlink(struct sftpjob *job);
 
 /** @brief Generic @ref SSH_FXP_READLINK implementation
@@ -139,31 +146,186 @@ uint32_t sftp_vany_mkdir(struct sftpjob *job);
  * @return Error code
  */
 uint32_t sftp_vany_extended(struct sftpjob *job);
+
+/** @brief Send a filename list as found in an @ref SSH_FXP_NAME response
+ * @param job Job
+ * @param nnames Number of names
+ * @param names Filenames (and attributes) to send
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 void sftp_v456_sendnames(struct sftpjob *job, 
                          int nnames, const struct sftpattr *names);
+
+/** @brief Send file attributes
+ * @param job Job
+ * @param attrs File attributes
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 void sftp_v456_sendattrs(struct sftpjob *job,
                          const struct sftpattr *attrs);
+
+/** @brief Parse file attributes
+ * @param job Job
+ * @param attrs Where to put file attributes
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 uint32_t sftp_v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs);
+
+/** @brief Encode a filename for transmission
+ * @param job Job
+ * @param path Input/output filename
+ * @return 0 on success, -1 on error (as per sftp_iconv())
+ *
+ * This is for protocol 3 only; @c *path is not modified.
+ */
 int sftp_v3_encode(struct sftpjob *job, char **path);
+
+/** @brief Encode a filename for transmission
+ * @param job Job
+ * @param path Input/output filename
+ * @return 0 on success, -1 on error (as per sftp_iconv())
+ *
+ * This is for protocols 4 and above; @c *path is replaced with the UTF-8
+ * version of the filename.
+ */
 int sftp_v456_encode(struct sftpjob *job, char **path);
+
+/** @brief Decode a filename
+ * @param job Job
+ * @param path Input/output filename
+ * @return Error code
+ *
+ * This is for protocols 4 and above; @c *path is translated from UTF-8 to the
+ * current multibyte encoding.
+ */
 uint32_t sftp_v456_decode(struct sftpjob *job, char **path);
+
+/** @brief Generic @ref SSH_FXP_RENAME implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 3 and 4.
+ */
 uint32_t sftp_v34_rename(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_OPEN implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 3 and 4.
+ */
 uint32_t sftp_v34_open(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_LSTAT implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 uint32_t sftp_v456_lstat(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_STAT implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 uint32_t sftp_v456_stat(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_FSTAT implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 4 and above.
+ */
 uint32_t sftp_v456_fstat(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_REALPATH implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 3-5.
+ */
 uint32_t sftp_v345_realpath(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_OPEN implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 5 and above.
+ */
 uint32_t sftp_v56_open(struct sftpjob *job);
+
+/** @brief Generic @ref SSH_FXP_RENAME implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocols 5 and above.
+ */
 uint32_t sftp_v56_rename(struct sftpjob *job);
+
+/** @brief @ref SSH_FXP_REALPATH implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocol 6 only.
+ */
 uint32_t sftp_v6_realpath(struct sftpjob *job);
+
+/** @brief @ref SSH_FXP_LINK implementation
+ * @param job Job
+ * @return Error code
+ *
+ * This is for protocol 6 only.
+ */
 uint32_t sftp_v6_link(struct sftpjob *job);
+
+/** @brief @c text-seek extension implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_text_seek(struct sftpjob *job);
+
+/** @brief Common code for @ref SSH_FXP_OPEN
+ * @param job Job
+ * @param path Path to open (should already have been translated)
+ * @param desired_access Access required (TODO link to valid bits)
+ * @param flags Open flags (TODO link to valid bits)
+ * @param attrs Initial attributes for new files
+ * @return Error code
+ */
 uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
                            uint32_t desired_access, uint32_t flags,
                            struct sftpattr *attrs);
+
+/** @brief @c space-available extension implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_space_available(struct sftpjob *job);
+
+/** @brief @c version-select extension implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_v6_version_select(struct sftpjob *job);
+
+/** @brief @c posix-rename@openssh.org extension implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_posix_rename(struct sftpjob *job);
+
+/** @brief @c statfs@openssh.org extension implementation
+ * @param job Job
+ * @return Error code
+ */
 uint32_t sftp_vany_statfs(struct sftpjob *job);
 
 /** @brief Send an @ref SSH_FXP_STATUS message based on @c errno

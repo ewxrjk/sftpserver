@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2011 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
  * USA
  */
 
+/** @file types.h @brief Data types */
 
 #ifndef TYPES_H
 #define TYPES_H
@@ -26,37 +27,179 @@
 #include <wchar.h>
 #include <iconv.h>
 
+/** @brief An SFTP timestamp */
 struct sftptime {
+  /** @brief Seconds since Jan 1 1970 UTC
+   *
+   * Presumably excludes leap-seconds per usual Unix convention.
+   */
   int64_t seconds;
+
+  /** @brief Nanoseconds
+   *
+   * May be forced to 0 if the implementation does not support high-resolution
+   * file timestamps. */
   uint32_t nanoseconds;
 };
 
+/** @brief SFTP file attributes
+ *
+ * In this structure V6-compatible definitions are used; particular protocol
+ * implementations must convert when (de-)serializing.  Many of the fields are
+ * only valid if an appropriate bit is set in the @c valid field.
+ */
 struct sftpattr {
-  uint32_t valid;                       /* flags per v6 */
+  /** @brief Validity mask
+   *
+   * Present in all versions, but the V6 bit values are always used here.  See
+   * @ref valid_attribute_flags for a list of bits. */
+  uint32_t valid;
+
+  /** @brief File type
+   *
+   * Always valid.  See @ref file_type for a list of bits. */
   uint8_t type;
+
+  /** @brief File size
+   *
+   * Only if @ref SSH_FILEXFER_ATTR_SIZE is set. */
   uint64_t size;
-  uint64_t allocation_size;             /* v6+ */
-  uint32_t uid, gid;                    /* v3 */ 
-  char *owner, *group;                  /* v4+ */
+
+  /** @brief Allocation size (i.e. total bytes consumed)
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_ALLOCATION_SIZE is set. */
+  uint64_t allocation_size;
+
+  /** @brief File owner UID
+   *
+   * Only v3. */
+  uint32_t uid;
+
+  /** @brief File group GID
+   *
+   * Only v3. */
+  uint32_t gid;
+
+  /** @brief File owner name
+   *
+   * Only v4+, only if @ref SSH_FILEXFER_ATTR_OWNERGROUP is set.
+   */
+  char *owner;
+
+  /** @brief File group name
+   *
+   * Only v4+, only if @ref SSH_FILEXFER_ATTR_OWNERGROUP is set.
+   */
+  char *group;
+
+  /** @brief File permissions
+   *
+   * Only if @ref SSH_FILEXFER_ATTR_PERMISSIONS is set.  See @ref permissions
+   * for a list of bits.
+   */
   uint32_t permissions;
+
+  /** @brief File access time
+   *
+   * Only if @ref SSH_FILEXFER_ATTR_ACCESSTIME is set.
+   */
   struct sftptime atime;
-  struct sftptime createtime;           /* v4+ */
+
+  /** @brief File create time
+   *
+   * Only v4+, only if @ref SSH_FILEXFER_ATTR_CREATETIME is set.
+   */
+  struct sftptime createtime;
+
+  /** @brief File modification time
+   *
+   * Only if @ref SSH_FILEXFER_ATTR_MODIFYTIME is set.
+   */
   struct sftptime mtime;
-  struct sftptime ctime;                /* v6+ */
-  char *acl;                            /* v5+ */
-  uint32_t attrib_bits;                 /* v5+ */
+
+  /** @brief File inode change time
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_CTIME is set.
+   */
+  struct sftptime ctime;
+
+  /** @brief File ACL
+   *
+   * ACLs are not really supported.  We parse them but ignore them.
+   *
+   * Only v5+, only if @ref SSH_FILEXFER_ATTR_ACL is set.
+   */
+  char *acl;
+
+  /** @brief Attribute bits
+   *
+   * Only v5+, only if @ref SSH_FILEXFER_ATTR_BITS.
+   * See @ref attrib_bits for bits.
+   */
+  uint32_t attrib_bits;
+
   /* all v6+: */
+
+  /** @brief Validity mask for attribute bits
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_BITS.
+   * See @ref attrib_bits for bits.
+   */
   uint32_t attrib_bits_valid;
+
+  /** @brief Server's knowledge about file contents
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_TEXT_HINT.
+   * See @ref text_hint for bits.
+   */
   uint8_t text_hint;
+
+  /** @brief File MIME type
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_MIME_TYPE.
+   */
   char *mime_type;
+
+  /** @brief File link count
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_LINK_COUNT.
+   */
   uint32_t link_count;
+
+  /** @brief Untranslated form of name
+   *
+   * Only v6+, only if @ref SSH_FILEXFER_ATTR_UNTRANSLATED_NAME.
+   */
   char *untranslated_name;
+
   /* We stuff these in here too so we can conveniently use sftpattrs for
    * name lists */
-  const char *name;                     /* still in local encoding */
+
+  /** @brief Local encoding of filename
+   *
+   * Not part of the SFTP attributes.  Just used for convenience by a number of
+   * functions.
+   *
+   * @todo Document exactly how sftpattrs::name is used.
+   */
+  const char *name;
+
+  /** @brief V3 @c longname file description
+   *
+   * Not part of the SFTP attributes.  Instead used by the client to capture
+   * the @c longname field sent in v3 @ref SSH_FXP_NAME responses. */
   const char *longname;
-  const wchar_t *wname;                 /* name converted to wide chars */
-  const char *target;                   /* link target or 0 */
+
+  /** @brief Local wide encoding of filename
+   *
+   * Equivalent to @c name but converted to wide characters. */
+  const wchar_t *wname;
+
+  /** @brief Symbolic link target
+   *
+   * Not part of the SFTP attributes.  Instead used by the client and
+   * sftp_format_attr() to capture the target of a symbolic link. */
+  const char *target;
 };
 /* SFTP-style file attributes */
 
