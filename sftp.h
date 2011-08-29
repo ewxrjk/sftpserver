@@ -573,9 +573,9 @@
 
 /** @} */
 
-/** @mainpage Greenend SFTP Server
+/** @mainpage Green End SFTP Server
  *
- * This is the internal documentation for the Greenend SFTP server.
+ * This is the internal documentation for the Green End SFTP server.
  * It is intended for developers of the server, not users.
  *
  * @section structure Server Structure
