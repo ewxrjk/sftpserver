@@ -20,13 +20,23 @@
 
 /** @file sftp.h @brief SFTP definitions
  *
+ * Specifications:
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-02.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-04.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-05.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-13.txt
+ *
  * See also:
  * - @ref type
  * - @ref valid_attribute_flags
  * - @ref attrib_bits
  * - @ref text_hint
  * - @ref request_flags
+ * - @ref rename_flags
+ * - @ref realpath_control
+ * - @ref open_pflags
  * - @ref status
+ *
  */
 
 #ifndef SFTP_H
@@ -404,21 +414,62 @@
 
 /** @} */
 
+/** @defgroup rename_flags SFTP rename flag definitions
+ * @{
+ */
+
+/** @brief Overwrite target if it exists */
 #define SSH_FXF_RENAME_OVERWRITE  0x00000001
+
+/** @brief Ensure target name always exists and refers to original or new file */
 #define SSH_FXF_RENAME_ATOMIC     0x00000002
+
+/** @brief Remove requirements on server */
 #define SSH_FXF_RENAME_NATIVE     0x00000004
 
+/** @} */
+
+/** @defgroup realpath_control SFTP realpath control byte definitions
+ * @{
+ */
+
+/** @brief Don't check for existence or accessibility, don't resolve links */
 #define SSH_FXP_REALPATH_NO_CHECK    0x00000001
+
+/** @brief Get file attribtues if it exists */
 #define SSH_FXP_REALPATH_STAT_IF     0x00000002
+
+/** @brief Get file attributes, fail if unavailable */
 #define SSH_FXP_REALPATH_STAT_ALWAYS 0x00000003
 
+/** @} */
+
+/** @defgroup open_pflags SFTP open/create 'pflags' definitions
+ * @{
+ */
+
+/** @brief Open file for reading */
 #define SSH_FXF_READ            0x00000001
+
+/** @brief Open file for writing */
 #define SSH_FXF_WRITE           0x00000002
+
+/** @brief Append to end of file */
 #define SSH_FXF_APPEND          0x00000004
+
+/** @brief Create file if it does not exist */
 #define SSH_FXF_CREAT           0x00000008
+
+/** @brief Truncate file if it already exists */
 #define SSH_FXF_TRUNC           0x00000010
+
+/** @brief File must not exist */
 #define SSH_FXF_EXCL            0x00000020
+
+/** @brief Convert newlines */
 #define SSH_FXF_TEXT            0x00000040
+
+/** @} */
 
 /** @defgroup status SFTP error/status codes
  * @{
@@ -576,6 +627,7 @@
  * @section links Links
  *
  * - http://www.greenend.org.uk/rjk/sftpserver/
+ * - https://github.com/ewxrjk/sftpserver
  * - http://www.greenend.org.uk/rjk/2007/sftpversions.html
  */
 
