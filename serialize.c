@@ -128,19 +128,20 @@ static int ranges_overlap(const struct sqnode *a,
  * @param flags Flags for @p q1
  * @return Nonzero if the @p q1 and @p q2 may be re-ordered
  *
- * @todo Reordering is currently disabled.
+ * @todo Reordering is currently partially disabled.
  */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
-  /* Re-ordering either doesn't work properly or confuses paramiko/bzr.  So for
-   * the time being we don't do it. */
-  return 0;
   if((q1->type == SSH_FXP_READ || q1->type == SSH_FXP_WRITE)
      && (q2->type == SSH_FXP_READ || q2->type == SSH_FXP_WRITE)) {
     /* We allow reads and writes to be re-ordered up to a point */
-    if(!handles_equal(&q1->hid, &q2->hid))
+    if(!handles_equal(&q1->hid, &q2->hid)) {
       /* Operations on different handles can always be re-ordered. */
       return 1;
+    }
+    /* Re-ordering more aggressively than this either doesn't work properly or
+     * confuses paramiko/bzr.  So for the time being we don't do it. */
+    return 0;
     if(flags & (HANDLE_TEXT|HANDLE_APPEND))
       /* Operations on text or append-write files cannot be re-oredered. */
       return 0;
