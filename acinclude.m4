@@ -272,6 +272,7 @@ AC_DEFUN([RJK_PYTHON24],[
         ;;
       esac
     fi
+    rm -f confpyver
     if test "$rjk_cv_python24" = ""; then
       AC_MSG_ERROR([cannot find Python 2.4 or better])
     fi

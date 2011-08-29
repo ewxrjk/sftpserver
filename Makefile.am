@@ -82,7 +82,7 @@ gesftpserver-valgrind:
 	mv $@.new $@
 
 # Cleaning
-DISTCLEANFILES=${SEDOUTPUTS}
+DISTCLEANFILES=${SEDOUTPUTS} gesftpserver.8
 CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug gesftpserver-valgrind
 
 # Distribution
