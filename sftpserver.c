@@ -18,6 +18,8 @@
  * USA
  */
 
+/** @file sftpserver.c @brief SFTP server implementation */
+
 #include "sftpserver.h"
 #include "queue.h"
 #include "alloc.h"
@@ -66,8 +68,10 @@ static void worker_cleanup(void *wdv);
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a);
 static void sftp_service(void);
 
+/** @brief Local character encoding */
 static const char *local_encoding;
 
+/** @brief Queue-specific callbacks for processing SFTP requests */
 static const struct queuedetails workqueue_details = {
   worker_init,
   process_sftpjob,
@@ -127,6 +131,10 @@ static void version(void) {
 
 /* Initialization */
 
+/** @brief Implementation of @ref SSH_FXP_INIT
+ * @param job Job
+ * @return Error code
+ */
 static uint32_t sftp_init(struct sftpjob *job) {
   uint32_t version;
   size_t offset;
@@ -267,10 +275,14 @@ static uint32_t sftp_init(struct sftpjob *job) {
   return HANDLER_RESPONDED;
 }
 
+/** @brief Requests supported prior to initialization */
 static const struct sftpcmd sftppreinittab[] = {
   { SSH_FXP_INIT, sftp_init }
 };
 
+/** @brief Protocol supported prior to initialization
+ *
+ * Only @ref SSH_FXP_INIT is supported at first. */
 const struct sftpprotocol sftp_preinit = {
   sizeof sftppreinittab / sizeof (struct sftpcmd),
   sftppreinittab,
@@ -288,6 +300,9 @@ const struct sftpprotocol sftp_preinit = {
 
 /* Worker setup/teardown */
 
+/** @brief Worker thread setup for processing SFTP requests
+ * @return Initialized worker state
+ */
 static void *worker_init(void) {
   struct worker *w = xmalloc(sizeof *w);
 
@@ -304,6 +319,9 @@ static void *worker_init(void) {
   return w;
 }
 
+/** @brief Worker thread cleanup after processing SFTP requests
+ * @param wdv Worker state created by worker_init()
+ */
 static void worker_cleanup(void *wdv) {
   struct worker *w = wdv;
 
@@ -315,7 +333,13 @@ static void worker_cleanup(void *wdv) {
 
 /* Main loop */
 
-/* Process a job */
+/** @brief Worker thread function to process an SFTP job
+ * @param jv Job from queue
+ * @param wdv Worker state created by worker_init()
+ * @param a Allocator to use
+ *
+ * Only called in a worker thread, except prior to @ref SSH_FXP_INIT
+ * completing. */
 static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   struct sftpjob *const job = jv;
   int l, r, type = 0;
@@ -591,6 +615,10 @@ int main(int argc, char **argv) {
 #endif
 }
 
+/** @brief Process SFTP requests
+ *
+ * Requests are always read from FD 0 and responses written to FD 1.
+ */
 static void sftp_service(void) {
   uint32_t len;
   struct sftpjob *job;

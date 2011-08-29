@@ -201,54 +201,144 @@ struct sftpattr {
    * sftp_format_attr() to capture the target of a symbolic link. */
   const char *target;
 };
-/* SFTP-style file attributes */
 
+/** @brief A worker (i.e. one thread processing SFTP requests)
+ *
+ * Also used by the client to serialize requests. */
 struct worker {
-  size_t bufsize, bufused;
+  /** @brief Output buffer size */
+  size_t bufsize;
+
+  /** @brief Bytes used so far in the output buffer
+   *
+   * Set to 0x80000000 when the message has been sent. */
+  size_t bufused;
+
+  /** @brief Output buffer */
   uint8_t *buffer;
-  iconv_t local_to_utf8, utf8_to_local;
+
+  /** @brief Conversion descriptor mapping the local encoding to UTF-8 */
+  iconv_t local_to_utf8;
+
+  /** @brief Conversion descriptor mapping the UTF-8 to the local encoding */
+  iconv_t utf8_to_local;
 };
 /* Thread-specific data */
 
+/** @brief An SFTP job (i.e. a request)
+ *
+ * Also used in a couple of places by the client. */
 struct sftpjob {
+  /** @brief Length of request */
   size_t len;
-  unsigned char *data;                  /* whole job */
+
+  /** @brief Complete bytes of request */
+  unsigned char *data;
+
+  /** @brief Bytes remaining to parse */
   size_t left;
-  const unsigned char *ptr;             /* unparsed portion of job */
-  struct allocator *a;                  /* allocator */
-  uint32_t id;                          /* ID or 0 */
+
+  /** @brief Next byte to parse */
+  const unsigned char *ptr;
+
+  /** @brief Allocator to use */
+  struct allocator *a;
+
+  /** @brief Request ID or 0 */
+  uint32_t id;
+
+  /** @brief Worker processing this job */
   struct worker *worker;                /* worker processing this job */
 };
-/* An SFTP job. */
 
+/** @brief An SFTP request */
 struct sftpcmd {
-  uint8_t type;                         /* message type */
+  /** @brief Message type */
+  uint8_t type;
+
+  /** @brief Request handler */
   uint32_t (*handler)(struct sftpjob *job);
 };
 
+/** @brief An SFTP extension request */
 struct sftpextension {
+  /** @brief Extension request name */
   const char *name;
+
+  /** @brief Extension request handler */
   uint32_t (*handler)(struct sftpjob *job);
 };
 
-#define HANDLER_RESPONDED ((uint32_t)-1) /* already responded */
-#define HANDLER_ERRNO ((uint32_t)-2)     /* send an errno status */
+/** @brief Internal error code meaning "already responded" */
+#define HANDLER_RESPONDED ((uint32_t)-1)
 
+/** @brief Internal error code meaning "consult errno" */
+#define HANDLER_ERRNO ((uint32_t)-2)
+
+/** @brief Definition of an SFTP protocol version */
 struct sftpprotocol {
+  /** @brief Number of request types supported */
   int ncommands;
-  const struct sftpcmd *commands;       /* sorted by type */
-  int version;                          /* protocol version number */
-  uint32_t attrmask;                    /* known attr valid mask */
-  uint32_t maxstatus;                   /* max known status */
+
+  /** @brief Supported request types
+   *
+   * Sorted by the request type code. */
+  const struct sftpcmd *commands;
+
+  /** @brief Protocol version number */
+  int version;
+
+  /** @brief Attribute validity mask */
+  uint32_t attrmask;
+
+  /** @brief Maximum known error/status code */
+  uint32_t maxstatus;
+
+  /** @brief Send a filename list as found in an @ref SSH_FXP_NAME response
+   * @param job Job
+   * @param nnames Number of names
+   * @param names Filenames (and attributes) to send
+   * @return Error code
+   */
   void (*sendnames)(struct sftpjob *job, 
                     int nnames, const struct sftpattr *names);
+
+  /** @brief Send file attributes
+   * @param job Job
+   * @param attrs File attributes
+   * @return Error code
+   */
   void (*sendattrs)(struct sftpjob *job, const struct sftpattr *filestat);
+
+  /** @brief Parse file attributes
+   * @param job Job
+   * @param attrs Where to put file attributes
+   * @return Error code
+   */
   uint32_t (*parseattrs)(struct sftpjob *job, struct sftpattr *filestat);
+
+  /** @brief Encode a filename for transmission
+   * @param job Job
+   * @param path Input/output filename
+   * @return 0 on success, -1 on error (as per sftp_iconv())
+   */
   int (*encode)(struct sftpjob *job,
-                char **path);           /* Convert from local to wire */
+                char **path);
+
+  /** @brief Decode a filename
+   * @param job Job
+   * @param path Input/output filename
+   * @return Error code
+   */
   uint32_t (*decode)(struct sftpjob *job,
-                     char **path);      /* Convert from wire to local */
+                     char **path);
+
+  /** @brief Number of extension types supported */
   int nextensions;
+
+  /** @brief Supported extension types
+   *
+   * Sorted by the extension name. */
   const struct sftpextension *extensions;
 };
 /* An SFTP protocol version */

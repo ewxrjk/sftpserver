@@ -25,6 +25,7 @@
  * - @ref valid_attribute_flags
  * - @ref attrib_bits
  * - @ref text_hint
+ * - @ref request_flags
  * - @ref status
  */
 
@@ -213,14 +214,33 @@
  * @{
  */
 
+/** @brief Regular file */
 #define SSH_FILEXFER_TYPE_REGULAR          1
+
+/** @brief Directory */
 #define SSH_FILEXFER_TYPE_DIRECTORY        2
+
+/** @brief Symbolic link */
 #define SSH_FILEXFER_TYPE_SYMLINK          3
+
+/** @brief Special file
+ *
+ * This is for files where the type is known but cannot be exprssed in SFTP. */
 #define SSH_FILEXFER_TYPE_SPECIAL          4
+
+/** @brief Unknown file type */
 #define SSH_FILEXFER_TYPE_UNKNOWN          5
+
+/** @brief Socket */
 #define SSH_FILEXFER_TYPE_SOCKET           6
+
+/** @brief Character device */
 #define SSH_FILEXFER_TYPE_CHAR_DEVICE      7
+
+/** @brief Block device */
 #define SSH_FILEXFER_TYPE_BLOCK_DEVICE     8
+
+/** @brief Named pipe */
 #define SSH_FILEXFER_TYPE_FIFO             9
 
 /** @} */
@@ -321,25 +341,68 @@
 
 /** @} */
 
+/** @defgroup request_flags SFTP operation 'flags' definitions
+ * @{
+ */
+
+/** @brief Mask of file open bits */
 #define SSH_FXF_ACCESS_DISPOSITION       0x00000007
+
+/** @brief Must create a new file */
 #define SSH_FXF_CREATE_NEW           0x00000000
+
+/** @brief Create new file or truncate existing one */
 #define SSH_FXF_CREATE_TRUNCATE      0x00000001
+
+/** @brief File must already exist */
 #define SSH_FXF_OPEN_EXISTING        0x00000002
+
+/** @brief Open existing file or create new one */
 #define SSH_FXF_OPEN_OR_CREATE       0x00000003
+
+/** @brief Truncate an existing file */
 #define SSH_FXF_TRUNCATE_EXISTING    0x00000004
+
+/** @brief Lossy append only */
 #define SSH_FXF_APPEND_DATA              0x00000008
+
+/** @brief Append only */
 #define SSH_FXF_APPEND_DATA_ATOMIC       0x00000010
+
+/** @brief Convert newlines */
 #define SSH_FXF_TEXT_MODE                0x00000020
+
+/** @brief Exclusive read access */
 #define SSH_FXF_BLOCK_READ               0x00000040
+
+/** @brief Exclusive write access */
 #define SSH_FXF_BLOCK_WRITE              0x00000080
+
+/** @brief Exclusive delete access */
 #define SSH_FXF_BLOCK_DELETE             0x00000100
+
+/** @brief Other @c SSH_FXF_BLOCK_... bits are advisory */
 #define SSH_FXF_BLOCK_ADVISORY           0x00000200
+
+/** @brief Do not follow symlinks */
 #define SSH_FXF_NOFOLLOW                 0x00000400
+
+/** @brief Delete when last handle closed */
 #define SSH_FXF_DELETE_ON_CLOSE          0x00000800
+
+/** @brief Enable audit/alarm privileges */
 #define SSH_FXF_ACCESS_AUDIT_ALARM_INFO  0x00001000
+
+/** @brief Enable backup privileges */
 #define SSH_FXF_ACCESS_BACKUP            0x00002000
+
+/** @brief Read or write backup stream */
 #define SSH_FXF_BACKUP_STREAM            0x00004000
+
+/** @brief Enable owner privileges */
 #define SSH_FXF_OVERRIDE_OWNER           0x00008000
+
+/** @} */
 
 #define SSH_FXF_RENAME_OVERWRITE  0x00000001
 #define SSH_FXF_RENAME_ATOMIC     0x00000002
@@ -458,6 +521,63 @@
 #define SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK   31 /* 0x1F */
 
 /** @} */
+
+/** @mainpage Greenend SFTP Server
+ *
+ * This is the internal documentation for the Greenend SFTP server.
+ * It is intended for developers of the server, not users.
+ *
+ * @section structure Server Structure
+ *
+ * @subsection concurrency Concurrency
+ *
+ * The server is designed to be able to execute
+ * multiple requests concurrently.  To this end, sftp_service() reads
+ * requests from its input and (once initialization is complete) adds
+ * them to a @ref queue in the form of an @ref sftpjob.  The queue is
+ * serviced by a pool of worker threads, which are responsible for
+ * executing the requests and sending responses.
+ *
+ * Each thread has a separate memory @ref allocator.  All memory
+ * allocated to it is released after each request is processed.
+ *
+ * The SFTP specification makes certain demands about the order in
+ * which responses appear.  These are implemented in @ref serialize.c.
+ *
+ * @subsection versions Protocol Versions
+ *
+ * The server supports the four proposed versions of the protocol.
+ * Each protocol version has a separate table of request
+ * implementations and other details, in an @ref sftpprotocol object.
+ * Much, though not all, of the implementation is shared between them.
+ *
+ * The convention for request implementation naming can be observed in
+ * @ref sftpserver.h.  Each function is named @c
+ * sftp_vVERSIONS_REQUEST, where @c VERSIONS is replaced with by the
+ * list of versions supported or by @c any if the implementation is
+ * completely generic.
+ *
+ * @subsection Attributes
+ *
+ * Although attribute specifications vary between the protocol
+ * versions they are represented inside the server in a common @ref
+ * sftpattr structure. Each protocol version has a @c parseattrs and a
+ * @c sendattrs callback which convert between wire and internal
+ * format.
+ *
+ * @section specs Specifications
+ *
+ * - http://www.ietf.org/rfc/rfc4251.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-02.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-04.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-05.txt
+ * - http://tools.ietf.org/wg/secsh/draft-ietf-secsh-filexfer/draft-ietf-secsh-filexfer-13.txt
+ *
+ * @section links Links
+ *
+ * - http://www.greenend.org.uk/rjk/sftpserver/
+ * - http://www.greenend.org.uk/rjk/2007/sftpversions.html
+ */
 
 #endif /* SFTP_H */
 

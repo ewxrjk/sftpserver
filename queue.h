@@ -25,7 +25,7 @@
 
 struct allocator;
 
-/** brief Queue-specific callbacks */
+/** @brief Queue-specific callbacks */
 struct queuedetails {
   /** @brief Per-thread initialization
    * @return Per-thread value to be passed to other callbacks
