@@ -1834,8 +1834,6 @@ static int cmd_put(int ac,
   ferrcheck(pthread_mutex_lock(&w.m));
   offset = 0;
   while(!w.failed && !eof && !failed) {
-    int wrote;
-    
     /* Wait until we're allowed to send another request */
     if(w.outstanding >= nrequests) {
       ferrcheck(pthread_cond_wait(&w.c2, &w.m));
@@ -1850,7 +1848,6 @@ static int cmd_put(int ac,
     sftp_send_bytes(&fakeworker, h.data, h.len);
     sftp_send_uint64(&fakeworker, offset);
     sftp_send_need(fakejob.worker, buffersize + 4);
-    wrote = 0;
     if(textmode) {
       char *const start = ((char *)fakejob.worker->buffer
                            + fakejob.worker->bufused + 4);
