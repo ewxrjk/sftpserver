@@ -969,19 +969,21 @@ static int sort_by_mtime(const void *av, const void *bv) {
 
 /* Reverse an array in place */
 static void reverse(void *array, size_t count, size_t size) {
-  void *tmp = xmalloc(size);
-  char *const base = array;
-  size_t n;
-  
-  /* If size is even then size/2 is the first half of the array and that's fine.
-   * If size is odd then size/2 goes up to but excludes the middle member
-   * which is also fine. */
-  for(n = 0; n < size / 2; ++n) {
-    memcpy(tmp, base + n * size, size);
-    memcpy(base + n * size, base + (count - n - 1) * size, size);
-    memcpy(base + (count - n - 1) * size, tmp, size);
+  if(array) {
+    void *tmp = xmalloc(size);
+    char *const base = array;
+    size_t n;
+
+    /* If size is even then size/2 is the first half of the array and that's fine.
+     * If size is odd then size/2 goes up to but excludes the middle member
+     * which is also fine. */
+    for(n = 0; n < size / 2; ++n) {
+      memcpy(tmp, base + n * size, size);
+      memcpy(base + n * size, base + (count - n - 1) * size, size);
+      memcpy(base + (count - n - 1) * size, tmp, size);
+    }
+    free(tmp);
   }
-  free(tmp);
 }
 
 static int cmd_ls(int ac,
