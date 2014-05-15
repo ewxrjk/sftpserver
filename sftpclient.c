@@ -548,8 +548,10 @@ static int sftp_readdir(const struct client_handle *hp,
     if(n > SIZE_MAX / sizeof(struct sftpattr))
       fatal("too many attributes in SSH_FXP_READDIR response");
     attrs = sftp_alloc(fakejob.a, n * sizeof(struct sftpattr));
-    *nattrsp = n;
-    *attrsp = attrs;
+    if(nattrsp)
+      *nattrsp = n;
+    if(attrsp)
+      *attrsp = attrs;
     while(n-- > 0) {
       cpcheck(sftp_parse_path(&fakejob, &name));
       if(protocol->version <= 3)
@@ -564,8 +566,10 @@ static int sftp_readdir(const struct client_handle *hp,
   case SSH_FXP_STATUS:
     cpcheck(sftp_parse_uint32(&fakejob, &n));
     if(n == SSH_FX_EOF) {
-      *nattrsp = 0;
-      *attrsp = 0;
+      if(nattrsp)
+        *nattrsp = 0;
+      if(attrsp)
+        *attrsp = 0;
       return 0;
     }
     status();
