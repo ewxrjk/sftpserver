@@ -33,3 +33,7 @@ gesftpserver-valgrind
 confpyver
 *~
 dox
+GPATH
+GRTAGS
+GSYMS
+GTAGS
