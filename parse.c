@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -102,7 +102,7 @@ uint32_t sftp_parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
 
   if((rc = sftp_parse_uint32(job, &len)) != SSH_FX_OK)
     return rc;
-  if(!(len + 1))
+  if(len == 0xFFFFFFFF)
     return SSH_FX_BAD_MESSAGE;          /* overflow */
   if(job->left < len)
     return SSH_FX_BAD_MESSAGE;          /* not enough bytes to satisfy */

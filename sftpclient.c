@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2010, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2010, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -420,11 +420,15 @@ static int sftp_init(void) {
       cpcheck(sftp_parse_uint16(&xjob, &u16)); /* supported-open-block-vector */
       cpcheck(sftp_parse_uint16(&xjob, &u16)); /* supported-block-vector */
       cpcheck(sftp_parse_uint32(&xjob, &u32)); /* attrib-extension-count */
-      while(u32-- > 0)
+      while(u32 > 0) {
         cpcheck(sftp_parse_string(&xjob, 0, 0)); /* attrib-extension-names */
+        --u32;
+      }
       cpcheck(sftp_parse_uint32(&xjob, &u32)); /* extension-count */
-      while(u32-- > 0)
+      while(u32 > 0) {
         cpcheck(sftp_parse_string(&xjob, 0, 0)); /* extension-names */
+        --u32;
+      }
     }
   }
   /* Make sure outbound translation will actually work */
@@ -552,7 +556,7 @@ static int sftp_readdir(const struct client_handle *hp,
       *nattrsp = n;
     if(attrsp)
       *attrsp = attrs;
-    while(n-- > 0) {
+    while(n > 0) {
       cpcheck(sftp_parse_path(&fakejob, &name));
       if(protocol->version <= 3)
         cpcheck(sftp_parse_path(&fakejob, &longname));
@@ -561,6 +565,7 @@ static int sftp_readdir(const struct client_handle *hp,
       attrs->longname = longname;
       attrs->wname = sftp_mbs2wcs(attrs->name);
       ++attrs;
+      --n;
     }
     return 0;
   case SSH_FXP_STATUS:
