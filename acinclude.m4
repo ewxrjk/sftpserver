@@ -126,24 +126,6 @@ AC_DEFUN([RJK_GTKFLAGS],[
   fi
 ])
 
-AC_DEFUN([RJK_UNALIGNED_ACCESS],[
-  AC_CACHE_CHECK([whether unaligned accesses work],[rjk_cv_unaligned],[
-    AC_CANONICAL_HOST
-    case $host_cpu in
-    x86_64 | i?86 )
-      rjk_cv_unaligned=yes
-      ;;
-    * )
-      rjk_cv_unaligned=no
-      ;;
-    esac
-  ])
-  if test $rjk_cv_unaligned = yes; then
-    AC_DEFINE([UNALIGNED_ACCESS],[1],[define if unaligned accesses work])
-  fi
-])
-
-
 AC_DEFUN([RJK_STAT_TIMESPEC],[
   AC_CHECK_MEMBER([struct stat.st_atimespec],
 		  [AC_DEFINE([HAVE_STAT_TIMESPEC],[1],

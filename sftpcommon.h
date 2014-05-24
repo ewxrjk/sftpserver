@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,7 +31,11 @@
 # include <endian.h>
 #endif
 
-#if __GNUC__ && __amd64__
+#ifndef ASM
+# define ASM 1
+#endif
+
+#if __GNUC__ && __amd64__ && ASM
 /** @brief Byte-swap a 64-bit value */
 #define BSWAP64(N)				\
   ({uint64_t __n = (N); __asm__("bswap %0" : "+q"(__n)); __n;})

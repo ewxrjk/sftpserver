@@ -28,13 +28,13 @@
 #include "thread.h"
 #include "types.h"
 #include "globals.h"
-#include "putword.h"
 #include <assert.h>
 #include <errno.h>
 #include <string.h>
 #include <arpa/inet.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include "putword.h"
 
 /** @brief Mutex to serialize IO */
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;

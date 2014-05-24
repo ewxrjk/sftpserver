@@ -26,8 +26,8 @@
 #include "types.h"
 #include "sftp.h"
 #include "globals.h"
+#include "putword.h"
 #include <string.h>
-#include <arpa/inet.h>
 
 uint32_t sftp_parse_uint8(struct sftpjob *job, uint8_t *ur) {
   if(job->left < 1)
@@ -40,16 +40,8 @@ uint32_t sftp_parse_uint8(struct sftpjob *job, uint8_t *ur) {
 uint32_t sftp_parse_uint16(struct sftpjob *job, uint16_t *ur) {
   if(job->left < 2)
     return SSH_FX_BAD_MESSAGE;
-#if UNALIGNED_ACCESS
-  *ur = ntohs(*(uint16_t *)job->ptr);
+  *ur = get16(job->ptr);
   job->ptr += 2;
-#else
-  {
-    uint16_t u = *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    *ur = u;
-  }
-#endif
   job->left -= 2;
   return SSH_FX_OK;
 }
@@ -57,18 +49,8 @@ uint32_t sftp_parse_uint16(struct sftpjob *job, uint16_t *ur) {
 uint32_t sftp_parse_uint32(struct sftpjob *job, uint32_t *ur) {
   if(job->left < 4)
     return SSH_FX_BAD_MESSAGE;
-#if UNALIGNED_ACCESS
-  *ur = ntohl(*(uint32_t *)job->ptr);
+  *ur = get32(job->ptr);
   job->ptr += 4;
-#else
-  {
-    uint32_t u = *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    *ur = u;
-  }
-#endif
   job->left -= 4;
   return SSH_FX_OK;
 }
@@ -76,22 +58,8 @@ uint32_t sftp_parse_uint32(struct sftpjob *job, uint32_t *ur) {
 uint32_t sftp_parse_uint64(struct sftpjob *job, uint64_t *ur) {
   if(job->left < 8)
     return SSH_FX_BAD_MESSAGE;
-#if UNALIGNED_ACCESS && defined NTOHLL
-  *ur = NTOHLL(*(uint64_t *)job->ptr);
+  *ur = get64(job->ptr);
   job->ptr += 8;
-#else
-  {
-    uint64_t u = *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    u = (u << 8) + *job->ptr++;
-    *ur = u;
-  }
-#endif
   job->left -= 8;
   return SSH_FX_OK;
 }

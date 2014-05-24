@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011 Richard Kettlewell
+# Copyright (C) 2007, 2011, 2014 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # USA
 
 # Programs
-noinst_PROGRAMS=sftpclient
+noinst_PROGRAMS=sftpclient pwtest
 noinst_SCRIPTS=run-tests
 libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
@@ -36,6 +36,8 @@ charset.h serialize.h serialize.c v4.c realpath.c readlink.c v5.c v6.c	\
 stat.h getcwd.c globals.c dirname.c putword.h
 libsftp_a_LIBADD=$(LIBOBJS)
 
+pwtest_SOURCES=pwtest.c
+
 # Documentation
 man_MANS=gesftpserver.8
 
@@ -49,6 +51,7 @@ all: ${SEDOUTPUTS}
 
 check: all aliases
 	rm -f *.gcda *.gcov
+	./pwtest
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests $(TESTS)
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
 	${GCOV} ${srcdir}/*.c  | ${PYTHON24} ${srcdir}/format-gconv-report --html .
