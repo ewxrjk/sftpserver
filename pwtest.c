@@ -23,7 +23,7 @@
 #include <assert.h>
 
 int main() {
-  char buffer[16];
+  unsigned char buffer[16];
   int n, m;
 
   for(n = 0; n <= 14; ++n) {
@@ -32,9 +32,9 @@ int main() {
     assert(get16(buffer + n) == 0x0102);
     for(m = 0; m < 16; ++m) {
       if(m >= n && m < n + 2)
-        assert(buffer[m] = 1 + m - n);
+        assert(buffer[m] == 1 + m - n);
       else
-        assert(buffer[m] = 0xAF);
+        assert(buffer[m] == 0xAF);
     }
   }
 
@@ -44,9 +44,9 @@ int main() {
     //assert(get32(buffer + n) == 0x01020304);
     for(m = 0; m < 16; ++m) {
       if(m >= n && m < n + 4)
-        assert(buffer[m] = 1 + m - n);
+        assert(buffer[m] == 1 + m - n);
       else
-        assert(buffer[m] = 0xAF);
+        assert(buffer[m] == 0xAF);
     }
   }
 
@@ -56,9 +56,9 @@ int main() {
     //assert(get64(buffer + n) == 0x0102030405060708ULL);
     for(m = 0; m < 16; ++m) {
       if(m >= n && m < n + 8)
-        assert(buffer[m] = 1 + m - n);
+        assert(buffer[m] == 1 + m - n);
       else
-        assert(buffer[m] = 0xAF);
+        assert(buffer[m] == 0xAF);
     }
   }
 
