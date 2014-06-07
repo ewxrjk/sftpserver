@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 #include "alloc.h"
 #include "debug.h"
 #include "stat.h"
+#include "utils.h"
 #include <sys/stat.h>
 #include <string.h>
 #include <stdio.h>
@@ -132,7 +133,8 @@ const char *sftp_format_attr(struct allocator *a,
 			const struct sftpattr *attrs, int thisyear,
 			unsigned long flags) {
   char perms[64], linkcount[64], size[64], date[64], nowner[64], ngroup[64];
-  char *formatted, *p, bits[64];
+  char *formatted, *p, *bits;
+  size_t nbits;
   const char *owner, *group;
   static const char typedetails[] = "?-dl??scbp";
   size_t n;
@@ -215,19 +217,20 @@ const char *sftp_format_attr(struct allocator *a,
   } else
     strcpy(date, "?");
   /* attribute bits */
-  bits[0] = 0;
+  bits = NULL;
+  nbits = 0;
   if(flags & FORMAT_ATTRS
      && (attrs->valid & SSH_FILEXFER_ATTR_BITS)
      && attrs->attrib_bits) {
-    strcat(bits, "[");
+    bits = append(a, bits, &nbits, "[");
     for(n = 0; n < sizeof attr_bits / sizeof *attr_bits; ++n) {
       if(attrs->attrib_bits & attr_bits[n].bit) {
         if(bits[1])
-          strcat(bits, ",");
-        strcat(bits, attr_bits[n].description);
+          bits = append(a, bits, &nbits, ",");
+        bits = append(a, bits, &nbits, attr_bits[n].description);
       }
     }
-    strcat(bits, "]");
+    bits = append(a, bits, &nbits, "]");
   }
   /* Format the result */
   formatted = sftp_alloc(a, 80 + strlen(attrs->name));
