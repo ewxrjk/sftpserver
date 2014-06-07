@@ -82,8 +82,8 @@ static int inputline;
 static int progress_indicators = 1;
 static int terminal_width;
 static int textmode;
-static const char *newline = "\r\n";
-static const char *vendorname, *servername, *serverversion, *serverversions;
+static char *newline;
+static char *vendorname, *servername, *serverversion, *serverversions;
 static uint64_t serverbuild;
 static int stoponerror;
 static int echo;
@@ -365,26 +365,32 @@ static int sftp_init(void) {
     D(("server sent extension '%s'", xname));
     /* TODO table-driven extension parsing */
     if(!strcmp(xname, "newline")) {
+      free(newline);
       newline = xstrdup(xdata);
       if(!*newline)
         return error("cannot cope with empty newline sequence");
       /* TODO check newline sequence doesn't contain repeats */
     } else if(!strcmp(xname, "vendor-id")) {
       struct sftpjob xjob;
+      char *vn ,*sn, *sv;
       
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
-      cpcheck(sftp_parse_string(&xjob, (char **)&vendorname, 0));
-      cpcheck(sftp_parse_string(&xjob, (char **)&servername, 0));
-      cpcheck(sftp_parse_string(&xjob, (char **)&serverversion, 0));
+      cpcheck(sftp_parse_string(&xjob, &vn, 0));
+      cpcheck(sftp_parse_string(&xjob, &sn, 0));
+      cpcheck(sftp_parse_string(&xjob, &sv, 0));
       cpcheck(sftp_parse_uint64(&xjob, &serverbuild));
-      vendorname = xstrdup(vendorname);
-      servername = xstrdup(servername);
-      serverversion = xstrdup(serverversion);
-    } else if(!strcmp(xname, "versions"))
+      free(vendorname);
+      vendorname = xstrdup(vn);
+      free(servername);
+      servername = xstrdup(sn);
+      free(serverversion);
+      serverversion = xstrdup(sv);
+    } else if(!strcmp(xname, "versions")) {
+      free(serverversions);
       serverversions = xstrdup(xdata);
-    else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
+    } else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
       /* See commentary in v3.c */
       if(!strcmp(xdata,  "targetpath-linkpath"))
         quirk_reverse_symlink = 1;
@@ -2794,6 +2800,7 @@ int main(int argc, char **argv) {
 #endif
 
   setlocale(LC_ALL, "");
+  newline = xstrdup("\r\n");
 
   /* Figure out terminal width */
   {
