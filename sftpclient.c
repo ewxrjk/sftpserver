@@ -2352,18 +2352,18 @@ static int cmd_overlap(int attribute((unused)) ac,
   static const char d[] = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
   static const char expect[] = "aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
   char buffer[128];
-  int n, r;
+  int n, r, rc = -1;
   uint32_t ida, idb, idc, idd;
-  int fd;
+  int fd = -1;
   struct client_handle h;
 
   memset(&attrs, 0, sizeof attrs);
   if(sftp_open("dest", ACE4_WRITE_DATA,
                SSH_FXF_CREATE_TRUNCATE, &attrs, &h))
-    return -1;
+    goto error;
   if((fd = open("dest", O_RDWR)) < 0) {
     perror("open dest");
-    return -1;
+    goto error;
   }
   for(n = 0; n < 1024; ++n) {
     sftp_send_begin(&fakeworker);
@@ -2406,12 +2406,12 @@ static int cmd_overlap(int attribute((unused)) ac,
 
     if(lseek(fd, 0, SEEK_SET) < 0) {
       perror("lseek");
-      return -1;
+      goto error;
     }
     r = read(fd, buffer, sizeof buffer);
     if(r != 48+64) {
       fprintf(stderr, "expected %d bytes got %d\n", 48+64, r);
-      return -1;
+      goto error;
     }
     buffer[r] = 0;                      /* ensure buffer terminated */
     if(memcmp(buffer, expect, 48+64)) {
@@ -2419,15 +2419,18 @@ static int cmd_overlap(int attribute((unused)) ac,
               "expect: %s\n"
               "   got: %s\n",
               expect, buffer);
-      return -1;
+      goto error;
     }
     if(ftruncate(fd, 0) < 0) {
       perror("ftruncate");
-      return -1;
+      goto error;
     }
   }
-  close(fd);
-  return 0;
+  rc = 0;
+error:
+  if(fd >= 0)
+    close(fd);
+  return rc;
 }
 
 
