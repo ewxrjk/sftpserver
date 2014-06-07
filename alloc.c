@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -94,6 +94,7 @@ void *sftp_alloc(struct allocator *a, size_t n) {
   if(!m)
     return 0;
   assert(a != 0);
+  assert(m != SIZE_MAX);                /* ...and so m+1 > 0 */
   /* See if there's enough room */
   if(!(c = a->chunks) || c->left < m) {
     /* Make sure we allocate enough space */
@@ -101,8 +102,6 @@ void *sftp_alloc(struct allocator *a, size_t n) {
     /* xcalloc -> calloc which 0-fills */
     union block *nb;
 
-    if(!cs)
-      fatal("sftp_alloc: out of memory (%zu)", m);
     nb = xcalloc(cs, sizeof (union block));
     c = &nb->c;
     c->next = a->chunks;
