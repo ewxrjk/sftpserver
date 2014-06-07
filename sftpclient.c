@@ -2408,15 +2408,16 @@ static int cmd_overlap(int attribute((unused)) ac,
       perror("lseek");
       return -1;
     }
-    r = read(fd, buffer, 128);
+    r = read(fd, buffer, sizeof buffer);
     if(r != 48+64) {
       fprintf(stderr, "expected %d bytes got %d\n", 48+64, r);
       return -1;
     }
+    buffer[r] = 0;                      /* ensure buffer terminated */
     if(memcmp(buffer, expect, 48+64)) {
       fprintf(stderr, "buffer contents mismatch\n"
               "expect: %s\n"
-              "   got: %.112s\n",
+              "   got: %s\n",
               expect, buffer);
       return -1;
     }
