@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011 Richard Kettlewell
+# Copyright (C) 2007, 2011, 2014 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # USA
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT(sftpserver, 0.DEV, richard+sftpserver@sfere.greenend.org.uk)
+AC_INIT(sftpserver, 0.2, richard+sftpserver@sfere.greenend.org.uk)
 AC_CONFIG_AUX_DIR([config.aux])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([alloc.c])
