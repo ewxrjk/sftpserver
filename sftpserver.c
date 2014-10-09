@@ -50,6 +50,9 @@
 #include <stdio.h>
 #include <syslog.h>
 #include <netinet/in.h>
+#if HAVE_SYS_PRCTL_H
+# include <sys/prctl.h>
+#endif
 
 /* Linux and BSD have daemon() but other UNIX platforms tend not to */
 #if ! HAVE_DAEMON
@@ -494,6 +497,11 @@ int main(int argc, char **argv) {
    * signal disposition, they have a good reason for it.
    */
   signal(SIGPIPE, SIG_IGN);
+
+#if HAVE_PRCTL
+  if(prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) < 0)
+    fatal("error calling prctl: %s", strerror(errno));
+#endif
 
 #if DAEMON
   if(user) {
