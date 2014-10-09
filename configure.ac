@@ -17,7 +17,7 @@
 # USA
 
 # Process this file with autoconf to produce a configure script.
-AC_INIT(sftpserver, 0.2, richard+sftpserver@sfere.greenend.org.uk)
+AC_INIT(sftpserver, 0.2.1, richard+sftpserver@sfere.greenend.org.uk)
 AC_CONFIG_AUX_DIR([config.aux])
 AM_INIT_AUTOMAKE([foreign])
 AC_CONFIG_SRCDIR([alloc.c])
