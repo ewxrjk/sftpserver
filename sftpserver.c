@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2009, 2011 Richard Kettlewell
+ * Copyright (C) 2007, 2009, 2011, 2014 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -499,7 +499,7 @@ int main(int argc, char **argv) {
   signal(SIGPIPE, SIG_IGN);
 
 #if HAVE_PRCTL
-  if(prctl(PR_SET_DUMPABLE, 0, 0, 0, 0) < 0)
+  if(prctl(PR_SET_DUMPABLE, 0L) < 0)
     fatal("error calling prctl: %s", strerror(errno));
 #endif
 
