@@ -69,6 +69,7 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
   AC_CACHE_CHECK([for ${CC} warning options],[rjk_cv_ccwarnings],[
     if test "$GCC" = yes; then
       rjk_cv_ccwarnings="-Wall -W -Wpointer-arith -Wbad-function-cast \
+-Wno-type-limits \
 -Wwrite-strings -Wmissing-prototypes \
 -Wmissing-declarations -Wnested-externs"
     else
@@ -92,10 +93,10 @@ AC_DEFUN([RJK_GCC_WARNINGS],[
   AC_MSG_RESULT([$warnings])
   AC_MSG_CHECKING([whether to treat warnings as errors])
   AC_ARG_ENABLE([warnings-as-errors],
-                [AS_HELP_STRING([--enable-warnings-as-errors],
-                                [Treat compiler warnings as errors])],
+                [AS_HELP_STRING([--disable-warnings-as-errors],
+                                [Don't treat compiler warnings as errors])],
 		[warnings_as_errors="$enableval"],
-		[warnings_as_errors=no])
+		[warnings_as_errors=yes])
   AC_MSG_RESULT([$warnings_as_errors])
   if test "$warnings" = yes && test "$rjk_cv_ccwarnings" != unknown; then
     CC="${CC} $rjk_cv_ccwarnings"
