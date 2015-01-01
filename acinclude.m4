@@ -28,6 +28,14 @@ AC_DEFUN([RJK_BUILDSYS_FINK],[
   fi
 ])
 
+AC_DEFUN([RJK_ISCLANG],[
+  AC_CACHE_CHECK([whether compiling with Clang],[rjk_cv_isclang],[
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [[
+                      #ifndef __clang__
+                        not clang
+                      #endif]])],
+     [rjk_cv_isclang=yes], [rjk_cv_isclang=no])])])])])
+
 AC_DEFUN([RJK_BUILDSYS_MISC],[
   AC_CANONICAL_BUILD
   AC_CANONICAL_HOST
@@ -66,10 +74,16 @@ AC_DEFUN([RJK_BUILDSYS_MISC],[
 ])
 
 AC_DEFUN([RJK_GCC_WARNINGS],[
+  RJK_ISCLANG
   AC_CACHE_CHECK([for ${CC} warning options],[rjk_cv_ccwarnings],[
+    if test $rjk_cv_isclang = no; then
+      suppress=-Wno-type-limits
+    else
+      suppress=-Wno-tautological-constant-out-of-range-compare
+    fi
     if test "$GCC" = yes; then
       rjk_cv_ccwarnings="-Wall -W -Wpointer-arith -Wbad-function-cast \
--Wno-type-limits \
+$suppress \
 -Wwrite-strings -Wmissing-prototypes \
 -Wmissing-declarations -Wnested-externs"
     else
