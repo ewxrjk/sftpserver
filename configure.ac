@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011, 2014 Richard Kettlewell
+# Copyright (C) 2007, 2011, 2014, 2015 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@ AC_SET_MAKE
 RJK_BUILDSYS_MISC
 #RJK_GTKFLAGS
 AC_PROG_RANLIB
+AM_PROG_AR
 
 RJK_THREADS
 AC_CHECK_HEADERS([endian.h sys/prctl.h])
