@@ -196,13 +196,10 @@ AC_DEFUN([RJK_THREADS],[
         ;;
       esac
       ;;
-    linux* | freebsd* | darwin* )
+    * )
+      # Guess that unrecognized things are like Linux/BSD
       AC_MSG_RESULT([-lpthread])
       AC_CHECK_LIB([pthread],[pthread_create])
-      ;;
-    * )
-      AC_MSG_RESULT([unknown])
-      AC_MSG_ERROR([don't know how to build threaded code on this system])
       ;;
     esac
   fi
