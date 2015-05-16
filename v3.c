@@ -775,9 +775,9 @@ static const struct sftpcmd sftpv3tab[] = {
 };
 
 static const struct sftpextension v3_extensions[] = {
-  { "posix-rename@openssh.org", sftp_vany_posix_rename },
-  { "space-available", sftp_vany_space_available },
-  { "statfs@openssh.org", sftp_vany_statfs },
+  { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
+  { "space-available", "", sftp_vany_space_available },
+  { "statfs@openssh.org", "", sftp_vany_statfs },
 };
 
 const struct sftpprotocol sftp_v3 = {

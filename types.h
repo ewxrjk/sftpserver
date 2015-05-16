@@ -262,8 +262,11 @@ struct sftpcmd {
 
 /** @brief An SFTP extension request */
 struct sftpextension {
-  /** @brief Extension request name */
+  /** @brief Extension name */
   const char *name;
+
+  /** @brief Extension data */
+  const char *data;
 
   /** @brief Extension request handler */
   uint32_t (*handler)(struct sftpjob *job);

@@ -184,11 +184,11 @@ static const struct sftpcmd sftpv6tab[] = {
 /* TODO: file locking */
 
 static const struct sftpextension sftp_v6_extensions[] = {
-  { "posix-rename@openssh.org", sftp_vany_posix_rename },
-  { "space-available", sftp_vany_space_available },
-  { "statfs@openssh.org", sftp_vany_statfs },
-  { "text-seek", sftp_vany_text_seek },
-  { "version-select", sftp_v6_version_select },
+  { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
+  { "space-available", "", sftp_vany_space_available },
+  { "statfs@openssh.org", "", sftp_vany_statfs },
+  { "text-seek", "", sftp_vany_text_seek },
+  { "version-select", "", sftp_v6_version_select },
 };
 
 const struct sftpprotocol sftp_v6 = {
