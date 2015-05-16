@@ -169,6 +169,10 @@ static uint32_t sftp_init(struct sftpjob *job) {
   sftp_send_begin(job->worker);
   sftp_send_uint8(job->worker, SSH_FXP_VERSION);
   sftp_send_uint32(job->worker, protocol->version);
+  for(n = 0; n < protocol->nextensions; ++n) {
+    sftp_send_string(job->worker, protocol->extensions[n].name);
+    sftp_send_string(job->worker, protocol->extensions[n].data);
+  }
   if(protocol->version >= 4) {
     /* e.g. draft-ietf-secsh-filexfer-04.txt, 4.3.  This allows us to assume the
      * client always sends \n, freeing us from the burden of translating text
