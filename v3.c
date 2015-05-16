@@ -751,6 +751,81 @@ uint32_t sftp_vany_statfs(struct sftpjob *job) {
   return HANDLER_RESPONDED;
 }
 
+#ifdef __linux__
+static uint32_t sftp_vany_statvfs_send(struct sftpjob *job, int rc, struct statvfs *fs) {
+  if (rc < 0)
+    return HANDLER_ERRNO;
+  sftp_send_begin(job->worker);
+  sftp_send_uint8(job->worker, SSH_FXP_EXTENDED_REPLY);
+  sftp_send_uint32(job->worker, job->id);
+  sftp_send_uint64(job->worker, fs->f_bsize);
+  sftp_send_uint64(job->worker, fs->f_frsize);
+  sftp_send_uint64(job->worker, fs->f_blocks);
+  sftp_send_uint64(job->worker, fs->f_bfree);
+  sftp_send_uint64(job->worker, fs->f_bavail);
+  sftp_send_uint64(job->worker, fs->f_files);
+  sftp_send_uint64(job->worker, fs->f_ffree);
+  sftp_send_uint64(job->worker, fs->f_favail);
+  sftp_send_uint64(job->worker, fs->f_fsid);
+  sftp_send_uint64(job->worker, (fs->f_flag & ST_RDONLY ? 1 : 0) | (fs->f_flag & ST_NOSUID ? 2 : 0));
+  sftp_send_uint64(job->worker, fs->f_namemax);
+  sftp_send_end(job->worker);
+  return HANDLER_RESPONDED;
+}
+
+uint32_t sftp_vany_statvfs(struct sftpjob *job) {
+  char *path;
+  struct statvfs fs;
+
+  pcheck(sftp_parse_path(job, &path));
+  D(("sftp_vany_statfs %s", path));
+  return sftp_vany_statvfs_send(job, statvfs(path, &fs), &fs);
+}
+
+uint32_t sftp_vany_fstatvfs(struct sftpjob *job) {
+  int fd;
+  struct handleid id;
+  struct statvfs fs;
+  uint32_t rc;
+
+  pcheck(sftp_parse_handle(job, &id));
+  D(("sftp_vany_fstatvfs %"PRIu32" %"PRIu32, id.id, id.tag));
+  if((rc = sftp_handle_get_fd(&id, &fd, 0)))
+    return rc;
+  return sftp_vany_statvfs_send(job, fstatvfs(fd, &fs), &fs);
+}
+
+
+#endif
+
+uint32_t sftp_vany_fsync(struct sftpjob *job) {
+  int fd;
+  struct handleid id;
+  uint32_t rc;
+
+  pcheck(sftp_parse_handle(job, &id));
+  D(("sftp_v3_fstat %"PRIu32" %"PRIu32, id.id, id.tag));
+  if((rc = sftp_handle_get_fd(&id, &fd, 0)))
+    return rc;
+  if (fsync(fd) < 0)
+    return HANDLER_ERRNO;
+  return SSH_FX_OK;
+}
+
+uint32_t sftp_vany_hardlink(struct sftpjob *job) {
+  char *oldpath, *newlinkpath;
+
+  /* See also comment in v3.c for SSH_FXP_SYMLINK */
+  if(readonly)
+    return SSH_FX_PERMISSION_DENIED;
+  pcheck(sftp_parse_path(job, &oldpath));    /* aka existing-path/target-paths */
+  pcheck(sftp_parse_path(job, &newlinkpath));
+  D(("sftp_hardlink %s %s", oldpath, newlinkpath));
+  if(link(oldpath, newlinkpath) < 0)
+    return HANDLER_ERRNO;
+  return SSH_FX_OK;
+}
+
 static const struct sftpcmd sftpv3tab[] = {
   { SSH_FXP_INIT, sftp_vany_already_init },
   { SSH_FXP_OPEN, sftp_v34_open },
@@ -775,9 +850,16 @@ static const struct sftpcmd sftpv3tab[] = {
 };
 
 static const struct sftpextension v3_extensions[] = {
+  { "fsync@openssh.com", "1", sftp_vany_fsync },
+  { "hardlink@openssh.com", "1", sftp_vany_hardlink },
+  { "posix-rename@openssh.com", "1", sftp_vany_posix_rename },
   { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
   { "space-available", "", sftp_vany_space_available },
   { "statfs@openssh.org", "", sftp_vany_statfs },
+#ifdef __linux__
+  { "statvfs@openssh.com", "2", sftp_vany_statvfs },
+  { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
+#endif
 };
 
 const struct sftpprotocol sftp_v3 = {

@@ -477,10 +477,17 @@ static const struct sftpcmd sftpv5tab[] = {
 };
 
 static const struct sftpextension sftp_v5_extensions[] = {
+  { "fsync@openssh.com", "1", sftp_vany_fsync },
+  { "hardlink@openssh.com", "1", sftp_vany_hardlink },
+  { "posix-rename@openssh.com", "1", sftp_vany_posix_rename },
   { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
   { "space-available", "", sftp_vany_space_available },
   { "statfs@openssh.org", "", sftp_vany_statfs },
   { "text-seek", "", sftp_vany_text_seek },
+#ifdef __linux__
+  { "statvfs@openssh.com", "2", sftp_vany_statvfs },
+  { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
+#endif
 };
 
 const struct sftpprotocol sftp_v5 = {
