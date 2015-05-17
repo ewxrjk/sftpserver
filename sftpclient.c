@@ -90,6 +90,7 @@ static int echo;
 static uint32_t attrmask;
 static const char *rename_extension;
 static const char *hardlink_extension;
+static const char *statvfs_extension;
 
 const struct sftpprotocol *protocol = &sftp_v3;
 const char sendtype[] = "request";
@@ -446,6 +447,9 @@ static int sftp_init(void) {
     } else if(!strcmp(xname, "hardlink@openssh.com")
               && !strcmp(xdata, "1")) {
       hardlink_extension = "hardlink@openssh.com";
+    } else if(!strcmp(xname, "statvfs@openssh.com")
+              && !strcmp(xdata, "2")) {
+      statvfs_extension = "statvfs@openssh.com";
     }
   }
   /* Make sure outbound translation will actually work */
@@ -908,6 +912,48 @@ static int sftp_text_seek(const struct client_handle *hp, uint64_t line) {
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, id, "text-seek");
   return status();
+}
+
+struct statvfs_reply {
+  uint64_t bsize;
+  uint64_t frsize;
+  uint64_t blocks;
+  uint64_t bfree;
+  uint64_t bavail;
+  uint64_t files;
+  uint64_t ffree;
+  uint64_t favail;
+  uint64_t fsid;
+  uint64_t flags;
+  uint64_t namemax;
+};
+
+static int sftp_statvfs(const char *path,
+                        struct statvfs_reply *sr) {
+  uint32_t id;
+
+  remote_cwd();
+  if(!statvfs_extension)
+    return error("no statvfs extension found");
+  sftp_send_begin(&fakeworker);
+  sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  sftp_send_uint32(&fakeworker, id = newid());
+  sftp_send_string(&fakeworker, statvfs_extension);
+  sftp_send_path(&fakejob, &fakeworker, makeabspath(path));
+  sftp_send_end(&fakeworker);
+  getresponse(SSH_FXP_EXTENDED_REPLY, id, statvfs_extension);
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->bsize));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->frsize));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->blocks));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->bfree));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->bavail));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->files));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->ffree));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->favail));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->fsid));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->flags));
+  cpcheck(sftp_parse_uint64(&fakejob, &sr->namemax));
+  return 0;
 }
 
 /* Command line operations */
@@ -2372,6 +2418,22 @@ static int cmd_lstat(int attribute((unused)) ac,
   return 0;
 }
 
+static int cmd_statfs(int attribute((unused)) ac,
+                      char **av) {
+  struct statvfs_reply sr;
+
+  if(sftp_statvfs(av[0], &sr)) return -1;
+  xprintf("bsize %"PRIu64" frsize %"PRIu64
+          " id %"PRIx64" flags %"PRIx64" namemax %"PRIu64"\n"
+          "  blocks %9"PRIu64"/%-9"PRIu64" (%"PRIu64")\n"
+          "  files  %9"PRIu64"/%-9"PRIu64" (%"PRIu64")\n",
+          sr.bsize, sr.frsize,
+          sr.fsid, sr.flags, sr.namemax,
+          sr.bfree, sr.blocks, sr.bavail,
+          sr.ffree, sr.files, sr.favail);
+  return 0;
+}
+
 static int cmd_truncate(int attribute((unused)) ac,
                         char **av) {
   struct sftpattr attrs;
@@ -2683,6 +2745,11 @@ static const struct command commands[] = {
     "stat", 1, 1, cmd_stat,
     "PATH",
     "stat a file"
+  },
+  {
+    "statfs", 1, 1, cmd_statfs,
+    "PATH",
+    "stat a filesystem"
   },
   {
     "text", 0, 0, cmd_text,

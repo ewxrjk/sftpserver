@@ -1,0 +1,4 @@
+statfs .
+#bsize \d+ frsize \d+ id [0-9a-f]+ flags [0-9a-f]+ namemax \d+
+#  blocks  +\d+/\d+ +\(\d+\)
+#  files   +\d+/\d+ +\(\d+\)
