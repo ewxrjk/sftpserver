@@ -88,6 +88,7 @@ static uint64_t serverbuild;
 static int stoponerror;
 static int echo;
 static uint32_t attrmask;
+static const char *rename_extension;
 
 const struct sftpprotocol *protocol = &sftp_v3;
 const char sendtype[] = "request";
@@ -435,6 +436,12 @@ static int sftp_init(void) {
         cpcheck(sftp_parse_string(&xjob, 0, 0)); /* extension-names */
         --u32;
       }
+    } else if(!strcmp(xname, "posix-rename@openssh.com")
+              && !strcmp(xdata, "1")) {
+      rename_extension = "posix-rename@openssh.com";
+    } else if(!strcmp(xname, "posix-rename@openssh.org")
+              && !rename_extension) {
+      rename_extension = "posix-rename@openssh.com";
     }
   }
   /* Make sure outbound translation will actually work */
@@ -682,14 +689,16 @@ static int sftp_prename(const char *oldpath, const char *newpath) {
   uint32_t id;
   
   remote_cwd();
+  if(!rename_extension)
+    return error("no posix-rename extension found");
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   sftp_send_uint32(&fakeworker, id = newid());
-  sftp_send_string(&fakeworker, "posix-rename@openssh.org");
+  sftp_send_string(&fakeworker, rename_extension);
   sftp_send_path(&fakejob, &fakeworker, makeabspath(oldpath));
   sftp_send_path(&fakejob, &fakeworker, makeabspath(newpath));
   sftp_send_end(&fakeworker);
-  getresponse(SSH_FXP_STATUS, id, "posix-rename@openssh.org");
+  getresponse(SSH_FXP_STATUS, id, rename_extension);
   return status();
 }
 
