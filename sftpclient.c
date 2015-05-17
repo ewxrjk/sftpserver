@@ -89,6 +89,7 @@ static int stoponerror;
 static int echo;
 static uint32_t attrmask;
 static const char *rename_extension;
+static const char *hardlink_extension;
 
 const struct sftpprotocol *protocol = &sftp_v3;
 const char sendtype[] = "request";
@@ -442,6 +443,9 @@ static int sftp_init(void) {
     } else if(!strcmp(xname, "posix-rename@openssh.org")
               && !rename_extension) {
       rename_extension = "posix-rename@openssh.com";
+    } else if(!strcmp(xname, "hardlink@openssh.com")
+              && !strcmp(xdata, "1")) {
+      hardlink_extension = "hardlink@openssh.com";
     }
   }
   /* Make sure outbound translation will actually work */
@@ -702,13 +706,33 @@ static int sftp_prename(const char *oldpath, const char *newpath) {
   return status();
 }
 
+static int sftp_hardlink(const char *targetpath, const char *linkpath) {
+  uint32_t id;
+
+  remote_cwd();
+  if(!hardlink_extension)
+    return error("no hardlink extension found");
+  sftp_send_begin(&fakeworker);
+  sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
+  sftp_send_uint32(&fakeworker, id = newid());
+  sftp_send_string(&fakeworker, hardlink_extension);
+  sftp_send_path(&fakejob, &fakeworker, makeabspath(targetpath));
+  sftp_send_path(&fakejob, &fakeworker, makeabspath(linkpath));
+  sftp_send_end(&fakeworker);
+  getresponse(SSH_FXP_STATUS, id, hardlink_extension);
+  return status();
+}
+
 static int sftp_link(const char *targetpath, const char *linkpath,
                      int sftp_send_symlink) {
   uint32_t id;
   
-  if(protocol->version < 6 && !sftp_send_symlink)
+  if(protocol->version < 6 && !sftp_send_symlink) {
+    if(hardlink_extension)
+      return sftp_hardlink(targetpath, linkpath);
     return error("hard links not supported in protocol %"PRIu32,
                  protocol->version);
+  }
   remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, (protocol->version >= 6

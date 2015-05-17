@@ -1,0 +1,10 @@
+!mkdir dir
+put /dev/null foo
+put /dev/null wibble
+link foo bar
+ls -l bar
+#-rw-r--r-- +\? +\S+ +\S+ +0 +[a-zA-Z]+ \d+ \d+:\d+ bar
+link wibble bar
+#.*File exists \(operation failed\).*
+link dir spong
+#.*Operation not permitted \(permission denied\).*
