@@ -241,8 +241,8 @@ const char *sftp_format_attr(struct allocator *a,
 	  size, date, attrs->name,
           attrs->target ? " -> " : "",
           attrs->target ? attrs->target : "",
-          flags & FORMAT_ATTRS ? " " : "",
-          flags & FORMAT_ATTRS ? bits : "");
+          bits ? " " : "",
+          bits ? bits : "");
   return formatted;
 }
 
