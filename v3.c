@@ -751,7 +751,6 @@ uint32_t sftp_vany_statfs(struct sftpjob *job) {
   return HANDLER_RESPONDED;
 }
 
-#ifdef __linux__
 static uint32_t sftp_vany_statvfs_send(struct sftpjob *job, int rc, struct statvfs *fs) {
   if (rc < 0)
     return HANDLER_ERRNO;
@@ -794,9 +793,6 @@ uint32_t sftp_vany_fstatvfs(struct sftpjob *job) {
     return rc;
   return sftp_vany_statvfs_send(job, fstatvfs(fd, &fs), &fs);
 }
-
-
-#endif
 
 uint32_t sftp_vany_fsync(struct sftpjob *job) {
   int fd;
@@ -856,10 +852,8 @@ static const struct sftpextension v3_extensions[] = {
   { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
   { "space-available", "", sftp_vany_space_available },
   { "statfs@openssh.org", "", sftp_vany_statfs },
-#ifdef __linux__
   { "statvfs@openssh.com", "2", sftp_vany_statvfs },
   { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
-#endif
 };
 
 const struct sftpprotocol sftp_v3 = {

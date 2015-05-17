@@ -291,10 +291,8 @@ static const struct sftpextension v4_extensions[] = {
   { "space-available", "", sftp_vany_space_available },
   { "statfs@openssh.org", "", sftp_vany_statfs },
   { "text-seek", "", sftp_vany_text_seek },
-#ifdef __linux__
   { "statvfs@openssh.com", "2", sftp_vany_statvfs },
   { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
-#endif
 };
 
 const struct sftpprotocol sftp_v4 = {

@@ -340,7 +340,6 @@ uint32_t sftp_vany_posix_rename(struct sftpjob *job);
  */
 uint32_t sftp_vany_statfs(struct sftpjob *job);
 
-#ifdef __linux__
 /** @brief @c fstatvfs@openssh.com extension implementation
  * @param job Job
  * @return Error code
@@ -352,7 +351,6 @@ uint32_t sftp_vany_fstatvfs(struct sftpjob *job);
  * @return Error code
  */
 uint32_t sftp_vany_statvfs(struct sftpjob *job);
-#endif
 
 /** @brief Send an @ref SSH_FXP_STATUS message based on @c errno
  * @param job Job
