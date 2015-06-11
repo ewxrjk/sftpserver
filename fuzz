@@ -1,0 +1,11 @@
+#! /bin/sh
+set -e
+AFL_HARDEN=1; export AFL_HARDEN
+AFL_USE_ASAN=1; export AFL_USE_ASAN
+./configure --disable-shared CXX="afl-clang-fast++ -m32" CC="afl-clang-fast -m32"
+make clean gesftpserver
+mkdir -p fuzzing/gesftpserver/testcase_dir
+mkdir -p fuzzing/gesftpserver/findings_dir
+afl-fuzz -m 800 -i fuzzing/gesftpserver/testcase_dir \
+         -o fuzzing/gesftpserver/findings_dir -- \
+         ./gesftpserver
