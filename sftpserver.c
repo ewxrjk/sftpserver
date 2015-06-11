@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2009, 2011, 2014 Richard Kettlewell
+ * Copyright (C) 2007, 2009, 2011, 2014, 2015 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -53,6 +53,9 @@
 #if HAVE_SYS_PRCTL_H
 # include <sys/prctl.h>
 #endif
+#include <time.h>
+#include <unistd.h>
+#include <fcntl.h>
 
 /* Linux and BSD have daemon() but other UNIX platforms tend not to */
 #if ! HAVE_DAEMON
@@ -627,6 +630,22 @@ int main(int argc, char **argv) {
 #endif
 }
 
+#if LOG_INPUT
+static int sftp_input_log_fd;
+
+static int sftp_logged_read(int fd, void *buffer, size_t size) {
+  int rc = do_read(fd, buffer, size);
+  if(!rc) {
+    int n = write(sftp_input_log_fd, buffer, size);
+    if(n < 0)
+      fatal("writing to log: %s", strerror(errno));
+    if((size_t)n < size)
+      fatal("writing to log: truncated");
+  }
+  return rc;
+}
+#endif
+
 /** @brief Process SFTP requests
  *
  * Requests are always read from FD 0 and responses written to FD 1.
@@ -635,18 +654,31 @@ static void sftp_service(void) {
   uint32_t len;
   struct sftpjob *job;
   struct allocator a;
-  void *const wdv = worker_init(); 
+  void *const wdv = worker_init();
+  int (*reader)(int, void *, size_t) = do_read;
+#if LOG_INPUT
+  const char *s = getenv("SFTPSERVER_INPUT_LOG_DIR");
+  if(s) {
+    char path[1024];
+    snprintf(path, sizeof path, "%s/%llx%lx", s,
+             (unsigned long long)time(0), (unsigned long)getpid());
+    sftp_input_log_fd = open(path, O_CREAT|O_WRONLY|O_EXCL, 0666);
+    if(sftp_input_log_fd < 0)
+      fatal("opening %s: %s", path, strerror(errno));
+    reader = sftp_logged_read;
+  }
+#endif
   D(("gesftpserver %s starting up", VERSION));
   /* draft -13 s7.6 "The server SHOULD NOT apply a 'umask' to the mode
    * bits". */
   umask(0);
-  while(!do_read(0, &len, sizeof len)) {
+  while(!reader(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
     if(!job->len || job->len > MAXREQUEST)
       fatal("invalid request size");
     job->data = xmalloc(job->len);
-    if(do_read(0, job->data, job->len))
+    if(reader(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
       fatal("read error: unexpected eof");
