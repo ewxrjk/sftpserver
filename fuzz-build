@@ -1,0 +1,9 @@
+#! /bin/sh
+set -e
+AFL_HARDEN=1; export AFL_HARDEN
+#AFL_USE_ASAN=1; export AFL_USE_ASAN
+./configure --disable-shared \
+            --with-threads=1 \
+            CXX="afl-clang-fast++" CC="afl-clang-fast"
+make clean
+make
