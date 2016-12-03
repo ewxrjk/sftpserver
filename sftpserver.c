@@ -98,6 +98,7 @@ static const struct option options[] = {
   { "debug-file", required_argument, 0, 'D' },
 #if DAEMON
   { "chroot", required_argument, 0, 'r' },
+  { "chdir", required_argument, 0, 'C' },
   { "user", required_argument, 0, 'u' },
   { "listen", required_argument, 0, 'L' },
   { "host", required_argument, 0, 'H' },
@@ -121,6 +122,7 @@ static void help(void) {
           "  --version, -V            Display version number\n"
 #if DAEMON
           "  --chroot, -r PATH        Change root to PATH\n"
+          "  --chdir, -C PATH         Change directory to PATH\n"
           "  --user, -u USER          Change to user USER\n"
           "  --listen, -L PORT        Listen on PORT\n"
           "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
@@ -437,7 +439,7 @@ int main(int argc, char **argv) {
 #if DAEMON
   iconv_t cd;
   int listenfd = -1;
-  const char *root = 0, *user = 0;
+  const char *root = 0, *user = 0, *dir = 0;
   struct passwd *pw = 0;
   const char *host = 0, *port = 0;
   int daemonize = 0;
@@ -469,7 +471,7 @@ int main(int argc, char **argv) {
   setlocale(LC_CTYPE, "");
   local_encoding = nl_langinfo(CODESET);
   
-  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46R",
+  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46RC:",
 			 options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
@@ -484,6 +486,7 @@ int main(int argc, char **argv) {
     case 'b': daemonize = 1; break;
     case '4': hints.ai_family = PF_INET; break;
     case '6': hints.ai_family = PF_INET6; break;
+    case 'C': dir = optarg; break;
 #endif
     case 'R': readonly = 1; break;
     default: exit(1);
@@ -571,6 +574,12 @@ int main(int argc, char **argv) {
       fatal("error calling chdir %s: %s", root, strerror(errno));
     if(chroot(".") < 0)
       fatal("error calling chroot: %s", strerror(errno));
+  }
+
+  if(dir) {
+    /* Enter our directory */
+    if(chdir(dir) < 0)
+      fatal("error calling chdir %s: %s", dir, strerror(errno));
   }
 
   if(user) {
