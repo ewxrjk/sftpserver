@@ -8,5 +8,5 @@ set -e
 make clean
 make
 mkdir -p fuzzing/gesftpserver/testcase_dir
-SFTPSERVER_INPUT_LOG_DIR=$(pwd)/fuzzing/gesftpserver/testcase_dir
+export SFTPSERVER_INPUT_LOG_DIR=$(pwd)/fuzzing/gesftpserver/testcase_dir
 make check
