@@ -137,6 +137,8 @@ uint32_t sftp_handle_get_dir(const struct handleid *id,
 uint32_t sftp_handle_close(const struct handleid *id) {
   uint32_t rc;
 
+  if(!id->tag)
+    return SSH_FX_INVALID_HANDLE;
   ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   if(id->id < nhandles
      && id->tag == handles[id->id].tag) {
@@ -158,6 +160,7 @@ uint32_t sftp_handle_close(const struct handleid *id) {
       rc = SSH_FX_INVALID_HANDLE;
     }
     free(handles[id->id].path);
+    handles[id->id].path = NULL;
   }
   else
     rc = SSH_FX_INVALID_HANDLE;
