@@ -131,6 +131,12 @@ static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   memset(attrs, 0, sizeof *attrs);
   if((rc = sftp_parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
     return rc;
+  if((attrs->valid & protocol->attrmask) != attrs->valid) {
+    D(("received attrs %#x but protocol %d only supports %#x",
+       attrs->valid, protocol->version, protocol->attrmask));
+    attrs->valid = 0;
+    return SSH_FX_BAD_MESSAGE;
+  }
   /* Translate v3 bits t v4+ bits */
   if(attrs->valid & SSH_FILEXFER_ACMODTIME)
     attrs->valid |= (SSH_FILEXFER_ATTR_ACCESSTIME
