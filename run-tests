@@ -47,6 +47,7 @@ os.umask(022)                           # for consistent permissions
 failed = 0
 protocols = ['2', '3', '4', '5', '6', '7']
 dir = 'tests'
+debug = 'DEBUG' in os.environ
 
 args = sys.argv[1:]
 while len(args) > 0 and args[0][0] == '-':
@@ -59,6 +60,9 @@ while len(args) > 0 and args[0][0] == '-':
     elif args[0] == "--directory":
         dir = args[1]
         args = args[2:]
+    elif args[0] == "--debug":
+        debug = True
+        args = args[1:]
     else:
         fatal("unknown option '%s'" % args[0])
 
@@ -84,13 +88,17 @@ for test in tests:
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         os.makedirs(root)
         os.chdir(root)
-        output = Popen([client,
-                        "--force-version", proto,
-                        "-P", server,
-                        "-b", os.path.join(srcdir, dir, test),
-                        '--echo',
-                        '--fix-sigpipe',   # stupid Python
-                        '--no-stop-on-error'],
+        clientcmd=[client,
+                   "--force-version", proto,
+                   "-P", server,
+                   "-b", os.path.join(srcdir, dir, test),
+                   '--echo',
+                   '--fix-sigpipe',   # stupid Python
+                   '--no-stop-on-error']
+        if debug:
+            clientcmd+=["--program-debug-path",
+                        "%s/%s-%s.debug" % (builddir, test, proto)]
+        output = Popen(clientcmd,
                        stdout=PIPE,
                        stderr=STDOUT).communicate()[0].split('\n')
         if output[len(output)-1] == "":

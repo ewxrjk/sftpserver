@@ -100,6 +100,7 @@ static size_t buffersize = 32768;
 static int nrequests = 16;
 static const char *subsystem;
 static const char *program;
+static const char *program_debugpath;
 static const char *batchfile;
 static int sshversion;
 static int compress;
@@ -133,6 +134,7 @@ static const struct option options[] = {
   { "force-version", required_argument, 0, 263 },
   { "debug", no_argument, 0, 'd' },
   { "debug-path", required_argument, 0, 'D' },
+  { "program-debug-path", required_argument, 0, 264 },
   { "host", required_argument, 0, 'H' },
   { "port", required_argument, 0, 'p' },
   { "ipv4", no_argument, 0, '4' },
@@ -2943,6 +2945,7 @@ int main(int argc, char **argv) {
     case 261: echo = 1; break;
     case 262: signal(SIGPIPE, SIG_DFL); break; /* stupid python */
     case 263: sftpversion = atoi(optarg); forceversion = 1; break;
+    case 264: program_debugpath = optarg; break;
     case 'H': host = optarg; break;
     case 'p': port = optarg; break;
 #if HAVE_GETADDRINFO
@@ -2995,6 +2998,10 @@ int main(int argc, char **argv) {
 
     if(program) {
       cmdline[ncmdline++] = program;
+      if(program_debugpath) {
+        cmdline[ncmdline++] = "-D";
+        cmdline[ncmdline++] = program_debugpath;
+      }
     } else {
       if(optind >= argc)
         fatal("missing USER@HOST argument");
