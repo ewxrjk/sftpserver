@@ -1,0 +1,10 @@
+put /dev/null file
+ls -1 file
+#file
+rm file
+ls -1 file
+#.*file does not exist.*
+rm nonesuch
+#.*file does not exist.*
+rm ""
+#.*operation failed

@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2016 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -118,10 +118,19 @@ uint32_t sftp_v6_link(struct sftpjob *job) {
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
   pcheck(sftp_parse_path(job, &newlinkpath));
-  pcheck(sftp_parse_path(job, &oldpath));    /* aka existing-path/target-paths */
+  pcheck(sftp_parse_string(job, &oldpath, 0));    /* aka existing-path/target-paths */
   pcheck(sftp_parse_uint8(job, &symbolic));
   D(("sftp_link %s %s [%s]", oldpath, newlinkpath,
      symbolic ? "symbolic" : "hard"));
+  if(symbolic && strlen(oldpath) == 0) {
+    /* Empty paths are supposed to refer to the default directory.  For a
+     * symbolic link target this could mean "." or it could mean the full path
+     * to it.  Rather than make a decision we reject this case. */
+    D(("sftp_v6_link rejecting empty oldpath"));
+    sftp_send_status(job, SSH_FX_FAILURE, "link target too short");
+    return HANDLER_RESPONDED;
+  }
+  pcheck(protocol->decode(job, &oldpath));
   if((symbolic ? symlink : link)(oldpath, newlinkpath) < 0) {
     switch(errno) {
     case EPERM:

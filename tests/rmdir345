@@ -6,3 +6,5 @@ rm nonempty
 #.*operation failed.*
 rmdir nonempty
 #.*operation failed.*
+rmdir ""
+#.*operation failed.*

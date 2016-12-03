@@ -17,3 +17,5 @@ ls -ld fixedperms
 #.*file does not exist.*
 rmdir defprems
 #.*file does not exist.*
+mkdir 2700 ""
+#.*operation failed.*

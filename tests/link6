@@ -8,3 +8,7 @@ link wibble bar
 #.*file already exists.*
 link dir spong
 #.*file is a directory.*
+link "" spong
+#.*file is a directory.*
+link dir ""
+#.*file already exists.*

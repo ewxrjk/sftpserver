@@ -2,3 +2,5 @@ put /dev/null foo
 symlink notexist foo
 #.*file already exists.*
 symlink foo notexist
+symlink "" bar
+#.*operation failed

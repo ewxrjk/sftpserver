@@ -23,3 +23,5 @@ mv nowritedir/file cant_rm_source
 #.*permission denied.*
 mv -o a b
 #.*cannot emulate rename flags \S+ in protocol \d
+mv "" anything
+#.*operation failed

@@ -28,3 +28,5 @@ mv -o dir2 nowritedir/spong
 #.*permission denied.*
 mv nowritedir/file cant_rm_source
 #.*permission denied.*
+mv "" anything
+#.*operation failed

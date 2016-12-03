@@ -4,3 +4,7 @@ get dir
 #.*operation failed.*
 put foo dir
 #.*operation failed.*
+get ""
+#.*operation failed.*
+put foo ""
+#.*operation failed.*

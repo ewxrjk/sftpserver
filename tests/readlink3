@@ -11,3 +11,6 @@ readlink noreadperm/b
 !ln -s afairlylonglinkbutwerestillgoingtohavetomakethebufferartificiallysmall t
 readlink t
 #afairlylonglinkbutwerestillgoingtohavetomakethebufferartificiallysmall
+readlink ""
+#.*operation failed
+

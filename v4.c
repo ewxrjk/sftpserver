@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) 2007, 2016 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -39,6 +39,9 @@ int sftp_v456_encode(struct sftpjob *job,
 
 uint32_t sftp_v456_decode(struct sftpjob *job, 
                      char **path) {
+  /* Empty path means default directory */
+  if(!**path)
+    *path = (char *)".";
   /* Translate UTF-8 to local */
   if(sftp_iconv(job->a, job->worker->utf8_to_local, path))
     return SSH_FX_INVALID_FILENAME;

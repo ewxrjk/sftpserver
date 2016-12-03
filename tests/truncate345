@@ -1,0 +1,6 @@
+!if type seq >/dev/null 2>/dev/null; then seq 999; else jot 999; fi > f999
+!if type seq >/dev/null 2>/dev/null; then seq 100; else jot 100; fi > f100
+truncate 292 f999
+!diff -u f100 f999
+truncate 100 ""
+#.*operation failed
