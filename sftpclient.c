@@ -2837,9 +2837,9 @@ static void process(const char *prompt, FILE *fp) {
     }
     if(line[0] == '!') {
       if(line[1] != '\n')
-        system(line + 1);
+        (void)system(line + 1);
       else
-        system(getenv("SHELL"));
+        (void)system(getenv("SHELL"));
       goto next;
     }
     if((ac = split(line, av = avbuf)) < 0) {
