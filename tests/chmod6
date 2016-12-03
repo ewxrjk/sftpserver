@@ -7,3 +7,6 @@ ls -l output
 #-rw------- +1 +\S+ +\S+ +0 +[a-zA-Z]+ +\d+ +\d+:\d\d output
 chmod 600 nosuchfile
 #.*file does not exist.*
+chmod 700 ""
+ls -ld ""
+#drwx------ +\d+ +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d\d .*

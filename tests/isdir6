@@ -4,3 +4,7 @@ get dir
 #.*file is a directory.*
 put foo dir
 #.*file is a directory.*
+get ""
+#.*file is a directory.*
+put foo ""
+#.*file is a directory.*

@@ -56,7 +56,10 @@ int sftp_v3_encode(struct sftpjob attribute((unused)) *job,
 }
 
 static uint32_t v3_decode(struct sftpjob attribute((unused)) *job, 
-                          char attribute((unused)) **path) {
+                          char **path) {
+  /* Empty path means default directory */
+  if(!**path)
+    *path = (char *)".";
   return SSH_FX_OK;
 }
 
@@ -327,13 +330,22 @@ uint32_t sftp_v345_symlink(struct sftpjob *job) {
    * extension documenting server behaviour is sent in that case too.
    */
   if(reverse_symlink) {
-    pcheck(sftp_parse_path(job, &targetpath));
+    pcheck(sftp_parse_string(job, &targetpath, 0));
     pcheck(sftp_parse_path(job, &linkpath));
   } else {
     pcheck(sftp_parse_path(job, &linkpath));
-    pcheck(sftp_parse_path(job, &targetpath));
+    pcheck(sftp_parse_string(job, &targetpath, 0));
   }
   D(("sftp_v345_symlink %s %s", targetpath, linkpath));
+  if(strlen(targetpath) == 0) {
+    /* Empty paths are supposed to refer to the default directory.  For a
+     * symbolic link target this could mean "." or it could mean the full path
+     * to it.  Rather than make a decision we reject this case. */
+    D(("sftp_v345_symlink rejecting empty targetpath"));
+    sftp_send_status(job, SSH_FX_FAILURE, "link target too short");
+    return HANDLER_RESPONDED;
+  }
+  pcheck(protocol->decode(job, &targetpath));
   if(symlink(targetpath, linkpath) < 0)
     return HANDLER_ERRNO;
   else

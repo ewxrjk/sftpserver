@@ -8,3 +8,6 @@ realpath spong/./wibble/
 #.*/spong/wibble
 realpath spong/../wibble/
 #.*/wibble
+realpath ""
+#.*/realpath3456\..
+

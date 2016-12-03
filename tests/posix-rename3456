@@ -14,3 +14,5 @@ ls -1 otherfile
 #otherfile
 mv -p nosuchfile anything
 #.*file does not exist.*
+mv -p "" anything
+#.*operation failed

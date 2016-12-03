@@ -415,7 +415,7 @@ uint32_t sftp_vany_space_available(struct sftpjob *job) {
   char *path;
   struct statvfs fs;
 
-  pcheck(sftp_parse_string(job, &path, 0));
+  pcheck(sftp_parse_path(job, &path));
   D(("sftp_space_available %s", path));
   if(statvfs(path, &fs) < 0)
     return HANDLER_ERRNO;

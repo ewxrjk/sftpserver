@@ -8,3 +8,7 @@ link wibble bar
 #.*file already exists.*
 link dir spong
 #.*Operation not permitted \(permission denied\).*
+link "" spong
+#.*Operation not permitted \(permission denied\).*
+link dir ""
+#.*file already exists

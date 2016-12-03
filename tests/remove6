@@ -6,3 +6,5 @@ ls -1 file
 #.*file does not exist.*
 rm nonesuch
 #.*file does not exist.*
+rm ""
+#.*is a directory

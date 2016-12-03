@@ -28,3 +28,5 @@ stat dir
 chmod 7000 dir
 stat dir
 #d--S--S--T +\? +\S+ +\S+ +\d+ +[a-zA-Z]+ +\d+ +\d+:\d+ dir
+stat ""
+#drwx.*

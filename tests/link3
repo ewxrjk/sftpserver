@@ -8,3 +8,7 @@ link wibble bar
 #.*File exists \(operation failed\).*
 link dir spong
 #.*Operation not permitted \(permission denied\).*
+link "" spong
+#.*Operation not permitted \(permission denied\).*
+link dir ""
+#.*operation failed
