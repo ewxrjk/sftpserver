@@ -22,7 +22,9 @@
 #include "types.h"
 #include "globals.h"
 
+#if NTHREADS > 1
 struct queue *workqueue = 0;
+#endif
 
 /*
 Local Variables:

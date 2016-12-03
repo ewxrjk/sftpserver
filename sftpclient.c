@@ -18,6 +18,7 @@
  * USA
  */
 
+#define CLIENT 1
 #include "sftpclient.h"
 #include "utils.h"
 #include "xfns.h"

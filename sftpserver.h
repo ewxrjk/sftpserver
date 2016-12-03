@@ -52,6 +52,11 @@
 # define DEFAULT_PERMISSIONS 0755
 #endif
 
+#ifndef NTHREADS
+/** @brief Number of threads */
+# define NTHREADS 4
+#endif
+
 /** @brief Send an @ref SSH_FXP_STATUS message
  * @param job Job
  * @param status Status code

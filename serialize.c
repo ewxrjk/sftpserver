@@ -87,11 +87,13 @@ struct sqnode {
 /** @brief The newest job in the queue */
 static struct sqnode *newest;
 
+#if NTHREADS > 1
 /** @brief Lock protecting the serialization queue */
 static pthread_mutex_t sq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /** @brief Condition variable signaling changes to the queue */
 static pthread_cond_t sq_cond = PTHREAD_COND_INITIALIZER;
+#endif
 
 /** @brief Test whether two handles are identical
  * @param h1 Handle

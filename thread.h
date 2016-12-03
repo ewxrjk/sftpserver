@@ -26,6 +26,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
+#if NTHREADS > 1 || CLIENT
 /** @brief Error-checking macro for @c pthread_... functions */
 #define ferrcheck(E) do {                                       \
   const int frc = (E);                                          \
@@ -35,6 +36,9 @@
     exit(1);                                                    \
   }                                                             \
 } while(0)
+#else
+#define ferrcheck(E) (void)0
+#endif
 
 #endif /* THREAD_H */
 

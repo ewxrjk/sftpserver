@@ -53,8 +53,10 @@ static size_t nhandles;
 /** @brief Next sequence number */
 static uint32_t sequence;
 
+#if NTHREADS > 1
 /** @brief Lock protecting handles data structure */
 static pthread_mutex_t sftp_handle_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 /** @brief Find a free slot in @ref handles
  * @param id Where to store handle

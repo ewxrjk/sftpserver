@@ -25,6 +25,8 @@
 
 struct allocator;
 
+#if NTHREADS > 1
+
 /** @brief Queue-specific callbacks */
 struct queuedetails {
   /** @brief Per-thread initialization
@@ -68,6 +70,8 @@ void queue_add(struct queue *q, void *job);
  *
  * All unprocessed jobs are executed before completion. */
 void queue_destroy(struct queue *q);
+
+#endif
 
 #endif /* QUEUE_H */
 

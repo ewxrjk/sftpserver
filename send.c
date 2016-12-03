@@ -36,8 +36,10 @@
 #include <unistd.h>
 #include "putword.h"
 
+#if NTHREADS > 1
 /** @brief Mutex to serialize IO */
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif
 
 int sftpout = 1;                        /* default is stdout */
 
