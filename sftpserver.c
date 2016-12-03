@@ -77,12 +77,14 @@ static void sftp_service(void);
 /** @brief Local character encoding */
 static const char *local_encoding;
 
+#if NTHREADS > 1
 /** @brief Queue-specific callbacks for processing SFTP requests */
 static const struct queuedetails workqueue_details = {
   worker_init,
   process_sftpjob,
   worker_cleanup
 };
+#endif
 
 const struct sftpprotocol *protocol = &sftp_preinit;
 const char sendtype[] = "response";
@@ -275,13 +277,15 @@ static uint32_t sftp_init(struct sftpjob *job) {
     sftp_send_string(job->worker, "linkpath-targetpath");
   }
   sftp_send_end(job->worker);
+#if NTHREADS > 1
   if(protocol->version < 6) {
     /* Now we are initialized we can safely process other jobs in the
      * background.  We can't do this for v6 because the first request might be
      * version-select. */
     D(("normal work queue creation"));
-    queue_init(&workqueue, &workqueue_details, 4);
+    queue_init(&workqueue, &workqueue_details, NTHREADS);
   }
+#endif
   return HANDLER_RESPONDED;
 }
 
@@ -404,13 +408,15 @@ done:
   serialize_remove_job(job);
   free(job->data);
   free(job);
+#if NTHREADS > 1
   if(type != SSH_FXP_INIT && workqueue == 0) {
     /* This must have been the first job after initializing to version 6.  It
      * might or might not have been version-select but either way it's now safe
      * to go multithreaded. */
     D(("late work queue creation"));
-    queue_init(&workqueue, &workqueue_details, 4);
+    queue_init(&workqueue, &workqueue_details, NTHREADS);
   }
+#endif
   return;
 }
 
@@ -690,16 +696,20 @@ static void sftp_service(void) {
     queue_serializable_job(job);
     /* We process the job in a background thread, except that the background
      * threads don't exist until SSH_FXP_INIT has succeeded. */
-    if(workqueue)
+#if NTHREADS > 1
+    if(workqueue) {
       queue_add(workqueue, job);
-    else {
-      sftp_alloc_init(&a);
-      process_sftpjob(job, wdv, &a);
-      sftp_alloc_destroy(&a);
+      continue;
     }
+#endif
+    sftp_alloc_init(&a);
+    process_sftpjob(job, wdv, &a);
+    sftp_alloc_destroy(&a);
     /* process_sftpjob() frees JOB when it has finished with it */
   }
+#if NTHREADS > 1
   queue_destroy(workqueue);
+#endif
   worker_cleanup(wdv);
 }
 

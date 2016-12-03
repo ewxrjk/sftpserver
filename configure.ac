@@ -78,6 +78,13 @@ if test $daemon = yes; then
   AC_DEFINE([DAEMON],[1],[define to enable daemon mode])
 fi
 
+AC_ARG_WITH([threads],
+            [AS_HELP_STRING([--with-threads=N],
+                            [Number of runtime threads])],
+            [nthreads="${withval}"],
+            [nthreads=4])
+AC_DEFINE_UNQUOTED([NTHREADS],[$nthreads],[Number of runtime threads])
+
 RJK_GCOV
 
 AC_CONFIG_FILES([Makefile])
