@@ -1,5 +1,6 @@
 #! /bin/sh
 set -e
+[ -x configure ] || ./autogen.sh
 AFL_HARDEN=1; export AFL_HARDEN
 #AFL_USE_ASAN=1; export AFL_USE_ASAN
 ./configure --disable-shared \

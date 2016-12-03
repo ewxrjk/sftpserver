@@ -3,6 +3,7 @@
 # Run the test suite to generate some sample inputs
 #
 set -e
+[ -x configure ] || ./autogen.sh
 ./configure CPPFLAGS=-DLOG_INPUT
 make clean
 make
