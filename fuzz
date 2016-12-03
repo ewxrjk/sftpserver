@@ -2,6 +2,8 @@
 set -e
 mkdir -p fuzzing/gesftpserver/testcase_dir
 mkdir -p fuzzing/gesftpserver/findings_dir
+rm -rf fuzzing/work
+mkdir -p fuzzing/work
 afl-fuzz -i fuzzing/gesftpserver/testcase_dir \
          -o fuzzing/gesftpserver/findings_dir -- \
-         ./gesftpserver
+         ./gesftpserver -C fuzzing/work

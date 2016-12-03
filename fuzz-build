@@ -5,6 +5,7 @@ AFL_HARDEN=1; export AFL_HARDEN
 #AFL_USE_ASAN=1; export AFL_USE_ASAN
 ./configure --disable-shared \
             --with-threads=1 \
-            CXX="afl-clang-fast++" CC="afl-clang-fast"
+            CXX="afl-clang-fast++" CC="afl-clang-fast" \
+	    CPPFLAGS=-DDAEMON=1
 make clean
 make
