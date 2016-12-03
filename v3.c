@@ -183,7 +183,7 @@ static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
         return rc;
     }
   }
-  return SSH_FX_OK;;
+  return SSH_FX_OK;
 }
 
 /* Command implementations */
