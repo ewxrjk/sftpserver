@@ -88,6 +88,7 @@ Licence
 -------
 
 Copyright (C) 2007, 2009-2011, 2014, 2016 Richard Kettlewell
+
 Portions copyright (C) 2015 Michel Kraus
 
 This program is free software; you can redistribute it and/or modify
