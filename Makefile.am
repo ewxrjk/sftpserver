@@ -89,7 +89,7 @@ DISTCLEANFILES=${SEDOUTPUTS} gesftpserver.8
 CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug gesftpserver-valgrind
 
 # Distribution
-EXTRA_DIST=gesftpserver.8.in testing.txt tests rotests README run-tests	\
+EXTRA_DIST=gesftpserver.8.in testing.txt tests rotests README.md run-tests \
 format-gconv-report getopt.c getopt1.c getopt.h
 
 %.s: %.c
