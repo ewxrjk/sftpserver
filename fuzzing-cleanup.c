@@ -29,7 +29,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define LATENCY 10/*seconds*/
+#define LATENCY 3/*seconds*/
 
 static void destroy(const char *path) {
   pid_t pid;
@@ -87,6 +87,5 @@ int main(int argc, char **argv) {
   tmproot = argv[1];
   for(;;) {
     clean_directory(tmproot);
-    sleep(1);
   }
 }
