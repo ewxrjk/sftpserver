@@ -1,9 +1,13 @@
 #! /bin/sh
 set -e
+make
 mkdir -p fuzzing/gesftpserver/testcase_dir
 mkdir -p fuzzing/gesftpserver/findings_dir
 rm -rf fuzzing/work
 mkdir -p fuzzing/work
+./fuzzing-cleanup fuzzing/work > cleanup.log 2>&1 &
+cleanerpid=$!
+trap "rm -rf fuzzing/work" EXIT INT HUP TERM
 afl-fuzz -i fuzzing/gesftpserver/testcase_dir \
          -o fuzzing/gesftpserver/findings_dir -- \
-         ./gesftpserver -C fuzzing/work
+         ./gesftpserver -T fuzzing/work

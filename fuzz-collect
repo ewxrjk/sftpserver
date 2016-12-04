@@ -4,7 +4,7 @@
 #
 set -e
 [ -x configure ] || ./autogen.sh
-./configure CPPFLAGS=-DLOG_INPUT
+./configure CPPFLAGS=-DFUZZING
 make clean
 make
 mkdir -p fuzzing/gesftpserver/testcase_dir

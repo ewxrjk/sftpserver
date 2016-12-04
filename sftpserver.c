@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007, 2009, 2011, 2014, 2015 Richard Kettlewell
+ * Copyright (C) 2007, 2009, 2011, 2014, 2015, 2016 Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -106,9 +106,21 @@ static const struct option options[] = {
   { "ipv4", no_argument, 0, '4' },
   { "ipv6", no_argument, 0, '6' },
 #endif
+#if FUZZING
+  { "tmproot", required_argument, 0, 'T' },
+#endif
   { "readonly", no_argument, 0, 'R' },
   { 0, 0, 0, 0 }
 };
+
+static const char getopt_args[] = "hVdDR"
+#if DAEMON
+  "r:C:u:L:H:b46"
+#endif
+#if FUZZING
+  "T:"
+#endif
+  ;
 
 /* display usage message and terminate */
 static void help(void) {
@@ -128,6 +140,9 @@ static void help(void) {
           "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
           "  -4|-6                    Force IPv4 or IPv6 for --listen\n"
           "  --background, -b         Daemonize\n"
+#endif
+#if FUZZING
+          "  --tmproot, -T PATH       Run in a temporary directory below PATH\n"
 #endif
           "  --readonly, -R           Read-only mode\n");
   exit(0);
@@ -436,6 +451,9 @@ static void sigchld_handler(int attribute((unused)) sig) {
 int main(int argc, char **argv) {
   int n;
   const char *bn;
+#if FUZZING
+  const char *tmproot = NULL;
+#endif
 #if DAEMON
   iconv_t cd;
   int listenfd = -1;
@@ -470,9 +488,8 @@ int main(int argc, char **argv) {
   /* We need I18N support for filename encoding */
   setlocale(LC_CTYPE, "");
   local_encoding = nl_langinfo(CODESET);
-  
-  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46RC:",
-			 options, 0)) >= 0) {
+
+  while((n = getopt_long(argc, argv, getopt_args, options, 0)) >= 0) {
     switch(n) {
     case 'h': help();
     case 'V': version();
@@ -489,6 +506,9 @@ int main(int argc, char **argv) {
     case 'C': dir = optarg; break;
 #endif
     case 'R': readonly = 1; break;
+#if FUZZING
+    case 'T': tmproot = optarg; break;
+#endif
     default: exit(1);
     }
   }
@@ -576,6 +596,20 @@ int main(int argc, char **argv) {
       fatal("error calling chroot: %s", strerror(errno));
   }
 
+#if FUZZING
+  if(tmproot) {
+    char buffer[128];
+    if(chdir(tmproot) < 0)
+      fatal("error calling chdir %s: %s", tmproot, strerror(errno));
+    snprintf(buffer, sizeof buffer, "%jx-%04jx",
+             (intmax_t)time(NULL), (intmax_t)getpid());
+    if(mkdir(buffer, 02775) < 0)
+      fatal("error calling mkdir %s: %s", buffer, strerror(errno));
+    if(chdir(buffer) < 0)
+      fatal("error calling chdir %s: %s", buffer, strerror(errno));
+  }
+#endif
+
   if(dir) {
     /* Enter our directory */
     if(chdir(dir) < 0)
@@ -645,7 +679,7 @@ int main(int argc, char **argv) {
 #endif
 }
 
-#if LOG_INPUT
+#if FUZZING
 static int sftp_input_log_fd;
 
 static int sftp_logged_read(int fd, void *buffer, size_t size) {
@@ -671,7 +705,7 @@ static void sftp_service(void) {
   struct allocator a;
   void *const wdv = worker_init();
   int (*reader)(int, void *, size_t) = do_read;
-#if LOG_INPUT
+#if FUZZING
   const char *s = getenv("SFTPSERVER_INPUT_LOG_DIR");
   if(s) {
     char path[1024];

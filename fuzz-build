@@ -6,6 +6,6 @@ AFL_HARDEN=1; export AFL_HARDEN
 ./configure --disable-shared \
             --with-threads=1 \
             CXX="afl-clang-fast++" CC="afl-clang-fast" \
-	    CPPFLAGS=-DDAEMON=1
+	    CPPFLAGS="-DDAEMON -DFUZZING"
 make clean
 make

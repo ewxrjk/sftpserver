@@ -17,7 +17,7 @@
 # USA
 
 # Programs
-noinst_PROGRAMS=sftpclient pwtest
+noinst_PROGRAMS=sftpclient pwtest fuzzing-cleanup
 noinst_SCRIPTS=run-tests
 libexec_PROGRAMS=gesftpserver
 noinst_LIBRARIES=libsftp.a
@@ -37,6 +37,7 @@ stat.h getcwd.c globals.c dirname.c putword.h
 libsftp_a_LIBADD=$(LIBOBJS)
 
 pwtest_SOURCES=pwtest.c
+fuzzing_cleanup_SOURCES=fuzzing-cleanup.c
 
 # Documentation
 man_MANS=gesftpserver.8

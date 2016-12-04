@@ -39,3 +39,5 @@ GSYMS
 GTAGS
 pwtest
 cov-int
+fuzzing-cleanup
+cleanup.log
