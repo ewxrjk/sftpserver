@@ -130,8 +130,12 @@ for test in tests:
             errors.append("   EXTRA: %s" % output[n])
         if len(errors) > 0:
             sys.stderr.write("FAILED\n")
+            sys.stderr.write("---errors---\n");
             sys.stderr.write(string.join(errors, '\n'))
             sys.stderr.write("\n")
+            sys.stderr.write("---output---\n");
+            sys.stderr.write(string.join(output, '\n'))
+            sys.stderr.write("---end---\n");
             failed += 1
         else:
             sys.stderr.write("passed\n")
