@@ -49,7 +49,7 @@ gesftpserver.8: gesftpserver.8.in config.status
 # Build and test
 all: ${SEDOUTPUTS}
 
-check: all aliases
+check: gesftpserver sftpclient pwtest aliases
 	rm -f *.gcda *.gcov
 	./pwtest
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests $(TESTS)
@@ -58,7 +58,7 @@ check: all aliases
 
 #${srcdir}/paramiko-test
 
-check-valgrind: all aliases
+check-valgrind: gesftpserver-valgrind sftpclient pwtest aliases
 	rm -f ,valgrind*
 	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind $(TESTS)
 
