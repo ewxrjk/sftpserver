@@ -970,7 +970,7 @@ static int cmd_cd(int attribute((unused)) ac,
     if(av[0][0] == '/')
       newcwd = sftp_realpath(av[0]);
     else {
-      char *full = sftp_alloc(fakejob.a, strlen(cwd) + strlen(av[0] + 2));
+      char *full = sftp_alloc(fakejob.a, strlen(cwd) + strlen(av[0]) + 2);
       sprintf(full, "%s/%s", cwd, av[0]);
       newcwd = sftp_realpath(full);
     }
