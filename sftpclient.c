@@ -512,7 +512,6 @@ static int sftp_stat(const char *path, struct sftpattr *attrs,
     return -1;
   cpcheck(protocol->parseattrs(&fakejob, attrs));
   attrs->name = path;
-  attrs->wname = sftp_mbs2wcs(attrs->name);
   return 0;
 }
 
@@ -576,7 +575,6 @@ static int sftp_readdir(const struct client_handle *hp,
       cpcheck(protocol->parseattrs(&fakejob, attrs));
       attrs->name = name;
       attrs->longname = longname;
-      attrs->wname = sftp_mbs2wcs(attrs->name);
       ++attrs;
       --n;
     }
@@ -862,6 +860,7 @@ static int sftp_mkdir(const char *path, mode_t mode) {
     attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
     attrs.permissions = mode;
   }
+  attrs.type = SSH_FILEXFER_TYPE_DIRECTORY;
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_MKDIR);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -1115,8 +1114,10 @@ static int cmd_ls(int ac,
         break;                          /* eof */
       allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
       for(n = 0; n < nattrs; ++n) {
-        const size_t w = wcswidth(attrs[n].wname, SIZE_MAX);
         if(include_dotfiles || attrs[n].name[0] != '.') {
+          wchar_t *wname = sftp_mbs2wcs(attrs[n].name);
+          const size_t w = wcswidth(wname, SIZE_MAX);
+          free(wname);
           if(w > maxnamewidth)
             maxnamewidth = w;
           allattrs[nallattrs++] = attrs[n];
@@ -1212,8 +1213,9 @@ static int cmd_ls(int ac,
     rows = (nallattrs + cols - 1) / cols;
     for(n = 0; n < rows; ++n) {
       for(m = 0; m < cols && (i = n + m * rows) < nallattrs; ++m) {
-        const size_t w = wcswidth(allattrs[i].wname, SIZE_MAX);
-
+        wchar_t *wname = sftp_mbs2wcs(allattrs[i].name);
+        const size_t w = wcswidth(wname, SIZE_MAX);
+        free(wname);
         xprintf("%s%*s",
                 allattrs[i].name,
                 (m + 1 < cols && i + rows < nallattrs
@@ -1325,6 +1327,7 @@ static int cmd_chmod(int attribute((unused)) ac,
   struct sftpattr attrs;
   
   attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
+  attrs.type = SSH_FILEXFER_TYPE_UNKNOWN;
   errno = 0;
   attrs.permissions = strtol(av[0], 0, 8);
   if(errno || attrs.permissions != (attrs.permissions & 07777))

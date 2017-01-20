@@ -190,11 +190,6 @@ struct sftpattr {
    * the @c longname field sent in v3 @ref SSH_FXP_NAME responses. */
   const char *longname;
 
-  /** @brief Local wide encoding of filename
-   *
-   * Equivalent to @c name but converted to wide characters. */
-  const wchar_t *wname;
-
   /** @brief Symbolic link target
    *
    * Not part of the SFTP attributes.  Instead used by the client and
