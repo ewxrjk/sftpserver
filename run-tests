@@ -108,8 +108,8 @@ for test in tests:
         for expected in file(os.path.join(srcdir, dir, '%s' % test)):
             expected = expected[:-1]    # strip newline
             if n >= len(output):
-                errors.append("EXPECTED: %s" % expected)
-                errors.append("     GOT: EOF")
+                errors.append("EXPECTED[%d]: %s" % (n, expected))
+                errors.append("     GOT[%d]: EOF" % n)
                 break
             got = output[n]
             n += 1
@@ -117,24 +117,28 @@ for test in tests:
                 expected = expected[1:]
                 try:
                     if not re.match(expected, got):
-                        errors.append("EXPECTED: %s" % expected)
-                        errors.append("     GOT: %s" % got)
+                        errors.append("EXPECTED[%d]: %s" % (n + 1, expected))
+                        errors.append("     GOT[%d]: %s" % (n + 1, got))
                 except:
                     print "\n\nPossible invalid regexp:\n%s\n" % expected
                     raise
             else:
                 if expected != got:
-                    errors.append("EXPECTED: %s" % expected)
-                    errors.append("     GOT: %s" % got)
+                    errors.append("EXPECTED[%d]: %s" % (n + 1, expected))
+                    errors.append("     GOT[%d]: %s" % (n + 1, got))
         if n < len(output):
-            errors.append("   EXTRA: %s" % output[n])
+            while n < len(output):
+                errors.append("   EXTRA[%d]: %s" % (n + 1, output[n]))
+                n += 1
         if len(errors) > 0:
             sys.stderr.write("FAILED\n")
             sys.stderr.write("---errors---\n");
-            sys.stderr.write(string.join(errors, '\n'))
+            for n in range(0, len(errors)):
+                sys.stderr.write("%3d: %s\n" % (n+1, errors[n]))
             sys.stderr.write("\n")
             sys.stderr.write("---output---\n");
-            sys.stderr.write(string.join(output, '\n'))
+            for n in range(0, len(output)):
+                sys.stderr.write("%3d: %s\n" % (n+1, output[n]))
             sys.stderr.write("---end---\n");
             failed += 1
         else:
