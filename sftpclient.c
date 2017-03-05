@@ -2827,7 +2827,7 @@ static char *input(const char *prompt, FILE *fp) {
 /* Input processing loop */
 static void process(const char *prompt, FILE *fp) {
   char *line;
-  int ac, n;
+  int ac, n, rc;
   char *avbuf[256], **av;
  
   while((line = input(prompt, fp))) {
@@ -2841,9 +2841,11 @@ static void process(const char *prompt, FILE *fp) {
     }
     if(line[0] == '!') {
       if(line[1] != '\n')
-        (void)system(line + 1);
+        rc = system(line + 1);
       else
-        (void)system(getenv("SHELL"));
+        rc = system(getenv("SHELL"));
+      if(rc)
+        error("subcommand status %#x", rc);
       goto next;
     }
     if((ac = split(line, av = avbuf)) < 0) {

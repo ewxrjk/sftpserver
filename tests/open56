@@ -26,3 +26,4 @@ put -f one one-ul
 !diff one one-ul
 put -d one one-del
 ![ -f one-del ] && echo one-del unexpectedly exists
+#.*subcommand status 0x100
