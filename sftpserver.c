@@ -107,7 +107,7 @@ static const struct option options[] = {
 };
 
 /* display usage message and terminate */
-static void help(void) {
+static void attribute((noreturn)) help(void) {
   xprintf("Usage:\n"
           "  gesftpserver [OPTIONS]\n"
           "\n"
@@ -129,7 +129,7 @@ static void help(void) {
 }
 
 /* display version number and terminate */
-static void version(void) {
+static void attribute((noreturn)) version(void) {
   xprintf("Green End SFTP server version %s\n", VERSION);
   exit(0);
 }

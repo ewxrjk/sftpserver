@@ -150,7 +150,7 @@ static const struct option options[] = {
 };
 
 /* display usage message and terminate */
-static void help(void) {
+static void attribute((noreturn)) help(void) {
   xprintf("Usage:\n"
           "  sftpclient [OPTIONS] [USER@]HOST\n"
           "\n"
@@ -177,7 +177,7 @@ static void help(void) {
 }
 
 /* display version number and terminate */
-static void version(void) {
+static void attribute((noreturn)) version(void) {
   xprintf("sftp client version %s\n", VERSION);
   exit(0);
 }
