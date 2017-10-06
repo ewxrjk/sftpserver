@@ -208,10 +208,11 @@ uint32_t sftp_vany_remove(struct sftpjob *job) {
   pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_remove %s", path));
   if(unlink(path) < 0) {
-    if(errno == EPERM) {
+    if(errno == EPERM || errno == EINVAL) {
+      int save_errno = errno;
       if(lstat(path, &sb) == 0 && S_ISDIR(sb.st_mode))
         return SSH_FX_FILE_IS_A_DIRECTORY;
-      errno = EPERM;                    /* put errno back */
+      errno = save_errno;
     }
     return HANDLER_ERRNO;
   } else
