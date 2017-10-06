@@ -1,13 +1,21 @@
+os:
+- linux
+- osx
+
 dist: trusty
-sudo: required
+addons:
+  apt:
+    packages:
+    - libreadline-dev
 language: c
 compiler:
 - clang
 - gcc
 
-before_install:
-- sudo apt-get update -qq
-- sudo apt-get install -qq libreadline-dev
+matrix:
+  exclude:
+  - os: osx
+    compiler: gcc
 
 script:
 - ./autogen.sh
