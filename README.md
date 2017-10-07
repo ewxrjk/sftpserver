@@ -1,6 +1,8 @@
 Green End SFTP Server
 =====================
 
+[![Build Status](https://travis-ci.org/ewxrjk/sftpserver.svg?branch=master)](https://travis-ci.org/ewxrjk/sftpserver)
+
 This is an SFTP server supporting up to protocol version 6.  It is
 possible to use it as a drop-in replacement for the OpenSSH server.
 
