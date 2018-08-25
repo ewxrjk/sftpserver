@@ -90,7 +90,7 @@ CLEANFILES=*.gcno *.gcda *.gcov gesftpserver-ro gesftpserver-debug gesftpserver-
 
 # Distribution
 EXTRA_DIST=gesftpserver.8.in testing.txt tests rotests README.md run-tests \
-format-gconv-report getopt.c getopt1.c getopt.h
+format-gconv-report getopt.c getopt1.c getopt.h CHANGES.md
 
 %.s: %.c
 	$(COMPILE) -o $@ -S $<
