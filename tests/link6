@@ -11,4 +11,4 @@ link dir spong
 link "" spong
 #.*file is a directory.*
 link dir ""
-#.*file already exists.*
+#.*(file already exists|is a directory).*

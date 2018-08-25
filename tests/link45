@@ -11,4 +11,4 @@ link dir spong
 link "" spong
 #.*Operation not permitted \(permission denied\).*
 link dir ""
-#.*file already exists
+#.*(file already exists|permission denied)
