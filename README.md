@@ -41,11 +41,6 @@ It’s best to run `make check` before installing.  This requires
 Status
 ------
 
-This server is currently experimental and still under development.
-Don’t trust your critical data to it.  The code has an extensive and
-growing test suite (invoke `make check` to run it) but bugs may yet
-remain.
-
 The code is written to be secure against malicious clients but not
 routinely tested against malicious clients (although it has undergone fuzzing).
 In the typical usage
