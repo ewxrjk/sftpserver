@@ -21,10 +21,10 @@
 /** @file charset.h @brief Character conversion interface */
 
 #ifndef CHARSET_H
-#define CHARSET_H
+#  define CHARSET_H
 
-#include <wchar.h>
-#include <iconv.h>
+#  include <wchar.h>
+#  include <iconv.h>
 
 /** @brief Convert a multibyte string to a wide string
  * @param s Multibyte string to convert

@@ -21,7 +21,7 @@
 /** @file send.h @brief Message sending interface */
 
 #ifndef SEND_H
-#define SEND_H
+#  define SEND_H
 
 /** @brief Ensure there are @p n bytes spare in the message buffer
  * @param w Worker containing message

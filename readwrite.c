@@ -19,4 +19,3 @@
  */
 
 int readonly;
-

@@ -53,10 +53,10 @@
  * to be clever and allow re-ordering of operations where different orders
  * couldn't make a difference.
  *
- * 4) Reads don't include @ref SSH_FXP_READDIR.  Therefore such requests are always
- * serialized, which saves us having to worry about the thread safety of the
- * <dirent.h> functions.  Indeed you could say this about any other operation
- * but readdir() is the most obvious one to worry about.
+ * 4) Reads don't include @ref SSH_FXP_READDIR.  Therefore such requests are
+ * always serialized, which saves us having to worry about the thread safety of
+ * the <dirent.h> functions.  Indeed you could say this about any other
+ * operation but readdir() is the most obvious one to worry about.
  *
  */
 
@@ -110,12 +110,11 @@ static inline int handles_equal(const struct handleid *h1,
  * @param b Serialization queue entry
  * @return Nonzero if the IO ranges for @p a and @p b overlap
  */
-static int ranges_overlap(const struct sqnode *a, 
-                          const struct sqnode *b) {
+static int ranges_overlap(const struct sqnode *a, const struct sqnode *b) {
   if(a->len && b->len) {
     const uint64_t aend = a->offset + a->len - 1;
     const uint64_t bend = b->offset + b->len - 1;
-    
+
     if(aend >= b->offset && aend <= bend)
       return 1;
     if(bend >= a->offset && bend <= aend)
@@ -135,8 +134,8 @@ static int ranges_overlap(const struct sqnode *a,
  */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
-  if((q1->type == SSH_FXP_READ || q1->type == SSH_FXP_WRITE)
-     && (q2->type == SSH_FXP_READ || q2->type == SSH_FXP_WRITE)) {
+  if((q1->type == SSH_FXP_READ || q1->type == SSH_FXP_WRITE) &&
+     (q2->type == SSH_FXP_READ || q2->type == SSH_FXP_WRITE)) {
     /* We allow reads and writes to be re-ordered up to a point */
     if(!handles_equal(&q1->hid, &q2->hid)) {
       /* Operations on different handles can always be re-ordered. */
@@ -148,7 +147,7 @@ static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
      * measure). */
     if(q1->type == SSH_FXP_READ && q2->type == SSH_FXP_READ)
       return 0;
-    if(flags & (HANDLE_TEXT|HANDLE_APPEND))
+    if(flags & (HANDLE_TEXT | HANDLE_APPEND))
       /* Operations on text or append-write files cannot be re-oredered. */
       return 0;
     if(q1->type == SSH_FXP_WRITE || q2->type == SSH_FXP_WRITE)
@@ -173,12 +172,12 @@ void queue_serializable_job(struct sftpjob *job) {
 
   job->ptr = job->data;
   job->left = job->len;
-  if(!sftp_parse_uint8(job, &type)
-     && (type == SSH_FXP_READ || type == SSH_FXP_WRITE)
-     && sftp_parse_uint32(job, &id) == SSH_FX_OK
-     && sftp_parse_handle(job, &hid) == SSH_FX_OK
-     && sftp_parse_uint64(job, &offset) == SSH_FX_OK
-     && sftp_parse_uint32(job, &len) == SSH_FX_OK) {
+  if(!sftp_parse_uint8(job, &type) &&
+     (type == SSH_FXP_READ || type == SSH_FXP_WRITE) &&
+     sftp_parse_uint32(job, &id) == SSH_FX_OK &&
+     sftp_parse_handle(job, &hid) == SSH_FX_OK &&
+     sftp_parse_uint64(job, &offset) == SSH_FX_OK &&
+     sftp_parse_uint32(job, &len) == SSH_FX_OK) {
     /* This is a well-formed read or write operation */
     len64 = len;
     handleflags = sftp_handle_flags(&hid);

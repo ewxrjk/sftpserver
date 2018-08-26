@@ -21,11 +21,11 @@
 /** @file types.h @brief Data types */
 
 #ifndef TYPES_H
-#define TYPES_H
+#  define TYPES_H
 
-#include <sys/stat.h>
-#include <wchar.h>
-#include <iconv.h>
+#  include <sys/stat.h>
+#  include <wchar.h>
+#  include <iconv.h>
 
 /** @brief An SFTP timestamp */
 struct sftptime {
@@ -243,7 +243,7 @@ struct sftpjob {
   uint32_t id;
 
   /** @brief Worker processing this job */
-  struct worker *worker;                /* worker processing this job */
+  struct worker *worker; /* worker processing this job */
 };
 
 /** @brief An SFTP request */
@@ -268,10 +268,10 @@ struct sftpextension {
 };
 
 /** @brief Internal error code meaning "already responded" */
-#define HANDLER_RESPONDED ((uint32_t)-1)
+#  define HANDLER_RESPONDED ((uint32_t)-1)
 
 /** @brief Internal error code meaning "consult errno" */
-#define HANDLER_ERRNO ((uint32_t)-2)
+#  define HANDLER_ERRNO ((uint32_t)-2)
 
 /** @brief Definition of an SFTP protocol version */
 struct sftpprotocol {
@@ -298,8 +298,8 @@ struct sftpprotocol {
    * @param names Filenames (and attributes) to send
    * @return Error code
    */
-  void (*sendnames)(struct sftpjob *job, 
-                    int nnames, const struct sftpattr *names);
+  void (*sendnames)(struct sftpjob *job, int nnames,
+                    const struct sftpattr *names);
 
   /** @brief Send file attributes
    * @param job Job
@@ -320,16 +320,14 @@ struct sftpprotocol {
    * @param path Input/output filename
    * @return 0 on success, -1 on error (as per sftp_iconv())
    */
-  int (*encode)(struct sftpjob *job,
-                char **path);
+  int (*encode)(struct sftpjob *job, char **path);
 
   /** @brief Decode a filename
    * @param job Job
    * @param path Input/output filename
    * @return Error code
    */
-  uint32_t (*decode)(struct sftpjob *job,
-                     char **path);
+  uint32_t (*decode)(struct sftpjob *job, char **path);
 
   /** @brief Number of extension types supported */
   int nextensions;

@@ -19,13 +19,13 @@
  */
 
 #ifndef SFTPCLIENT_H
-#define SFTPCLIENT_H
+#  define SFTPCLIENT_H
 
-#define CLIENT 1
+#  define CLIENT 1
 
-#include "sftpcommon.h"
+#  include "sftpcommon.h"
 
-#include <sys/types.h>
+#  include <sys/types.h>
 
 #endif /* SFTPCLIENT_H */
 

@@ -21,14 +21,14 @@
 /** @file globals.h @brief Global variables interface */
 
 #ifndef GLOBALS_H
-#define GLOBALS_H
+#  define GLOBALS_H
 
-#if NTHREADS > 1
+#  if NTHREADS > 1
 /** @brief Work queue for the thread pool */
 extern struct queue *workqueue;
-#else
-# define workqueue 0
-#endif
+#  else
+#    define workqueue 0
+#  endif
 
 /** @brief V6 protocol callbacks */
 extern const struct sftpprotocol sftp_v6;

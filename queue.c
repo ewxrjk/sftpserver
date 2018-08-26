@@ -103,9 +103,8 @@ static void *queue_thread(void *vq) {
   return 0;
 }
 
-void queue_init(struct queue **qr,
-		const struct queuedetails *details,
-		int nthreads) {
+void queue_init(struct queue **qr, const struct queuedetails *details,
+                int nthreads) {
   int n;
   struct queue *q;
 
@@ -117,7 +116,7 @@ void queue_init(struct queue **qr,
   ferrcheck(pthread_cond_init(&q->c, 0));
   q->details = details;
   q->nthreads = nthreads;
-  q->threads = xcalloc(nthreads, sizeof (pthread_t));
+  q->threads = xcalloc(nthreads, sizeof(pthread_t));
   q->join = 0;
   for(n = 0; n < q->nthreads; ++n)
     ferrcheck(pthread_create(&q->threads[n], 0, queue_thread, q));
@@ -139,7 +138,7 @@ void queue_add(struct queue *q, void *job) {
 
 void queue_destroy(struct queue *q) {
   int n;
-  
+
   if(q) {
     ferrcheck(pthread_mutex_lock(&q->m));
     q->join = 1;

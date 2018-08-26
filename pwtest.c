@@ -41,7 +41,7 @@ int main() {
   for(n = 0; n <= 12; ++n) {
     memset(buffer, 0xAF, 16);
     put32(buffer + n, 0x01020304);
-    //assert(get32(buffer + n) == 0x01020304);
+    // assert(get32(buffer + n) == 0x01020304);
     for(m = 0; m < 16; ++m) {
       if(m >= n && m < n + 4)
         assert(buffer[m] == 1 + m - n);
@@ -53,7 +53,7 @@ int main() {
   for(n = 0; n <= 8; ++n) {
     memset(buffer, 0xAF, 16);
     put64(buffer + n, 0x0102030405060708ULL);
-    //assert(get64(buffer + n) == 0x0102030405060708ULL);
+    // assert(get64(buffer + n) == 0x0102030405060708ULL);
     for(m = 0; m < 16; ++m) {
       if(m >= n && m < n + 8)
         assert(buffer[m] == 1 + m - n);

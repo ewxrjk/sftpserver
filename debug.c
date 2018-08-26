@@ -45,7 +45,7 @@ static void opendebug(void) {
     if(sftp_debugpath) {
       int fd;
 
-      if((fd = open(sftp_debugpath, O_WRONLY|O_CREAT|O_TRUNC, 0600)) >= 0)
+      if((fd = open(sftp_debugpath, O_WRONLY | O_CREAT | O_TRUNC, 0600)) >= 0)
         debugfp = fdopen(fd, "w");
       else
         fprintf(stderr, "%s: %s\n", sftp_debugpath, strerror(errno));
@@ -66,7 +66,7 @@ void sftp_debug_hexdump(const void *ptr, size_t n) {
     output += sprintf(output, "%4lx ", (unsigned long)i);
     for(j = 0; j < 16; ++j)
       if(i + j < n)
-	output += sprintf(output, " %02x", p[i + j]);
+        output += sprintf(output, " %02x", p[i + j]);
       else {
         strcpy(output, "   ");
         output += 3;
@@ -75,7 +75,7 @@ void sftp_debug_hexdump(const void *ptr, size_t n) {
     output += 2;
     for(j = 0; j < 16; ++j)
       if(i + j < n)
-        *output++ = isprint(p[i + j]) ? p[i+j] : '.';
+        *output++ = isprint(p[i + j]) ? p[i + j] : '.';
     *output++ = '\n';
     *output = 0;
     fputs(buffer, debugfp);

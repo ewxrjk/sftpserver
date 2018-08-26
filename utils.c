@@ -44,11 +44,11 @@ int do_read(int fd, void *buffer, size_t size) {
     if(n > 0)
       sofar += n;
     else if(n == 0)
-      return -1;                        /* eof */
+      return -1; /* eof */
     else
       fatal("read error: %s", strerror(errno));
   }
-  return 0;                             /* ok */
+  return 0; /* ok */
 }
 
 void *xmalloc(size_t n) {
@@ -98,9 +98,7 @@ void *xrealloc(void *ptr, size_t n) {
   }
 }
 
-char *xstrdup(const char *s) {
-  return strcpy(xmalloc(strlen(s) + 1), s);
-}
+char *xstrdup(const char *s) { return strcpy(xmalloc(strlen(s) + 1), s); }
 
 static void (*exitfn)(int) attribute((noreturn)) = exit;
 
@@ -119,9 +117,7 @@ void fatal(const char *msg, ...) {
   exitfn(-1);
 }
 
-void forked(void) {
-  exitfn = _exit;
-}
+void forked(void) { exitfn = _exit; }
 
 pid_t xfork(void) {
   pid_t pid;
@@ -133,10 +129,10 @@ pid_t xfork(void) {
   return pid;
 }
 
-char *appendn(struct allocator *a, char *s, size_t *ns,
-              const char *t, size_t lt) {
+char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
+              size_t lt) {
   const size_t ls = s ? strlen(s) : 0, need = lt + ls + 1;
-  
+
   if(need > *ns) {
     size_t newsize = *ns ? *ns : 16;
 
@@ -156,8 +152,7 @@ char *appendn(struct allocator *a, char *s, size_t *ns,
   return s;
 }
 
-char *append(struct allocator *a, char *s, size_t *ns, 
-             const char *t) {
+char *append(struct allocator *a, char *s, size_t *ns, const char *t) {
   return appendn(a, s, ns, t, strlen(t));
 }
 

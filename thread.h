@@ -21,24 +21,24 @@
 /** @file thread.h @brief Thread utilities */
 
 #ifndef THREAD_H
-#define THREAD_H
+#  define THREAD_H
 
-#include <pthread.h>
-#include <stdio.h>
+#  include <pthread.h>
+#  include <stdio.h>
 
-#if NTHREADS > 1 || CLIENT
+#  if NTHREADS > 1 || CLIENT
 /** @brief Error-checking macro for @c pthread_... functions */
-#define ferrcheck(E) do {                                       \
-  const int frc = (E);                                          \
-  if(frc) {                                                     \
-    fatal("%s:%d: %s: %s\n", __FILE__, __LINE__,                \
-          #E, strerror(frc));                                   \
-    exit(1);                                                    \
-  }                                                             \
-} while(0)
-#else
-#define ferrcheck(E) (void)0
-#endif
+#    define ferrcheck(E)                                                       \
+      do {                                                                     \
+        const int frc = (E);                                                   \
+        if(frc) {                                                              \
+          fatal("%s:%d: %s: %s\n", __FILE__, __LINE__, #E, strerror(frc));     \
+          exit(1);                                                             \
+        }                                                                      \
+      } while(0)
+#  else
+#    define ferrcheck(E) (void)0
+#  endif
 
 #endif /* THREAD_H */
 

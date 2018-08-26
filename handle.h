@@ -21,9 +21,9 @@
 /** @file handle.h @brief File handle interface */
 
 #ifndef HANDLE_H
-#define HANDLE_H
+#  define HANDLE_H
 
-#include <dirent.h>
+#  include <dirent.h>
 
 /** @brief Definition of a handle */
 struct handleid {
@@ -52,20 +52,20 @@ struct handleid {
  * - @ref HANDLE_TEXT
  * - @ref HANDLE_APPEND
  */
-void sftp_handle_new_file(struct handleid *id, int fd, const char *path, 
+void sftp_handle_new_file(struct handleid *id, int fd, const char *path,
                           unsigned flags);
 
 /** @brief Handle flag for text files
  *
  * See sftp_handle_new_file().
  */
-#define HANDLE_TEXT 0x0001
+#  define HANDLE_TEXT 0x0001
 
 /** @brief Handle flag for append-mode files
  *
  * See sftp_handle_new_file().
  */
-#define HANDLE_APPEND 0x0002
+#  define HANDLE_APPEND 0x0002
 
 /** @brief Create a new directory handle
  * @param id Where to store new handle
@@ -88,8 +88,7 @@ unsigned sftp_handle_flags(const struct handleid *id);
  * @param flagsp Where to store flags, or a null pointer
  * @return 0 on success, @ref SSH_FX_INVALID_HANDLE on error
  */
-uint32_t sftp_handle_get_fd(const struct handleid *id, 
-                            int *fd,
+uint32_t sftp_handle_get_fd(const struct handleid *id, int *fd,
                             unsigned *flagsp);
 
 /** @brief Retrieve the directory stream attached to handle @p id
@@ -102,8 +101,8 @@ uint32_t sftp_handle_get_fd(const struct handleid *id,
  * points to the handle's copy of the path name.  It will not outlive the
  * handle.
  */
-uint32_t sftp_handle_get_dir(const struct handleid *id,
-                             DIR **dp, const char **pathp);
+uint32_t sftp_handle_get_dir(const struct handleid *id, DIR **dp,
+                             const char **pathp);
 
 /** @brief Destroy a handle
  * @param id Handle to close

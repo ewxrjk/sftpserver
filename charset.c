@@ -32,7 +32,7 @@ wchar_t *sftp_mbs2wcs(const char *s) {
   wchar_t *ws;
   size_t len;
   mbstate_t ps;
-  
+
   memset(&ps, 0, sizeof ps);
   len = mbsrtowcs(0, &s, 0, &ps);
   if(len == (size_t)-1)
@@ -51,7 +51,7 @@ int sftp_iconv(struct allocator *a, iconv_t cd, char **sp) {
   const char *inbuf;
   char *outbuf, *output;
   size_t inbytesleft, outbytesleft;
-  
+
   assert(cd != 0);
   do {
     output = sftp_alloc(a, outputsize);

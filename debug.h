@@ -21,7 +21,7 @@
 /** @file debug.h @brief Debug support interface */
 
 #ifndef DEBUG_H
-#define DEBUG_H
+#  define DEBUG_H
 
 /* Debug support */
 
@@ -45,7 +45,7 @@ void sftp_debug_hexdump(const void *ptr, size_t n);
  *
  * @ref sftp_debugging must be nonzero.
  */
-void sftp_debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
+void sftp_debug_printf(const char *fmt, ...) attribute((format(printf, 1, 2)));
 
 /** @brief Issue a debug message
  * @param x Parenthesized format string and arguments
@@ -56,10 +56,11 @@ void sftp_debug_printf(const char *fmt, ...) attribute((format(printf,1,2)));
  * D(("the value of x is %d", x));
  * @endcode
  */
-#define D(x) do {                               \
-  if(sftp_debugging)                            \
-    sftp_debug_printf x;                        \
-} while(0)
+#  define D(x)                                                                 \
+    do {                                                                       \
+      if(sftp_debugging)                                                       \
+        sftp_debug_printf x;                                                   \
+    } while(0)
 
 #endif /* DEBUG_H */
 

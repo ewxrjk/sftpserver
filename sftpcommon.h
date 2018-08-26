@@ -19,58 +19,66 @@
  */
 
 #ifndef SFTPCOMMON_H
-#define SFTPCOMMON_H
+#  define SFTPCOMMON_H
 
 /** @file sftpcommon.h @brief Common definitions */
 
-#include <config.h>
-#include <inttypes.h>
-#include <sys/types.h>
+#  include <config.h>
+#  include <inttypes.h>
+#  include <sys/types.h>
 
-#if HAVE_ENDIAN_H
-# include <endian.h>
-#endif
+#  if HAVE_ENDIAN_H
+#    include <endian.h>
+#  endif
 
-#ifndef ASM
-# define ASM 1
-#endif
+#  ifndef ASM
+#    define ASM 1
+#  endif
 
-#if __GNUC__ && __amd64__ && ASM
+#  if __GNUC__ && __amd64__ && ASM
 /** @brief Byte-swap a 64-bit value */
-#define BSWAP64(N)				\
-  ({uint64_t __n = (N); __asm__("bswap %0" : "+q"(__n)); __n;})
-#endif
+#    define BSWAP64(N)                                                         \
+      ({                                                                       \
+        uint64_t __n = (N);                                                    \
+        __asm__("bswap %0" : "+q"(__n));                                       \
+        __n;                                                                   \
+      })
+#  endif
 
-#if __GNUC__ && !defined BSWAP64
+#  if __GNUC__ && !defined BSWAP64
 /** @brief Byte-swap a 64-bit value */
-#define BSWAP64(N) \
-  ({uint64_t __n = (N); __n = ntohl(__n >> 32) | ((uint64_t)ntohl(__n) << 32); __n;})
-#endif
+#    define BSWAP64(N)                                                         \
+      ({                                                                       \
+        uint64_t __n = (N);                                                    \
+        __n = ntohl(__n >> 32) | ((uint64_t)ntohl(__n) << 32);                 \
+        __n;                                                                   \
+      })
+#  endif
 
-#if WORDS_BIGENDIAN
+#  if WORDS_BIGENDIAN
 /** @brief Convert a 64-bit value to network byte order */
-# define NTOHLL(n) (n)
+#    define NTOHLL(n) (n)
 /** @brief Convert a 64-bit value to host byte order */
-# define HTONLL(n) (n)
-#endif
+#    define HTONLL(n) (n)
+#  endif
 
-#if HAVE_DECL_BE64TOH && !defined NTOHLL
+#  if HAVE_DECL_BE64TOH && !defined NTOHLL
 /** @brief Convert a 64-bit value to network byte order */
-# define NTOHLL be64toh
-#endif
-#if HAVE_DECL_HTOBE64 && !defined HTONLL
+#    define NTOHLL be64toh
+#  endif
+#  if HAVE_DECL_HTOBE64 && !defined HTONLL
 /** @brief Convert a 64-bit value to host byte order */
-#define HTONLL htobe64
-#endif
+#    define HTONLL htobe64
+#  endif
 
-#if defined BSWAP64 && !defined NTOHLL
+#  if defined BSWAP64 && !defined NTOHLL
 /** @brief Convert a 64-bit value to network byte order */
-# define NTOHLL BSWAP64
-#endif
-#if defined BSWAP64 && !defined HTONLL
+#    define NTOHLL BSWAP64
+#  endif
+#  if defined BSWAP64 && !defined HTONLL
 /** @brief Convert a 64-bit value to host byte order */
-# define HTONLL BSWAP64
-#endif
+#    define HTONLL BSWAP64
+#  endif
 
 struct queue;
 struct allocator;

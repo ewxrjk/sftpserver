@@ -51,17 +51,17 @@
 #include <syslog.h>
 #include <netinet/in.h>
 #if HAVE_SYS_PRCTL_H
-# include <sys/prctl.h>
+#  include <sys/prctl.h>
 #endif
 
 /* Linux and BSD have daemon() but other UNIX platforms tend not to */
-#if ! HAVE_DAEMON
+#if !HAVE_DAEMON
 int daemon(int, int);
 #endif
 
 /* LOG_FTP doesn't exist everywhere */
 #ifndef LOG_FTP
-# define LOG_FTP LOG_DAEMON
+#  define LOG_FTP LOG_DAEMON
 #endif
 
 /* Forward declarations */
@@ -77,10 +77,7 @@ static const char *local_encoding;
 #if NTHREADS > 1
 /** @brief Queue-specific callbacks for processing SFTP requests */
 static const struct queuedetails workqueue_details = {
-  worker_init,
-  process_sftpjob,
-  worker_cleanup
-};
+    worker_init, process_sftpjob, worker_cleanup};
 #endif
 
 const struct sftpprotocol *protocol = &sftp_preinit;
@@ -89,22 +86,21 @@ const char sendtype[] = "response";
 /* Options */
 
 static const struct option options[] = {
-  { "help", no_argument, 0, 'h' },
-  { "version", no_argument, 0, 'V' },
-  { "debug", no_argument, 0, 'd' },
-  { "debug-file", required_argument, 0, 'D' },
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'V'},
+    {"debug", no_argument, 0, 'd'},
+    {"debug-file", required_argument, 0, 'D'},
 #if DAEMON
-  { "chroot", required_argument, 0, 'r' },
-  { "user", required_argument, 0, 'u' },
-  { "listen", required_argument, 0, 'L' },
-  { "host", required_argument, 0, 'H' },
-  { "background", no_argument, 0, 'b' },
-  { "ipv4", no_argument, 0, '4' },
-  { "ipv6", no_argument, 0, '6' },
+    {"chroot", required_argument, 0, 'r'},
+    {"user", required_argument, 0, 'u'},
+    {"listen", required_argument, 0, 'L'},
+    {"host", required_argument, 0, 'H'},
+    {"background", no_argument, 0, 'b'},
+    {"ipv4", no_argument, 0, '4'},
+    {"ipv6", no_argument, 0, '6'},
 #endif
-  { "readonly", no_argument, 0, 'R' },
-  { 0, 0, 0, 0 }
-};
+    {"readonly", no_argument, 0, 'R'},
+    {0, 0, 0, 0}};
 
 /* display usage message and terminate */
 static void attribute((noreturn)) help(void) {
@@ -150,7 +146,9 @@ static uint32_t sftp_init(struct sftpjob *job) {
     return SSH_FX_FAILURE;
   pcheck(sftp_parse_uint32(job, &version));
   switch(version) {
-  case 0: case 1: case 2:
+  case 0:
+  case 1:
+  case 2:
     return SSH_FX_OP_UNSUPPORTED;
   case 3:
     protocol = &sftp_v3;
@@ -188,17 +186,15 @@ static uint32_t sftp_init(struct sftpjob *job) {
     /* draft-ietf-secsh-filexfer-05.txt 4.4 */
     sftp_send_string(job->worker, "supported");
     offset = sftp_send_sub_begin(job->worker);
-    sftp_send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
-                              |SSH_FILEXFER_ATTR_PERMISSIONS
-                              |SSH_FILEXFER_ATTR_ACCESSTIME
-                              |SSH_FILEXFER_ATTR_MODIFYTIME
-                              |SSH_FILEXFER_ATTR_OWNERGROUP
-                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
-    sftp_send_uint32(job->worker, 0);         /* supported-attribute-bits */
-    sftp_send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
-                              |SSH_FXF_APPEND_DATA
-                              |SSH_FXF_APPEND_DATA_ATOMIC
-                              |SSH_FXF_TEXT_MODE));
+    sftp_send_uint32(
+        job->worker,
+        (SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
+         SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_MODIFYTIME |
+         SSH_FILEXFER_ATTR_OWNERGROUP | SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
+    sftp_send_uint32(job->worker, 0); /* supported-attribute-bits */
+    sftp_send_uint32(job->worker,
+                     (SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
+                      SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE));
     sftp_send_uint32(job->worker, 0xFFFFFFFF);
     /* If we send a non-0 max-read-size then we promise to return that many
      * bytes if asked for it and to mean EOF or error if we return less.
@@ -218,29 +214,27 @@ static uint32_t sftp_init(struct sftpjob *job) {
     /* draft-ietf-secsh-filexfer-13.txt 5.4 */
     sftp_send_string(job->worker, "supported2");
     offset = sftp_send_sub_begin(job->worker);
-    sftp_send_uint32(job->worker, (SSH_FILEXFER_ATTR_SIZE
-                              |SSH_FILEXFER_ATTR_PERMISSIONS
-                              |SSH_FILEXFER_ATTR_ACCESSTIME
-                              |SSH_FILEXFER_ATTR_MODIFYTIME
-                              |SSH_FILEXFER_ATTR_OWNERGROUP
-                              |SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
+    sftp_send_uint32(
+        job->worker,
+        (SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
+         SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_MODIFYTIME |
+         SSH_FILEXFER_ATTR_OWNERGROUP | SSH_FILEXFER_ATTR_SUBSECOND_TIMES));
     /* Note - the client is invited to only send these bits, rather than
      * promised that we never send anything else.  Therefore 'supported-' is a
      * misnomer.  In particular we will send SSH_FILEXFER_ATTR_CTIME but cannot
      * set the ctime of files and so follow the SHOULD that tells us to reject
      * attempts to do so. */
-    sftp_send_uint32(job->worker, 0);         /* supported-attribute-bits */
-    sftp_send_uint32(job->worker, (SSH_FXF_ACCESS_DISPOSITION
-                              |SSH_FXF_APPEND_DATA
-                              |SSH_FXF_APPEND_DATA_ATOMIC
-                              |SSH_FXF_TEXT_MODE
-                              |SSH_FXF_NOFOLLOW
-                              |SSH_FXF_DELETE_ON_CLOSE)); /* supported-open-flags */
-    sftp_send_uint32(job->worker, 0xFFFFFFFF); /* supported-access-mask */
-    sftp_send_uint32(job->worker, 0);        /* max-read-size - see above */
-    sftp_send_uint16(job->worker, 1);        /* supported-open-block-vector */
-    sftp_send_uint16(job->worker, 1);        /* supported-block-vector */
-    sftp_send_uint32(job->worker, 0);        /* attrib-extension-count */
+    sftp_send_uint32(job->worker, 0); /* supported-attribute-bits */
+    sftp_send_uint32(job->worker,
+                     (SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
+                      SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE |
+                      SSH_FXF_NOFOLLOW |
+                      SSH_FXF_DELETE_ON_CLOSE)); /* supported-open-flags */
+    sftp_send_uint32(job->worker, 0xFFFFFFFF);   /* supported-access-mask */
+    sftp_send_uint32(job->worker, 0);            /* max-read-size - see above */
+    sftp_send_uint16(job->worker, 1); /* supported-open-block-vector */
+    sftp_send_uint16(job->worker, 1); /* supported-block-vector */
+    sftp_send_uint32(job->worker, 0); /* attrib-extension-count */
     /* attrib-extensions would go here */
     sftp_send_uint32(job->worker, protocol->nextensions); /* extension-count */
     for(n = 0; n < protocol->nextensions; ++n)
@@ -287,27 +281,24 @@ static uint32_t sftp_init(struct sftpjob *job) {
 }
 
 /** @brief Requests supported prior to initialization */
-static const struct sftpcmd sftppreinittab[] = {
-  { SSH_FXP_INIT, sftp_init }
-};
+static const struct sftpcmd sftppreinittab[] = {{SSH_FXP_INIT, sftp_init}};
 
 /** @brief Protocol supported prior to initialization
  *
  * Only @ref SSH_FXP_INIT is supported at first. */
-const struct sftpprotocol sftp_preinit = {
-  sizeof sftppreinittab / sizeof (struct sftpcmd),
-  sftppreinittab,
-  3,
-  0xFFFFFFFF,                           /* never used */
-  SSH_FX_OP_UNSUPPORTED,
-  0,
-  0,
-  0,
-  sftp_v3_encode,
-  0,
-  0,
-  0
-};
+const struct sftpprotocol sftp_preinit = {sizeof sftppreinittab /
+                                              sizeof(struct sftpcmd),
+                                          sftppreinittab,
+                                          3,
+                                          0xFFFFFFFF, /* never used */
+                                          SSH_FX_OP_UNSUPPORTED,
+                                          0,
+                                          0,
+                                          0,
+                                          sftp_v3_encode,
+                                          0,
+                                          0,
+                                          0};
 
 /* Worker setup/teardown */
 
@@ -319,14 +310,12 @@ static void *worker_init(void) {
 
   memset(w, 0, sizeof *w);
   w->buffer = 0;
-  if((w->utf8_to_local = iconv_open(local_encoding, "UTF-8"))
-     == (iconv_t)-1)
-    fatal("error calling iconv_open(%s,UTF-8): %s",
-          local_encoding, strerror(errno));
-  if((w->local_to_utf8 = iconv_open("UTF-8", local_encoding))
-     == (iconv_t)-1)
-    fatal("error calling iconv_open(UTF-8,%s): %s",
-          local_encoding, strerror(errno));
+  if((w->utf8_to_local = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
+    fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
+          strerror(errno));
+  if((w->local_to_utf8 = iconv_open("UTF-8", local_encoding)) == (iconv_t)-1)
+    fatal("error calling iconv_open(UTF-8,%s): %s", local_encoding,
+          strerror(errno));
   return w;
 }
 
@@ -355,7 +344,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   struct sftpjob *const job = jv;
   int l, r, type = 0;
   uint32_t status, rc;
-  
+
   job->a = a;
   job->id = 0;
   job->worker = wdv;
@@ -381,7 +370,7 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
   while(l <= r) {
     const int m = (l + r) / 2;
     const int mtype = protocol->commands[m].type;
-    
+
     if(type < mtype)
       r = m - 1;
     else if(type > mtype)
@@ -393,8 +382,11 @@ static void process_sftpjob(void *jv, void *wdv, struct allocator *a) {
       status = protocol->commands[m].handler(job);
       /* Send a response if necessary */
       switch(status) {
-      case HANDLER_RESPONDED: break;
-      default: sftp_send_status(job, status, 0); break;
+      case HANDLER_RESPONDED:
+        break;
+      default:
+        sftp_send_status(job, status, 0);
+        break;
       }
       goto done;
     }
@@ -454,8 +446,8 @@ int main(int argc, char **argv) {
     const char *home = getenv("HOME");
 
     sftp_debugpath = xmalloc(strlen(home) + 40);
-    sprintf((char *)sftp_debugpath, "%s/.gesftpserver.%ju", 
-            home, (uintmax_t)getpid());
+    sprintf((char *)sftp_debugpath, "%s/.gesftpserver.%ju", home,
+            (uintmax_t)getpid());
     sftp_debugging = 1;
   }
   /* Run in readonly mode */
@@ -465,25 +457,48 @@ int main(int argc, char **argv) {
   /* We need I18N support for filename encoding */
   setlocale(LC_CTYPE, "");
   local_encoding = nl_langinfo(CODESET);
-  
-  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46R",
-			 options, 0)) >= 0) {
+
+  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46R", options, 0)) >= 0) {
     switch(n) {
-    case 'h': help();
-    case 'V': version();
-    case 'd': sftp_debugging = 1; break;
-    case 'D': sftp_debugging = 1; sftp_debugpath = optarg; break;
+    case 'h':
+      help();
+    case 'V':
+      version();
+    case 'd':
+      sftp_debugging = 1;
+      break;
+    case 'D':
+      sftp_debugging = 1;
+      sftp_debugpath = optarg;
+      break;
 #if DAEMON
-    case 'r': root = optarg; break;
-    case 'u': user = optarg; break;
-    case 'H': host = optarg; break;
-    case 'L': port = optarg; break;
-    case 'b': daemonize = 1; break;
-    case '4': hints.ai_family = PF_INET; break;
-    case '6': hints.ai_family = PF_INET6; break;
+    case 'r':
+      root = optarg;
+      break;
+    case 'u':
+      user = optarg;
+      break;
+    case 'H':
+      host = optarg;
+      break;
+    case 'L':
+      port = optarg;
+      break;
+    case 'b':
+      daemonize = 1;
+      break;
+    case '4':
+      hints.ai_family = PF_INET;
+      break;
+    case '6':
+      hints.ai_family = PF_INET6;
+      break;
 #endif
-    case 'R': readonly = 1; break;
-    default: exit(1);
+    case 'R':
+      readonly = 1;
+      break;
+    default:
+      exit(1);
     }
   }
 
@@ -535,16 +550,15 @@ int main(int argc, char **argv) {
       fatal("error calling sigaction: %s", strerror(errno));
     if((rc = getaddrinfo(host, port, &hints, &res))) {
       if(host)
-        fatal("error resolving host %s port %s: %s",
-              host, port, gai_strerror(rc));
+        fatal("error resolving host %s port %s: %s", host, port,
+              gai_strerror(rc));
       else
-        fatal("error resolving port %s: %s",
-              port, gai_strerror(rc));
+        fatal("error resolving port %s: %s", port, gai_strerror(rc));
     }
-    if((listenfd = socket(res->ai_family, res->ai_socktype,
-                          res->ai_protocol)) < 0)
+    if((listenfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) <
+       0)
       fatal("error calling socket: %s", strerror(errno));
-    if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one,  sizeof one) < 0)
+    if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one) < 0)
       fatal("error calling setsockopt: %s", strerror(errno));
     if(bind(listenfd, res->ai_addr, res->ai_addrlen) < 0)
       fatal("error calling socket: %s", strerror(errno));
@@ -554,14 +568,14 @@ int main(int argc, char **argv) {
     fatal("--host makes no sense without --port");
 
   if((cd = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
-    fatal("error calling iconv_open(%s,UTF-8): %s",
-          local_encoding, strerror(errno));
+    fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
+          strerror(errno));
   iconv_close(cd);
   if((cd = iconv_open("UTF-8", local_encoding)) == (iconv_t)-1)
-    fatal("error calling iconv_open(UTF-8, %s): %s",
-          local_encoding, strerror(errno));
+    fatal("error calling iconv_open(UTF-8, %s): %s", local_encoding,
+          strerror(errno));
   iconv_close(cd);
-  
+
   if(root) {
     /* Enter our chroot */
     if(chdir(root) < 0)
@@ -580,7 +594,7 @@ int main(int argc, char **argv) {
     if(setuid(0) >= 0)
       fatal("setuid(0) unexpectedly succeeded");
   }
-  
+
   if(daemonize) {
     openlog(bn, LOG_PID, LOG_FTP);
     log_syslog = 1;
@@ -600,7 +614,7 @@ int main(int argc, char **argv) {
       } addr;
       socklen_t addrlen = sizeof addr;
       int fd;
-    
+
       if((fd = accept(listenfd, &addr.sa, &addrlen)) >= 0) {
         switch(fork()) {
         case -1:
@@ -611,12 +625,10 @@ int main(int argc, char **argv) {
           break;
         case 0:
           forked();
-          signal(SIGCHLD, SIG_DFL);       /* XXX */
-          if(dup2(fd, 0) < 0
-             || dup2(fd, 1) < 0)
+          signal(SIGCHLD, SIG_DFL); /* XXX */
+          if(dup2(fd, 0) < 0 || dup2(fd, 1) < 0)
             fatal("dup2: %s", strerror(errno));
-          if(close(fd) < 0
-             || close(listenfd) < 0)
+          if(close(fd) < 0 || close(listenfd) < 0)
             fatal("close: %s", strerror(errno));
           sftp_service();
           _exit(0);
@@ -641,7 +653,7 @@ static void sftp_service(void) {
   uint32_t len;
   struct sftpjob *job;
   struct allocator a;
-  void *const wdv = worker_init(); 
+  void *const wdv = worker_init();
   D(("gesftpserver %s starting up", VERSION));
   /* draft -13 s7.6 "The server SHOULD NOT apply a 'umask' to the mode
    * bits". */

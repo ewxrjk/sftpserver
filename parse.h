@@ -21,7 +21,7 @@
 /** @file parse.h @brief Message parsing interface */
 
 #ifndef PARSE_H
-#define PARSE_H
+#  define PARSE_H
 
 /** @brief Retrieve the next byte from a message
  * @param job Job containing message
@@ -84,34 +84,36 @@ uint32_t sftp_parse_path(struct sftpjob *job, char **strp);
  */
 uint32_t sftp_parse_handle(struct sftpjob *job, struct handleid *id);
 
-#if CLIENT
+#  if CLIENT
 /** @brief Error checking wrapper for sftp_parse_... functions
  * @param E expression to check
  *
  * If the parse fails, @ref fatal() is called.  This macro is only used in the
  * client.
  */
-#define cpcheck(E) do {                                                 \
-  const uint32_t rc = (E);                                              \
-  if(rc) {                                                              \
-    D(("%s:%d: %s returned %"PRIu32, __FILE__, __LINE__, #E, rc));      \
-    fatal("error parsing response from server");                        \
-  }                                                                     \
-} while(0)
-#else
+#    define cpcheck(E)                                                         \
+      do {                                                                     \
+        const uint32_t rc = (E);                                               \
+        if(rc) {                                                               \
+          D(("%s:%d: %s returned %" PRIu32, __FILE__, __LINE__, #E, rc));      \
+          fatal("error parsing response from server");                         \
+        }                                                                      \
+      } while(0)
+#  else
 /** @brief Error checking wrapper for sftp_parse_... functions
  * @param E expression to check
  *
  * If the parse fails, @c return is invoked with the error code.
  */
-#define pcheck(E) do {                                          \
-  const uint32_t rc = (E);                                      \
-  if(rc != SSH_FX_OK) {                                         \
-    D(("%s:%d: %s: %"PRIu32, __FILE__, __LINE__, #E, rc));      \
-    return rc;                                                  \
-  }                                                             \
-} while(0)
-#endif
+#    define pcheck(E)                                                          \
+      do {                                                                     \
+        const uint32_t rc = (E);                                               \
+        if(rc != SSH_FX_OK) {                                                  \
+          D(("%s:%d: %s: %" PRIu32, __FILE__, __LINE__, #E, rc));              \
+          return rc;                                                           \
+        }                                                                      \
+      } while(0)
+#  endif
 
 #endif /* PARSE_H */
 

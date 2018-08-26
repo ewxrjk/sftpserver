@@ -41,25 +41,28 @@
 static pthread_mutex_t output_lock = PTHREAD_MUTEX_INITIALIZER;
 #endif
 
-int sftpout = 1;                        /* default is stdout */
+int sftpout = 1; /* default is stdout */
 
 /** @brief Store a 16-bit value */
-#define sftp_send_raw16(u) do {                 \
-  put16(&w->buffer[w->bufused], u);             \
-  w->bufused += 2;                              \
-} while(0)
+#define sftp_send_raw16(u)                                                     \
+  do {                                                                         \
+    put16(&w->buffer[w->bufused], u);                                          \
+    w->bufused += 2;                                                           \
+  } while(0)
 
 /** @brief Store a 32-bit value */
-#define sftp_send_raw32(u) do {                 \
-  put32(&w->buffer[w->bufused], u);             \
-  w->bufused += 4;                              \
-} while(0)
+#define sftp_send_raw32(u)                                                     \
+  do {                                                                         \
+    put32(&w->buffer[w->bufused], u);                                          \
+    w->bufused += 4;                                                           \
+  } while(0)
 
 /** @brief Store a 64-bit value */
-#define sftp_send_raw64(u) do {                 \
-  put64(&w->buffer[w->bufused], u);             \
-  w->bufused += 8;                              \
-} while(0)
+#define sftp_send_raw64(u)                                                     \
+  do {                                                                         \
+    put64(&w->buffer[w->bufused], u);                                          \
+    w->bufused += 8;                                                           \
+  } while(0)
 
 void sftp_send_need(struct worker *w, size_t n) {
   assert(w->bufused < 0x80000000);
@@ -75,7 +78,7 @@ void sftp_send_need(struct worker *w, size_t n) {
 
 void sftp_send_begin(struct worker *w) {
   w->bufused = 0;
-  sftp_send_uint32(w, 0);                    /* placeholder for length */
+  sftp_send_uint32(w, 0); /* placeholder for length */
 }
 
 void sftp_send_end(struct worker *w) {

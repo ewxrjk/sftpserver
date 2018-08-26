@@ -21,50 +21,48 @@
 /** @file sftpserver.h @brief SFTP server parameters and common declarations */
 
 #ifndef SFTPSERVER_H
-#define SFTPSERVER_H
+#  define SFTPSERVER_H
 
-#include "sftpcommon.h"
+#  include "sftpcommon.h"
 
-#include <sys/types.h>
+#  include <sys/types.h>
 
-#ifndef MAXNAMES
+#  ifndef MAXNAMES
 /** @brief Maximum size of an @ref SSH_FXP_READDIR response */
-# define MAXNAMES 32
-#endif
+#    define MAXNAMES 32
+#  endif
 
-#ifndef MAXHANDLES
+#  ifndef MAXHANDLES
 /** @brief Maximum number of concurrent handles */
-# define MAXHANDLES 128
-#endif
+#    define MAXHANDLES 128
+#  endif
 
-#ifndef MAXREAD
+#  ifndef MAXREAD
 /** @brief Maximum read size */
-# define MAXREAD 1048576
-#endif
+#    define MAXREAD 1048576
+#  endif
 
-#ifndef MAXREQUEST
+#  ifndef MAXREQUEST
 /** @brief Maximum request size */
-# define MAXREQUEST 1048576
-#endif
+#    define MAXREQUEST 1048576
+#  endif
 
-#ifndef DEFAULT_PERMISSIONS
+#  ifndef DEFAULT_PERMISSIONS
 /** @brief Default file permissions */
-# define DEFAULT_PERMISSIONS 0755
-#endif
+#    define DEFAULT_PERMISSIONS 0755
+#  endif
 
-#ifndef NTHREADS
+#  ifndef NTHREADS
 /** @brief Number of threads */
-# define NTHREADS 4
-#endif
+#    define NTHREADS 4
+#  endif
 
 /** @brief Send an @ref SSH_FXP_STATUS message
  * @param job Job
  * @param status Status code
  * @param msg Human-readable message
  */
-void sftp_send_status(struct sftpjob *job, 
-                      uint32_t status,
-                      const char *msg);
+void sftp_send_status(struct sftpjob *job, uint32_t status, const char *msg);
 
 /** @brief @ref SSH_FXP_INIT stub for use after initialization
  * @param job Job
@@ -160,8 +158,8 @@ uint32_t sftp_vany_extended(struct sftpjob *job);
  *
  * This is for protocols 4 and above.
  */
-void sftp_v456_sendnames(struct sftpjob *job, 
-                         int nnames, const struct sftpattr *names);
+void sftp_v456_sendnames(struct sftpjob *job, int nnames,
+                         const struct sftpattr *names);
 
 /** @brief Send file attributes
  * @param job Job
@@ -170,8 +168,7 @@ void sftp_v456_sendnames(struct sftpjob *job,
  *
  * This is for protocols 4 and above.
  */
-void sftp_v456_sendattrs(struct sftpjob *job,
-                         const struct sftpattr *attrs);
+void sftp_v456_sendattrs(struct sftpjob *job, const struct sftpattr *attrs);
 
 /** @brief Parse file attributes
  * @param job Job

@@ -45,13 +45,13 @@ uint32_t sftp_v56_open(struct sftpjob *job) {
   pcheck(sftp_parse_uint32(job, &desired_access));
   pcheck(sftp_parse_uint32(job, &flags));
   pcheck(protocol->parseattrs(job, &attrs));
-  D(("sftp_v56_open %s %#"PRIx32" %#"PRIx32, path, desired_access, flags));
+  D(("sftp_v56_open %s %#" PRIx32 " %#" PRIx32, path, desired_access, flags));
   return sftp_generic_open(job, path, desired_access, flags, &attrs);
 }
 
 uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
-                      uint32_t desired_access, uint32_t flags,
-                      struct sftpattr *attrs) {
+                           uint32_t desired_access, uint32_t flags,
+                           struct sftpattr *attrs) {
   mode_t initial_permissions;
   int created, open_flags, fd;
   struct stat sb;
@@ -59,7 +59,8 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
   unsigned sftp_handle_flags = 0;
   uint32_t rc;
 
-  D(("sftp_generic_open %s %#"PRIx32" %#"PRIx32, path, desired_access, flags));
+  D(("sftp_generic_open %s %#" PRIx32 " %#" PRIx32, path, desired_access,
+     flags));
   /* Check owner/group */
   if((rc = sftp_normalize_ownergroup(job->a, attrs)) != SSH_FX_OK)
     return rc;
@@ -75,15 +76,13 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
    * the specification taken literally prohibits UNIX implementations, I assume
    * that it is in error.
    */
-  switch(desired_access & (ACE4_READ_DATA|ACE4_WRITE_DATA)) {
-  case 0:                               /* probably a broken client */
+  switch(desired_access & (ACE4_READ_DATA | ACE4_WRITE_DATA)) {
+  case 0: /* probably a broken client */
   case ACE4_READ_DATA:
     D(("O_RDONLY"));
     open_flags = O_RDONLY;
-    if(desired_access & (ACE4_WRITE_NAMED_ATTRS
-                         |ACE4_WRITE_ATTRIBUTES
-                         |ACE4_WRITE_ACL
-                         |ACE4_WRITE_OWNER))
+    if(desired_access & (ACE4_WRITE_NAMED_ATTRS | ACE4_WRITE_ATTRIBUTES |
+                         ACE4_WRITE_ACL | ACE4_WRITE_OWNER))
       return SSH_FX_PERMISSION_DENIED;
     break;
   case ACE4_WRITE_DATA:
@@ -91,12 +90,11 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
       return SSH_FX_PERMISSION_DENIED;
     D(("O_WRONLY"));
     open_flags = O_WRONLY;
-    if(desired_access & (ACE4_READ_NAMED_ATTRS
-                         |ACE4_READ_ATTRIBUTES
-                         |ACE4_READ_ACL))
+    if(desired_access &
+       (ACE4_READ_NAMED_ATTRS | ACE4_READ_ATTRIBUTES | ACE4_READ_ACL))
       return SSH_FX_PERMISSION_DENIED;
     break;
-  case ACE4_READ_DATA|ACE4_WRITE_DATA:
+  case ACE4_READ_DATA | ACE4_WRITE_DATA:
     if(readonly)
       return SSH_FX_PERMISSION_DENIED;
     D(("O_RDWR"));
@@ -109,20 +107,20 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
    * non-superusers. */
   if((desired_access & ACE4_WRITE_OWNER) && getuid())
     return SSH_FX_PERMISSION_DENIED;
-  /* LIST_DIRECTORY, ADD_FILE, ADD_SUBDIRECTORY and DELETE_CHILD don't make
-   * sense for regular files.  We ignore them, regarding a grant of permission
-   * as not implying that the operation can possibly work.
-   *
-   * Similary SYNCHRONIZE and EXECUTE we're happy to grant permission for even
-   * if there's no way to take advantage of that permission.
-   *
-   * DELETE is always possible and nothing to do with opening the file.
-   */
+    /* LIST_DIRECTORY, ADD_FILE, ADD_SUBDIRECTORY and DELETE_CHILD don't make
+     * sense for regular files.  We ignore them, regarding a grant of permission
+     * as not implying that the operation can possibly work.
+     *
+     * Similary SYNCHRONIZE and EXECUTE we're happy to grant permission for even
+     * if there's no way to take advantage of that permission.
+     *
+     * DELETE is always possible and nothing to do with opening the file.
+     */
 #ifdef O_NOCTTY
   /* We don't want to accidentally acquire a controlling terminal. */
   open_flags |= O_NOCTTY;
 #endif
-  if(flags & (SSH_FXF_APPEND_DATA|SSH_FXF_APPEND_DATA_ATOMIC)) {
+  if(flags & (SSH_FXF_APPEND_DATA | SSH_FXF_APPEND_DATA_ATOMIC)) {
     /* We always use O_APPEND for appending so we always give atomic append. */
     D(("O_APPEND"));
     open_flags |= O_APPEND;
@@ -130,7 +128,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
   }
   if(flags & SSH_FXF_TEXT_MODE)
     sftp_handle_flags |= HANDLE_TEXT;
-  if(flags & (SSH_FXF_BLOCK_READ|SSH_FXF_BLOCK_WRITE|SSH_FXF_BLOCK_DELETE))
+  if(flags & (SSH_FXF_BLOCK_READ | SSH_FXF_BLOCK_WRITE | SSH_FXF_BLOCK_DELETE))
     return SSH_FX_OP_UNSUPPORTED;
   if(flags & SSH_FXF_NOFOLLOW) {
 #ifdef O_NOFOLLOW
@@ -154,9 +152,9 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
   } else
     /* Otherwise be conservative */
     initial_permissions = DEFAULT_PERMISSIONS & 0666;
-  if(readonly
-     && ((flags & SSH_FXF_ACCESS_DISPOSITION) != SSH_FXF_OPEN_EXISTING
-         || (flags & SSH_FXF_DELETE_ON_CLOSE))) {
+  if(readonly &&
+     ((flags & SSH_FXF_ACCESS_DISPOSITION) != SSH_FXF_OPEN_EXISTING ||
+      (flags & SSH_FXF_DELETE_ON_CLOSE))) {
     return SSH_FX_PERMISSION_DENIED;
   }
   switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
@@ -165,16 +163,16 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     if(flags & SSH_FXF_NOFOLLOW) {
       /* O_EXCL is just right if we don't want to follow links. */
       D(("SSH_FXF_CREATE_NEW|SSH_FXF_NOFOLLOW -> O_CREAT|O_EXCL"));
-      fd = open(path, open_flags|O_CREAT|O_EXCL, initial_permissions);
+      fd = open(path, open_flags | O_CREAT | O_EXCL, initial_permissions);
       created = 1;
     } else {
       /* O_EXCL will refuse to follow links so that's no good here.  We do a
-       * racy test and open since that's the best available. */ 
+       * racy test and open since that's the best available. */
       D(("SSH_FXF_CREATE_NEW -> test for existence"));
-      if(stat(path, &sb) == 0) 
+      if(stat(path, &sb) == 0)
         return SSH_FX_FILE_ALREADY_EXISTS;
       D(("SSH_FXF_CREATE_NEW -> O_CREAT"));
-      fd = open(path, open_flags|O_CREAT, initial_permissions);
+      fd = open(path, open_flags | O_CREAT, initial_permissions);
       created = 1;
     }
     break;
@@ -188,7 +186,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
       D(("SSH_FXF_OPEN_OR_TRUNCATE -> not O_TRUNC"));
     if(flags & SSH_FXF_NOFOLLOW) {
       D(("SSH_FXF_*|SSH_FXF_NOFOLLOW -> O_CREAT|O_EXCL"));
-      fd = open(path, open_flags|O_CREAT|O_EXCL, initial_permissions);
+      fd = open(path, open_flags | O_CREAT | O_EXCL, initial_permissions);
       if(fd >= 0)
         /* The file did not exist before */
         created = 1;
@@ -204,7 +202,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
         fd = open(path, open_flags, initial_permissions);
         created = 0;
       } else
-        created = 0;                    /* quieten compiler */
+        created = 0; /* quieten compiler */
     } else {
       /* As above we cannot use O_EXCL in this case as it'll refuse to follow
        * symlinks. */
@@ -220,7 +218,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
          * you get that file (perhaps truncated)!  We can't use O_EXCL here
          * because as observed so there is really no way round this. */
         D(("SSH_FXF_* -> O_CREAT"));
-        fd = open(path, open_flags|O_CREAT, initial_permissions);
+        fd = open(path, open_flags | O_CREAT, initial_permissions);
         created = 0;
       }
     }
@@ -250,7 +248,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     }
 #endif
     D(("SSH_FXF_TRUNCATE_EXISTING -> O_TRUNC"));
-    fd = open(path, open_flags|O_TRUNC, initial_permissions);
+    fd = open(path, open_flags | O_TRUNC, initial_permissions);
     created = 0;
     break;
   default:
@@ -262,9 +260,9 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     return SSH_FX_FILE_IS_A_DIRECTORY;
   }
   if(fd < 0) {
-    if(((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_OPEN_EXISTING
-        || (flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_TRUNCATE_EXISTING)
-       && errno == ENOENT) {
+    if(((flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_OPEN_EXISTING ||
+        (flags & SSH_FXF_ACCESS_DISPOSITION) == SSH_FXF_TRUNCATE_EXISTING) &&
+       errno == ENOENT) {
       /* The client could do the extra check but at the cost of a round trip,
        * so it makes some sense to do it and return the alternative status.
        * This is of rather limited use as the client has no way to know that we
@@ -272,14 +270,13 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
        * alternative error message might clue in users occasionally. */
       if(lstat(sftp_dirname(job->a, path), &sb) < 0)
         return SSH_FX_NO_SUCH_PATH;
-      errno = ENOENT;                   /* restore errno just in case */
+      errno = ENOENT; /* restore errno just in case */
     }
 #ifdef O_NOFOLLOW
     /* If we couldn't open the file because we declined to follow a symlink
      * then we need an unusual error code.  (But if we had to emulate
      * O_NOFOLLOW then the test already happened long ago.) */
-    if((flags & SSH_FXF_NOFOLLOW)
-       && (errno == ENOENT || errno == EEXIST)) {
+    if((flags & SSH_FXF_NOFOLLOW) && (errno == ENOENT || errno == EEXIST)) {
       if(lstat(path, &sb) < 0)
         return HANDLER_ERRNO;
       if(S_ISLNK(sb.st_mode))
@@ -289,7 +286,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     return HANDLER_ERRNO;
   }
   /* Set initial attributrs if we created the file */
-  if(created && attrs->valid && (rc = sftp_set_fstatus(job->a, fd, attrs, 0))) { 
+  if(created && attrs->valid && (rc = sftp_set_fstatus(job->a, fd, attrs, 0))) {
     const int save_errno = errno;
     close(fd);
     unlink(path);
@@ -304,7 +301,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     unlink(path);
   }
   sftp_handle_new_file(&id, fd, path, sftp_handle_flags);
-  D(("...handle is %"PRIu32" %"PRIu32, id.id, id.tag));
+  D(("...handle is %" PRIu32 " %" PRIu32, id.id, id.tag));
   sftp_send_begin(job->worker);
   sftp_send_uint8(job->worker, SSH_FXP_HANDLE);
   sftp_send_uint32(job->worker, job->id);
@@ -322,9 +319,9 @@ uint32_t sftp_v56_rename(struct sftpjob *job) {
   pcheck(sftp_parse_path(job, &oldpath));
   pcheck(sftp_parse_path(job, &newpath));
   pcheck(sftp_parse_uint32(job, &flags));
-  D(("sftp_v56_rename %s %s %#"PRIx32, oldpath, newpath, flags));
+  D(("sftp_v56_rename %s %s %#" PRIx32, oldpath, newpath, flags));
 
-  if(flags & (SSH_FXF_RENAME_NATIVE|SSH_FXF_RENAME_OVERWRITE)) {
+  if(flags & (SSH_FXF_RENAME_NATIVE | SSH_FXF_RENAME_OVERWRITE)) {
     /* We asked for an overwriting rename (or a native one, in which case we're
      * allowed to do any old thing).  We are guaranteed that rename() is atomic
      * in the required sense on UNIX systems ("In this case, a link named new
@@ -343,17 +340,17 @@ uint32_t sftp_v56_rename(struct sftpjob *job) {
 #ifndef __linux__
         {
           struct stat sb;
-          
+
           if(lstat(newpath, &sb) == 0)
             return SSH_FX_FILE_ALREADY_EXISTS;
         }
 #endif
-	if(rename(oldpath, newpath) < 0)
-	  return HANDLER_ERRNO;
-	else
-	  return SSH_FX_OK;
+        if(rename(oldpath, newpath) < 0)
+          return HANDLER_ERRNO;
+        else
+          return SSH_FX_OK;
       } else
-	return SSH_FX_FILE_ALREADY_EXISTS;
+        return SSH_FX_FILE_ALREADY_EXISTS;
     } else if(unlink(oldpath) < 0) {
       const int save_errno = errno;
 
@@ -388,17 +385,17 @@ uint32_t sftp_vany_text_seek(struct sftpjob *job) {
   }
   /* Look for the right line */
   i = 0;
-  n = 0;                                /* quieten compiler */
-  D(("on entry: line=%"PRIu64, line));
+  n = 0; /* quieten compiler */
+  D(("on entry: line=%" PRIu64, line));
   while(line > 0 && (n = read(fd, buffer, sizeof buffer)) > 0) {
-    D(("outer: line=%"PRIu64" n=%zd", line, n));
+    D(("outer: line=%" PRIu64 " n=%zd", line, n));
     i = 0;
     while(line > 0 && i < n) {
       if(buffer[i++] == '\n')
-	--line;
+        --line;
     }
   }
-  D(("exited:: line=%"PRIu64" n=%zd i=%zd", line, n, i));
+  D(("exited:: line=%" PRIu64 " n=%zd i=%zd", line, n, i));
   if(n < 0)
     return HANDLER_ERRNO;
   else if(n == 0)
@@ -444,8 +441,9 @@ uint32_t sftp_vany_extended(struct sftpjob *job) {
   D(("extension %s", name));
   /* TODO when we have nontrivially many extensions we should use a binary
    * search here. */
-  for(n = 0; (n < protocol->nextensions
-	      && strcmp(name, protocol->extensions[n].name)); ++n)
+  for(n = 0;
+      (n < protocol->nextensions && strcmp(name, protocol->extensions[n].name));
+      ++n)
     ;
   if(n >= protocol->nextensions)
     return SSH_FX_OP_UNSUPPORTED;
@@ -454,59 +452,55 @@ uint32_t sftp_vany_extended(struct sftpjob *job) {
 }
 
 static const struct sftpcmd sftpv5tab[] = {
-  { SSH_FXP_INIT, sftp_vany_already_init },
-  { SSH_FXP_OPEN, sftp_v56_open },
-  { SSH_FXP_CLOSE, sftp_vany_close },
-  { SSH_FXP_READ, sftp_vany_read },
-  { SSH_FXP_WRITE, sftp_vany_write },
-  { SSH_FXP_LSTAT, sftp_v456_lstat },
-  { SSH_FXP_FSTAT, sftp_v456_fstat },
-  { SSH_FXP_SETSTAT, sftp_vany_setstat },
-  { SSH_FXP_FSETSTAT, sftp_vany_fsetstat },
-  { SSH_FXP_OPENDIR, sftp_vany_opendir },
-  { SSH_FXP_READDIR, sftp_vany_readdir },
-  { SSH_FXP_REMOVE, sftp_vany_remove },
-  { SSH_FXP_MKDIR, sftp_vany_mkdir },
-  { SSH_FXP_RMDIR, sftp_vany_rmdir },
-  { SSH_FXP_REALPATH, sftp_v345_realpath },
-  { SSH_FXP_STAT, sftp_v456_stat },
-  { SSH_FXP_RENAME, sftp_v56_rename },
-  { SSH_FXP_READLINK, sftp_vany_readlink },
-  { SSH_FXP_SYMLINK, sftp_v345_symlink },
-  { SSH_FXP_EXTENDED, sftp_vany_extended }
-};
+    {SSH_FXP_INIT, sftp_vany_already_init},
+    {SSH_FXP_OPEN, sftp_v56_open},
+    {SSH_FXP_CLOSE, sftp_vany_close},
+    {SSH_FXP_READ, sftp_vany_read},
+    {SSH_FXP_WRITE, sftp_vany_write},
+    {SSH_FXP_LSTAT, sftp_v456_lstat},
+    {SSH_FXP_FSTAT, sftp_v456_fstat},
+    {SSH_FXP_SETSTAT, sftp_vany_setstat},
+    {SSH_FXP_FSETSTAT, sftp_vany_fsetstat},
+    {SSH_FXP_OPENDIR, sftp_vany_opendir},
+    {SSH_FXP_READDIR, sftp_vany_readdir},
+    {SSH_FXP_REMOVE, sftp_vany_remove},
+    {SSH_FXP_MKDIR, sftp_vany_mkdir},
+    {SSH_FXP_RMDIR, sftp_vany_rmdir},
+    {SSH_FXP_REALPATH, sftp_v345_realpath},
+    {SSH_FXP_STAT, sftp_v456_stat},
+    {SSH_FXP_RENAME, sftp_v56_rename},
+    {SSH_FXP_READLINK, sftp_vany_readlink},
+    {SSH_FXP_SYMLINK, sftp_v345_symlink},
+    {SSH_FXP_EXTENDED, sftp_vany_extended}};
 
 static const struct sftpextension sftp_v5_extensions[] = {
-  { "fsync@openssh.com", "1", sftp_vany_fsync },
-  { "hardlink@openssh.com", "1", sftp_vany_hardlink },
-  { "posix-rename@openssh.com", "1", sftp_vany_posix_rename },
-  { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
-  { "space-available", "", sftp_vany_space_available },
-  { "statfs@openssh.org", "", sftp_vany_statfs },
-  { "text-seek", "", sftp_vany_text_seek },
-  { "statvfs@openssh.com", "2", sftp_vany_statvfs },
-  { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
+    {"fsync@openssh.com", "1", sftp_vany_fsync},
+    {"hardlink@openssh.com", "1", sftp_vany_hardlink},
+    {"posix-rename@openssh.com", "1", sftp_vany_posix_rename},
+    {"posix-rename@openssh.org", "", sftp_vany_posix_rename},
+    {"space-available", "", sftp_vany_space_available},
+    {"statfs@openssh.org", "", sftp_vany_statfs},
+    {"text-seek", "", sftp_vany_text_seek},
+    {"statvfs@openssh.com", "2", sftp_vany_statvfs},
+    {"fstatvfs@openssh.com", "2", sftp_vany_fstatvfs},
 };
 
 const struct sftpprotocol sftp_v5 = {
-  sizeof sftpv5tab / sizeof (struct sftpcmd),
-  sftpv5tab,
-  5,
-  (SSH_FILEXFER_ATTR_SIZE
-   |SSH_FILEXFER_ATTR_PERMISSIONS
-   |SSH_FILEXFER_ATTR_ACCESSTIME
-   |SSH_FILEXFER_ATTR_MODIFYTIME
-   |SSH_FILEXFER_ATTR_OWNERGROUP
-   |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
-   |SSH_FILEXFER_ATTR_BITS),
-  SSH_FX_LOCK_CONFLICT,
-  sftp_v456_sendnames,
-  sftp_v456_sendattrs,
-  sftp_v456_parseattrs,
-  sftp_v456_encode,
-  sftp_v456_decode,
-  sizeof sftp_v5_extensions / sizeof (struct sftpextension),
-  sftp_v5_extensions,
+    sizeof sftpv5tab / sizeof(struct sftpcmd),
+    sftpv5tab,
+    5,
+    (SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
+     SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_MODIFYTIME |
+     SSH_FILEXFER_ATTR_OWNERGROUP | SSH_FILEXFER_ATTR_SUBSECOND_TIMES |
+     SSH_FILEXFER_ATTR_BITS),
+    SSH_FX_LOCK_CONFLICT,
+    sftp_v456_sendnames,
+    sftp_v456_sendattrs,
+    sftp_v456_parseattrs,
+    sftp_v456_encode,
+    sftp_v456_decode,
+    sizeof sftp_v5_extensions / sizeof(struct sftpextension),
+    sftp_v5_extensions,
 };
 
 /*

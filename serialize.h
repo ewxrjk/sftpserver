@@ -21,7 +21,7 @@
 /** @file serialize.h @brief Request serialization interface */
 
 #ifndef SERIALIZE_H
-#define SERIALIZE_H
+#  define SERIALIZE_H
 
 /** @brief Establish a job's place in the serialization queue
  * @param job Job to establish

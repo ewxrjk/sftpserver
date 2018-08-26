@@ -83,7 +83,7 @@ struct allocator *sftp_alloc_init(struct allocator *a) {
  * @return Number of blocks necessary to contain @p nbytes
  */
 static inline size_t blocks(size_t nbytes) {
-  return nbytes / sizeof (union block) + !!(nbytes % sizeof (union block));
+  return nbytes / sizeof(union block) + !!(nbytes % sizeof(union block));
 }
 
 void *sftp_alloc(struct allocator *a, size_t n) {
@@ -94,7 +94,7 @@ void *sftp_alloc(struct allocator *a, size_t n) {
   if(!m)
     return 0;
   assert(a != 0);
-  assert(m != SIZE_MAX);                /* ...and so m+1 > 0 */
+  assert(m != SIZE_MAX); /* ...and so m+1 > 0 */
   /* See if there's enough room */
   if(!(c = a->chunks) || c->left < m) {
     /* Make sure we allocate enough space */
@@ -102,7 +102,7 @@ void *sftp_alloc(struct allocator *a, size_t n) {
     /* xcalloc -> calloc which 0-fills */
     union block *nb;
 
-    nb = xcalloc(cs, sizeof (union block));
+    nb = xcalloc(cs, sizeof(union block));
     c = &nb->c;
     c->next = a->chunks;
     c->ptr = nb + 1;
@@ -112,20 +112,21 @@ void *sftp_alloc(struct allocator *a, size_t n) {
   assert(m <= c->left);
   /* We always return 0-filled memory.  In this case we fill by block, which is
    * guaranteed to be at least enough (compare below). */
-  memset(c->ptr, 0, m * sizeof (union block));
+  memset(c->ptr, 0, m * sizeof(union block));
   c->left -= m;
   c->ptr += m;
   return c->ptr - m;
 }
 
-void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn, size_t newn) {
+void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn,
+                      size_t newn) {
   const size_t oldm = blocks(oldn), newm = blocks(newn);
   void *newptr;
 
   if(ptr) {
     assert(a->chunks != 0);
-    D(("ptr=%p oldm=%zu a->chunks->ptr=%p blocksize=%zu",
-       ptr, oldm, a->chunks->ptr, sizeof(union block)));
+    D(("ptr=%p oldm=%zu a->chunks->ptr=%p blocksize=%zu", ptr, oldm,
+       a->chunks->ptr, sizeof(union block)));
     if((union block *)ptr + oldm == a->chunks->ptr) {
       /* ptr is the most recently allocated block.  We could do better and
        * search all the chunks for it. */

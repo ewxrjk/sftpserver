@@ -69,7 +69,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
     break;
   case SSH_FXP_REALPATH_STAT_ALWAYS:
     /* Follow links and fail if the path doesn't exist */
-    rpflags = RP_READLINK|RP_MUST_EXIST;
+    rpflags = RP_READLINK | RP_MUST_EXIST;
     break;
   default:
     return SSH_FX_BAD_MESSAGE;
@@ -118,7 +118,8 @@ uint32_t sftp_v6_link(struct sftpjob *job) {
   if(readonly)
     return SSH_FX_PERMISSION_DENIED;
   pcheck(sftp_parse_path(job, &newlinkpath));
-  pcheck(sftp_parse_string(job, &oldpath, 0));    /* aka existing-path/target-paths */
+  pcheck(
+      sftp_parse_string(job, &oldpath, 0)); /* aka existing-path/target-paths */
   pcheck(sftp_parse_uint8(job, &symbolic));
   D(("sftp_link %s %s [%s]", oldpath, newlinkpath,
      symbolic ? "symbolic" : "hard"));
@@ -156,76 +157,84 @@ uint32_t sftp_v6_version_select(struct sftpjob *job) {
   if(!workqueue) {
     pcheck(sftp_parse_path(job, &newversion));
     /* Handle known versions */
-    if(!strcmp(newversion, "3")) { protocol = &sftp_v3; return SSH_FX_OK; }
-    if(!strcmp(newversion, "4")) { protocol = &sftp_v4; return SSH_FX_OK; }
-    if(!strcmp(newversion, "5")) { protocol = &sftp_v5; return SSH_FX_OK; }
-    if(!strcmp(newversion, "6")) { protocol = &sftp_v6; return SSH_FX_OK; }
+    if(!strcmp(newversion, "3")) {
+      protocol = &sftp_v3;
+      return SSH_FX_OK;
+    }
+    if(!strcmp(newversion, "4")) {
+      protocol = &sftp_v4;
+      return SSH_FX_OK;
+    }
+    if(!strcmp(newversion, "5")) {
+      protocol = &sftp_v5;
+      return SSH_FX_OK;
+    }
+    if(!strcmp(newversion, "6")) {
+      protocol = &sftp_v6;
+      return SSH_FX_OK;
+    }
     sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "unknown version");
   } else
-    sftp_send_status(job, SSH_FX_INVALID_PARAMETER, "badly timed version-select");
+    sftp_send_status(job, SSH_FX_INVALID_PARAMETER,
+                     "badly timed version-select");
   /* We MUST close the channel.  (-13, s5.5). */
   exit(-1);
 }
 
 static const struct sftpcmd sftpv6tab[] = {
-  { SSH_FXP_INIT, sftp_vany_already_init },
-  { SSH_FXP_OPEN, sftp_v56_open },
-  { SSH_FXP_CLOSE, sftp_vany_close },
-  { SSH_FXP_READ, sftp_vany_read },
-  { SSH_FXP_WRITE, sftp_vany_write },
-  { SSH_FXP_LSTAT, sftp_v456_lstat },
-  { SSH_FXP_FSTAT, sftp_v456_fstat },
-  { SSH_FXP_SETSTAT, sftp_vany_setstat },
-  { SSH_FXP_FSETSTAT, sftp_vany_fsetstat },
-  { SSH_FXP_OPENDIR, sftp_vany_opendir },
-  { SSH_FXP_READDIR, sftp_vany_readdir },
-  { SSH_FXP_REMOVE, sftp_vany_remove },
-  { SSH_FXP_MKDIR, sftp_vany_mkdir },
-  { SSH_FXP_RMDIR, sftp_vany_rmdir },
-  { SSH_FXP_REALPATH, sftp_v6_realpath },
-  { SSH_FXP_STAT, sftp_v456_stat },
-  { SSH_FXP_RENAME, sftp_v56_rename },
-  { SSH_FXP_READLINK, sftp_vany_readlink },
-  { SSH_FXP_LINK, sftp_v6_link },
-  { SSH_FXP_EXTENDED, sftp_vany_extended }
-};
+    {SSH_FXP_INIT, sftp_vany_already_init},
+    {SSH_FXP_OPEN, sftp_v56_open},
+    {SSH_FXP_CLOSE, sftp_vany_close},
+    {SSH_FXP_READ, sftp_vany_read},
+    {SSH_FXP_WRITE, sftp_vany_write},
+    {SSH_FXP_LSTAT, sftp_v456_lstat},
+    {SSH_FXP_FSTAT, sftp_v456_fstat},
+    {SSH_FXP_SETSTAT, sftp_vany_setstat},
+    {SSH_FXP_FSETSTAT, sftp_vany_fsetstat},
+    {SSH_FXP_OPENDIR, sftp_vany_opendir},
+    {SSH_FXP_READDIR, sftp_vany_readdir},
+    {SSH_FXP_REMOVE, sftp_vany_remove},
+    {SSH_FXP_MKDIR, sftp_vany_mkdir},
+    {SSH_FXP_RMDIR, sftp_vany_rmdir},
+    {SSH_FXP_REALPATH, sftp_v6_realpath},
+    {SSH_FXP_STAT, sftp_v456_stat},
+    {SSH_FXP_RENAME, sftp_v56_rename},
+    {SSH_FXP_READLINK, sftp_vany_readlink},
+    {SSH_FXP_LINK, sftp_v6_link},
+    {SSH_FXP_EXTENDED, sftp_vany_extended}};
 
 /* TODO: file locking */
 
 static const struct sftpextension sftp_v6_extensions[] = {
-  { "fsync@openssh.com", "1", sftp_vany_fsync },
-  { "hardlink@openssh.com", "1", sftp_vany_hardlink },
-  { "posix-rename@openssh.com", "1", sftp_vany_posix_rename },
-  { "posix-rename@openssh.org", "", sftp_vany_posix_rename },
-  { "space-available", "", sftp_vany_space_available },
-  { "statfs@openssh.org", "", sftp_vany_statfs },
-  { "text-seek", "", sftp_vany_text_seek },
-  { "version-select", "", sftp_v6_version_select },
-  { "statvfs@openssh.com", "2", sftp_vany_statvfs },
-  { "fstatvfs@openssh.com", "2", sftp_vany_fstatvfs },
+    {"fsync@openssh.com", "1", sftp_vany_fsync},
+    {"hardlink@openssh.com", "1", sftp_vany_hardlink},
+    {"posix-rename@openssh.com", "1", sftp_vany_posix_rename},
+    {"posix-rename@openssh.org", "", sftp_vany_posix_rename},
+    {"space-available", "", sftp_vany_space_available},
+    {"statfs@openssh.org", "", sftp_vany_statfs},
+    {"text-seek", "", sftp_vany_text_seek},
+    {"version-select", "", sftp_v6_version_select},
+    {"statvfs@openssh.com", "2", sftp_vany_statvfs},
+    {"fstatvfs@openssh.com", "2", sftp_vany_fstatvfs},
 };
 
 const struct sftpprotocol sftp_v6 = {
-  sizeof sftpv6tab / sizeof (struct sftpcmd),
-  sftpv6tab,
-  6,
-  (SSH_FILEXFER_ATTR_SIZE
-   |SSH_FILEXFER_ATTR_PERMISSIONS
-   |SSH_FILEXFER_ATTR_ACCESSTIME
-   |SSH_FILEXFER_ATTR_CTIME
-   |SSH_FILEXFER_ATTR_MODIFYTIME
-   |SSH_FILEXFER_ATTR_OWNERGROUP
-   |SSH_FILEXFER_ATTR_SUBSECOND_TIMES
-   |SSH_FILEXFER_ATTR_BITS
-   |SSH_FILEXFER_ATTR_LINK_COUNT),
-  SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK,
-  sftp_v456_sendnames,
-  sftp_v456_sendattrs,
-  sftp_v456_parseattrs,
-  sftp_v456_encode,
-  sftp_v456_decode,
-  sizeof sftp_v6_extensions / sizeof (struct sftpextension),
-  sftp_v6_extensions,
+    sizeof sftpv6tab / sizeof(struct sftpcmd),
+    sftpv6tab,
+    6,
+    (SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
+     SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_CTIME |
+     SSH_FILEXFER_ATTR_MODIFYTIME | SSH_FILEXFER_ATTR_OWNERGROUP |
+     SSH_FILEXFER_ATTR_SUBSECOND_TIMES | SSH_FILEXFER_ATTR_BITS |
+     SSH_FILEXFER_ATTR_LINK_COUNT),
+    SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK,
+    sftp_v456_sendnames,
+    sftp_v456_sendattrs,
+    sftp_v456_parseattrs,
+    sftp_v456_encode,
+    sftp_v456_decode,
+    sizeof sftp_v6_extensions / sizeof(struct sftpextension),
+    sftp_v6_extensions,
 };
 
 /*

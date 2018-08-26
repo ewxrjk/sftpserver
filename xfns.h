@@ -21,7 +21,7 @@
 /** @file xfns.h @brief Die-on-error utility function interface */
 
 #ifndef XFNS_H
-#define XFNS_H
+#  define XFNS_H
 
 /** @brief Close @p fd
  * @param fd File descriptor to close
@@ -52,7 +52,7 @@ void xpipe(int *pfd);
  *
  * Calls fatal() on error.
  */
-int xprintf(const char *fmt, ...) attribute((format(printf,1,2)));
+int xprintf(const char *fmt, ...) attribute((format(printf, 1, 2)));
 
 #endif /* XFNS_H */
 

@@ -19,9 +19,9 @@
  */
 
 #ifndef USERS_H
-#define USERS_H
+#  define USERS_H
 
-#include <sys/types.h>
+#  include <sys/types.h>
 
 struct allocator;
 

@@ -1,0 +1,6 @@
+---
+IndentWidth: 2
+SortIncludes: false
+SpaceBeforeParens: Never
+UseTab: Never
+IndentPPDirectives: AfterHash

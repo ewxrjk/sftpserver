@@ -56,8 +56,8 @@
 #include <limits.h>
 #include <termios.h>
 #if HAVE_READLINE
-# include <readline/readline.h>
-# include <readline/history.h>
+#  include <readline/readline.h>
+#  include <readline/history.h>
 #endif
 
 struct command {
@@ -116,38 +116,37 @@ static int forceversion;
 static char *sftp_realpath(const char *path);
 
 static const struct option options[] = {
-  { "help", no_argument, 0, 'h' },
-  { "version", no_argument, 0, 'V' },
-  { "dropbear", no_argument, 0, 'r' },
-  { "buffer", required_argument, 0, 'B' },
-  { "batch", required_argument, 0, 'b' },
-  { "program", required_argument, 0, 'P' },
-  { "requests", required_argument, 0, 'R' },
-  { "subsystem", required_argument, 0, 's' },
-  { "sftp-version", required_argument, 0, 'S' },
-  { "quirk-reverse-symlink", no_argument, 0, 256 },
-  { "stop-on-error", no_argument, 0, 257 },
-  { "no-stop-on-error", no_argument, 0, 258 },
-  { "progress", no_argument, 0, 259 },
-  { "no-progress", no_argument, 0, 260 },
-  { "echo", no_argument, 0, 261 },
-  { "fix-sigpipe", no_argument, 0, 262 },
-  { "force-version", required_argument, 0, 263 },
-  { "debug", no_argument, 0, 'd' },
-  { "debug-path", required_argument, 0, 'D' },
-  { "program-debug-path", required_argument, 0, 264 },
-  { "host", required_argument, 0, 'H' },
-  { "port", required_argument, 0, 'p' },
-  { "ipv4", no_argument, 0, '4' },
-  { "ipv6", no_argument, 0, '6' },
-  { "1", no_argument, 0, '1' },
-  { "2", no_argument, 0, '2' },
-  { "C", no_argument, 0, 'C' },
-  { "F", required_argument, 0, 'F' },
-  { "o", required_argument, 0, 'o' },
-  { "v", no_argument, 0, 'v' },
-  { 0, 0, 0, 0 }
-};
+    {"help", no_argument, 0, 'h'},
+    {"version", no_argument, 0, 'V'},
+    {"dropbear", no_argument, 0, 'r'},
+    {"buffer", required_argument, 0, 'B'},
+    {"batch", required_argument, 0, 'b'},
+    {"program", required_argument, 0, 'P'},
+    {"requests", required_argument, 0, 'R'},
+    {"subsystem", required_argument, 0, 's'},
+    {"sftp-version", required_argument, 0, 'S'},
+    {"quirk-reverse-symlink", no_argument, 0, 256},
+    {"stop-on-error", no_argument, 0, 257},
+    {"no-stop-on-error", no_argument, 0, 258},
+    {"progress", no_argument, 0, 259},
+    {"no-progress", no_argument, 0, 260},
+    {"echo", no_argument, 0, 261},
+    {"fix-sigpipe", no_argument, 0, 262},
+    {"force-version", required_argument, 0, 263},
+    {"debug", no_argument, 0, 'd'},
+    {"debug-path", required_argument, 0, 'D'},
+    {"program-debug-path", required_argument, 0, 264},
+    {"host", required_argument, 0, 'H'},
+    {"port", required_argument, 0, 'p'},
+    {"ipv4", no_argument, 0, '4'},
+    {"ipv6", no_argument, 0, '6'},
+    {"1", no_argument, 0, '1'},
+    {"2", no_argument, 0, '2'},
+    {"C", no_argument, 0, 'C'},
+    {"F", required_argument, 0, 'F'},
+    {"o", required_argument, 0, 'o'},
+    {"v", no_argument, 0, 'v'},
+    {0, 0, 0, 0}};
 
 /* display usage message and terminate */
 static void attribute((noreturn)) help(void) {
@@ -163,10 +162,11 @@ static void attribute((noreturn)) help(void) {
           "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
           "  -b, --batch PATH         Read batch file\n"
           "  -P, --program PATH       Execute program as SFTP server\n");
-  xprintf("  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
-          "  -s, --subsystem NAME     Remote subsystem name\n"
-          "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
-          "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n");
+  xprintf(
+      "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
+      "  -s, --subsystem NAME     Remote subsystem name\n"
+      "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
+      "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n");
   xprintf("Options passed to SSH:\n"
           "  -1, -2                   Select protocol version\n"
           "  -C                       Enable compression\n"
@@ -184,7 +184,7 @@ static void attribute((noreturn)) version(void) {
 
 /* Utilities */
 
-static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
+static int attribute((format(printf, 1, 2))) error(const char *fmt, ...) {
   va_list ap;
 
   if(inputpath)
@@ -192,7 +192,7 @@ static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
   va_start(ap, fmt);
   vfprintf(stderr, fmt, ap);
   va_end(ap);
-  fputc('\n',  stderr);
+  fputc('\n', stderr);
   fflush(stderr);
   return -1;
 }
@@ -200,7 +200,7 @@ static int attribute((format(printf,1,2))) error(const char *fmt, ...) {
 static int status(void) {
   uint32_t status;
   char *msg;
-  
+
   /* Cope with half-parsed responses */
   fakejob.ptr = fakejob.data + 5;
   fakejob.left = fakejob.len - 5;
@@ -221,7 +221,7 @@ static uint8_t getresponse(int expected, uint32_t expected_id,
 
   if(do_read(sftpin, &len, sizeof len))
     fatal("unexpected EOF from server while reading %s response length", what);
-  free(fakejob.data);                   /* free last job */
+  free(fakejob.data); /* free last job */
   fakejob.len = ntohl(len);
   fakejob.data = xmalloc(fakejob.len);
   if(do_read(sftpin, fakejob.data, fakejob.len))
@@ -236,8 +236,8 @@ static uint8_t getresponse(int expected, uint32_t expected_id,
   if(type != SSH_FXP_VERSION) {
     cpcheck(sftp_parse_uint32(&fakejob, &fakejob.id));
     if(expected_id && fakejob.id != expected_id)
-      fatal("wrong ID in response to %s (want %"PRIu32
-            " got %"PRIu32" type was %d)",
+      fatal("wrong ID in response to %s (want %" PRIu32 " got %" PRIu32
+            " type was %d)",
             what, expected_id, fakejob.id, type);
   }
   if(expected > 0 && type != expected) {
@@ -262,22 +262,22 @@ static int split(char *line, char **av) {
     if(*line == '"') {
       arg = av[ac++] = line++;
       while(*line && *line != '"') {
-	if(*line == '\\' && line[1])
-	  ++line;
-	*arg++ = *line++;
+        if(*line == '\\' && line[1])
+          ++line;
+        *arg++ = *line++;
       }
       if(!*line) {
-	error("unterminated string");
-	return -1;
+        error("unterminated string");
+        return -1;
       }
       *arg++ = 0;
       line++;
     } else {
       av[ac++] = line;
       while(*line && !isspace((unsigned char)*line))
-	++line;
+        ++line;
       if(*line)
-	*line++ = 0;
+        *line++ = 0;
     }
   }
   av[ac] = 0;
@@ -308,11 +308,11 @@ static void progress(const char *path, uint64_t sofar, uint64_t total) {
     if(!total)
       xprintf("\r%*s\r", terminal_width, "");
     else if(total == (uint64_t)-1)
-      xprintf("\r%.60s: %12"PRIu64"b", path, sofar);
+      xprintf("\r%.60s: %12" PRIu64 "b", path, sofar);
     else
-      xprintf("\r%.60s: %12"PRIu64"b %3d%%",
-              path, sofar, (int)(100 * sofar / total));
-    if(fflush(stdout) < 0) 
+      xprintf("\r%.60s: %12" PRIu64 "b %3d%%", path, sofar,
+              (int)(100 * sofar / total));
+    if(fflush(stdout) < 0)
       fatal("error writing to stdout: %s", strerror(errno));
   }
 }
@@ -322,13 +322,13 @@ static void progress(const char *path, uint64_t sofar, uint64_t total) {
 static int sftp_init(void) {
   uint32_t version, u32;
   uint16_t u16;
-  
+
   /* Send SSH_FXP_INIT */
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_INIT);
   sftp_send_uint32(&fakeworker, sftpversion);
   sftp_send_end(&fakeworker);
-  
+
   /* Parse the version reponse */
   if(getresponse(SSH_FXP_VERSION, 0, "SSH_FXP_INIT") != SSH_FXP_VERSION)
     return -1;
@@ -347,7 +347,7 @@ static int sftp_init(void) {
     protocol = &sftp_v6;
     break;
   default:
-    return error("server wanted protocol version %"PRIu32, version);
+    return error("server wanted protocol version %" PRIu32, version);
   }
   attrmask = protocol->attrmask;
   /* Extension data */
@@ -367,8 +367,8 @@ static int sftp_init(void) {
       /* TODO check newline sequence doesn't contain repeats */
     } else if(!strcmp(xname, "vendor-id")) {
       struct sftpjob xjob;
-      char *vn ,*sn, *sv;
-      
+      char *vn, *sn, *sv;
+
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
@@ -387,7 +387,7 @@ static int sftp_init(void) {
       serverversions = xstrdup(xdata);
     } else if(!strcmp(xname, "symlink-order@rjk.greenend.org.uk")) {
       /* See commentary in v3.c */
-      if(!strcmp(xdata,  "targetpath-linkpath"))
+      if(!strcmp(xdata, "targetpath-linkpath"))
         quirk_reverse_symlink = 1;
       else if(!strcmp(xdata, "linkpath-targetpath"))
         quirk_reverse_symlink = 0;
@@ -395,7 +395,7 @@ static int sftp_init(void) {
         error("unknown %s value '%s'", xname, xdata);
     } else if(!strcmp(xname, "supported")) {
       struct sftpjob xjob;
-      
+
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
@@ -408,11 +408,12 @@ static int sftp_init(void) {
         cpcheck(sftp_parse_string(&xjob, 0, 0)); /* extension-names */
     } else if(!strcmp(xname, "supported2")) {
       struct sftpjob xjob;
-      
+
       xjob.a = &allocator;
       xjob.ptr = (void *)xdata;
       xjob.left = xdatalen;
-      cpcheck(sftp_parse_uint32(&xjob, &attrmask)); /* supported-attribute-mask */
+      cpcheck(
+          sftp_parse_uint32(&xjob, &attrmask)); /* supported-attribute-mask */
       assert(!(attrmask & SSH_FILEXFER_ATTR_CTIME));
       cpcheck(sftp_parse_uint32(&xjob, &u32)); /* supported-attribute-bits */
       cpcheck(sftp_parse_uint32(&xjob, &u32)); /* supported-open-flags */
@@ -430,17 +431,14 @@ static int sftp_init(void) {
         cpcheck(sftp_parse_string(&xjob, 0, 0)); /* extension-names */
         --u32;
       }
-    } else if(!strcmp(xname, "posix-rename@openssh.com")
-              && !strcmp(xdata, "1")) {
+    } else if(!strcmp(xname, "posix-rename@openssh.com") &&
+              !strcmp(xdata, "1")) {
       rename_extension = "posix-rename@openssh.com";
-    } else if(!strcmp(xname, "posix-rename@openssh.org")
-              && !rename_extension) {
+    } else if(!strcmp(xname, "posix-rename@openssh.org") && !rename_extension) {
       rename_extension = "posix-rename@openssh.com";
-    } else if(!strcmp(xname, "hardlink@openssh.com")
-              && !strcmp(xdata, "1")) {
+    } else if(!strcmp(xname, "hardlink@openssh.com") && !strcmp(xdata, "1")) {
       hardlink_extension = "hardlink@openssh.com";
-    } else if(!strcmp(xname, "statvfs@openssh.com")
-              && !strcmp(xdata, "2")) {
+    } else if(!strcmp(xname, "statvfs@openssh.com") && !strcmp(xdata, "2")) {
       statvfs_extension = "statvfs@openssh.com";
     }
   }
@@ -468,10 +466,8 @@ static char *sftp_realpath(const char *path) {
   return resolved;
 }
 
-static char *sftp_realpath_v6(const char *path,
-                              int control_byte,
-                              char **compose,
-                              struct sftpattr *attrs) {
+static char *sftp_realpath_v6(const char *path, int control_byte,
+                              char **compose, struct sftpattr *attrs) {
   char *resolved;
   uint32_t u32, id;
 
@@ -496,8 +492,7 @@ static char *sftp_realpath_v6(const char *path,
   return resolved;
 }
 
-static int sftp_stat(const char *path, struct sftpattr *attrs,
-                     uint8_t type) {
+static int sftp_stat(const char *path, struct sftpattr *attrs, uint8_t type) {
   uint32_t id;
 
   remote_cwd();
@@ -547,8 +542,7 @@ static int sftp_opendir(const char *path, struct client_handle *hp) {
 }
 
 static int sftp_readdir(const struct client_handle *hp,
-                        struct sftpattr **attrsp,
-                        size_t *nattrsp) {
+                        struct sftpattr **attrsp, size_t *nattrsp) {
   uint32_t id, n;
   struct sftpattr *attrs;
   char *name, *longname = 0;
@@ -607,8 +601,7 @@ static int sftp_close(const struct client_handle *hp) {
   return status();
 }
 
-static int sftp_setstat(const char *path,
-                        const struct sftpattr *attrs) {
+static int sftp_setstat(const char *path, const struct sftpattr *attrs) {
   uint32_t id;
 
   remote_cwd();
@@ -662,15 +655,15 @@ static int sftp_remove(const char *path) {
   return status();
 }
 
-static int sftp_rename(const char *oldpath, const char *newpath, 
+static int sftp_rename(const char *oldpath, const char *newpath,
                        unsigned flags) {
   uint32_t id;
-  
+
   remote_cwd();
   /* In v3/4 atomic is assumed, overwrite and native are not available */
   if(protocol->version <= 4 && (flags & ~SSH_FXF_RENAME_ATOMIC) != 0)
-    return error("cannot emulate rename flags %#x in protocol %d",
-                 flags, protocol->version);
+    return error("cannot emulate rename flags %#x in protocol %d", flags,
+                 protocol->version);
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_RENAME);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -685,7 +678,7 @@ static int sftp_rename(const char *oldpath, const char *newpath,
 
 static int sftp_prename(const char *oldpath, const char *newpath) {
   uint32_t id;
-  
+
   remote_cwd();
   if(!rename_extension)
     return error("no posix-rename extension found");
@@ -720,18 +713,17 @@ static int sftp_hardlink(const char *targetpath, const char *linkpath) {
 static int sftp_link(const char *targetpath, const char *linkpath,
                      int sftp_send_symlink) {
   uint32_t id;
-  
+
   if(protocol->version < 6 && !sftp_send_symlink) {
     if(hardlink_extension)
       return sftp_hardlink(targetpath, linkpath);
-    return error("hard links not supported in protocol %"PRIu32,
+    return error("hard links not supported in protocol %" PRIu32,
                  protocol->version);
   }
   remote_cwd();
   sftp_send_begin(&fakeworker);
-  sftp_send_uint8(&fakeworker, (protocol->version >= 6
-                           ? SSH_FXP_LINK
-                           : SSH_FXP_SYMLINK));
+  sftp_send_uint8(&fakeworker,
+                  (protocol->version >= 6 ? SSH_FXP_LINK : SSH_FXP_SYMLINK));
   sftp_send_uint32(&fakeworker, id = newid());
   if(quirk_reverse_symlink) {
     /* OpenSSH server gets SSH_FXP_SYMLINK args back to front
@@ -749,10 +741,8 @@ static int sftp_link(const char *targetpath, const char *linkpath,
   return status();
 }
 
-static int sftp_open(const char *path, 
-                     uint32_t desired_access, uint32_t flags,
-                     const struct sftpattr *attrs,
-                     struct client_handle *hp) {
+static int sftp_open(const char *path, uint32_t desired_access, uint32_t flags,
+                     const struct sftpattr *attrs, struct client_handle *hp) {
   uint32_t id, pflags = 0;
 
   remote_cwd();
@@ -764,10 +754,10 @@ static int sftp_open(const char *path,
       pflags |= SSH_FXF_WRITE;
     switch(flags & SSH_FXF_ACCESS_DISPOSITION) {
     case SSH_FXF_CREATE_NEW:
-      pflags |= SSH_FXF_CREAT|SSH_FXF_EXCL;
+      pflags |= SSH_FXF_CREAT | SSH_FXF_EXCL;
       break;
     case SSH_FXF_CREATE_TRUNCATE:
-      pflags |= SSH_FXF_CREAT|SSH_FXF_TRUNC;
+      pflags |= SSH_FXF_CREAT | SSH_FXF_TRUNC;
       break;
     case SSH_FXF_OPEN_OR_CREATE:
       pflags |= SSH_FXF_CREAT;
@@ -778,10 +768,9 @@ static int sftp_open(const char *path,
       pflags |= SSH_FXF_TRUNC;
       break;
     default:
-      return error("unknown SSH_FXF_ACCESS_DISPOSITION %#"PRIx32,
-                   flags);
+      return error("unknown SSH_FXF_ACCESS_DISPOSITION %#" PRIx32, flags);
     }
-    if(flags & (SSH_FXF_APPEND_DATA|SSH_FXF_APPEND_DATA_ATOMIC))
+    if(flags & (SSH_FXF_APPEND_DATA | SSH_FXF_APPEND_DATA_ATOMIC))
       pflags |= SSH_FXF_APPEND;
     if(flags & SSH_FXF_TEXT_MODE) {
       if(protocol->version < 4)
@@ -790,11 +779,10 @@ static int sftp_open(const char *path,
       else
         pflags |= SSH_FXF_TEXT;
     }
-    if(flags & ~(SSH_FXF_ACCESS_DISPOSITION
-                 |SSH_FXF_APPEND_DATA
-                 |SSH_FXF_APPEND_DATA_ATOMIC
-                 |SSH_FXF_TEXT_MODE)) 
-      return error("future SSH_FXP_OPEN flags (%#"PRIx32") cannot be emulated in protocol %d",
+    if(flags & ~(SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
+                 SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE))
+      return error("future SSH_FXP_OPEN flags (%#" PRIx32
+                   ") cannot be emulated in protocol %d",
                    flags, protocol->version);
     sftp_send_begin(&fakeworker);
     sftp_send_uint8(&fakeworker, SSH_FXP_OPEN);
@@ -827,8 +815,7 @@ struct space_available {
   uint32_t bytes_per_allocation_unit;
 };
 
-static int sftp_space_available(const char *path,
-                                struct space_available *as) {
+static int sftp_space_available(const char *path, struct space_available *as) {
   uint32_t id;
 
   remote_cwd();
@@ -838,8 +825,8 @@ static int sftp_space_available(const char *path,
   sftp_send_string(&fakeworker, "space-available");
   sftp_send_path(&fakejob, &fakeworker, path);
   sftp_send_end(&fakeworker);
-  if(getresponse(SSH_FXP_EXTENDED_REPLY,
-                 id, "space-available") != SSH_FXP_EXTENDED_REPLY)
+  if(getresponse(SSH_FXP_EXTENDED_REPLY, id, "space-available") !=
+     SSH_FXP_EXTENDED_REPLY)
     return -1;
   cpcheck(sftp_parse_uint64(&fakejob, &as->bytes_on_device));
   cpcheck(sftp_parse_uint64(&fakejob, &as->unused_bytes_on_device));
@@ -918,8 +905,7 @@ struct statvfs_reply {
   uint64_t namemax;
 };
 
-static int sftp_statvfs(const char *path,
-                        struct statvfs_reply *sr) {
+static int sftp_statvfs(const char *path, struct statvfs_reply *sr) {
   uint32_t id;
 
   remote_cwd();
@@ -948,14 +934,12 @@ static int sftp_statvfs(const char *path,
 
 /* Command line operations */
 
-static int cmd_pwd(int attribute((unused)) ac,
-                   char attribute((unused)) **av) {
+static int cmd_pwd(int attribute((unused)) ac, char attribute((unused)) * *av) {
   xprintf("%s\n", remote_cwd());
   return 0;
 }
 
-static int cmd_cd(int attribute((unused)) ac,
-                  char **av) {
+static int cmd_cd(int attribute((unused)) ac, char **av) {
   const char *newcwd;
   struct sftpattr attrs;
 
@@ -989,15 +973,14 @@ static int cmd_cd(int attribute((unused)) ac,
 }
 
 static int cmd_quit(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
+                    char attribute((unused)) * *av) {
   exit(0);
 }
 
-static int cmd_help(int attribute((unused)) ac,
-                    char attribute((unused)) **av);
+static int cmd_help(int attribute((unused)) ac, char attribute((unused)) * *av);
 
 static int cmd_lpwd(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
+                    char attribute((unused)) * *av) {
   char *lpwd;
 
   if(!(lpwd = sftp_getcwd(fakejob.a))) {
@@ -1008,8 +991,7 @@ static int cmd_lpwd(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_lcd(int attribute((unused)) ac,
-                   char **av) {
+static int cmd_lcd(int attribute((unused)) ac, char **av) {
   if(chdir(av[0]) < 0) {
     error("error calling chdir: %s", strerror(errno));
     return -1;
@@ -1060,9 +1042,9 @@ static void reverse(void *array, size_t count, size_t size) {
     char *const base = array;
     size_t n;
 
-    /* If size is even then size/2 is the first half of the array and that's fine.
-     * If size is odd then size/2 goes up to but excludes the middle member
-     * which is also fine. */
+    /* If size is even then size/2 is the first half of the array and that's
+     * fine. If size is odd then size/2 goes up to but excludes the middle
+     * member which is also fine. */
     for(n = 0; n < size / 2; ++n) {
       memcpy(tmp, base + n * size, size);
       memcpy(base + n * size, base + (count - n - 1) * size, size);
@@ -1072,8 +1054,7 @@ static void reverse(void *array, size_t count, size_t size) {
   }
 }
 
-static int cmd_ls(int ac,
-                  char **av) {
+static int cmd_ls(int ac, char **av) {
   const char *options, *path;
   struct sftpattr *attrs, *allattrs = 0, fileattrs;
   size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
@@ -1091,8 +1072,7 @@ static int cmd_ls(int ac,
   /* See what type the file is */
   if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT))
     return -1;
-  if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY
-     || strchr(options, 'd')) {
+  if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY || strchr(options, 'd')) {
     /* The file is not a directory, or we used -d */
     allattrs = &fileattrs;
     nallattrs = 1;
@@ -1111,7 +1091,7 @@ static int cmd_ls(int ac,
         return -1;
       }
       if(!nattrs)
-        break;                          /* eof */
+        break; /* eof */
       allattrs = xrecalloc(allattrs, nattrs + nallattrs, sizeof *attrs);
       for(n = 0; n < nattrs; ++n) {
         if(include_dotfiles || attrs[n].name[0] != '.') {
@@ -1144,31 +1124,30 @@ static int cmd_ls(int ac,
     /* long listing */
     time_t now;
     struct tm nowtime;
-    const unsigned long flags = (strchr(options, 'n')
-                                 ? FORMAT_PREFER_NUMERIC_UID
-                                 : 0)|FORMAT_PREFER_LOCALTIME|FORMAT_ATTRS;
-    
+    const unsigned long flags =
+        (strchr(options, 'n') ? FORMAT_PREFER_NUMERIC_UID : 0) |
+        FORMAT_PREFER_LOCALTIME | FORMAT_ATTRS;
+
     /* We'd like to know what year we're in for dates in longname */
     time(&now);
     gmtime_r(&now, &nowtime);
     for(n = 0; n < nallattrs; ++n) {
       struct sftpattr *const attrs = &allattrs[n];
-      if(attrs->type == SSH_FILEXFER_TYPE_SYMLINK
-         && !attrs->target) {
+      if(attrs->type == SSH_FILEXFER_TYPE_SYMLINK && !attrs->target) {
         if(singlefile)
           attrs->target = sftp_readlink(attrs->name);
         else {
-          char *const fullname = sftp_alloc(fakejob.a,
-                                            strlen(path) + strlen(attrs->name)
-                                            + 2);
+          char *const fullname =
+              sftp_alloc(fakejob.a, strlen(path) + strlen(attrs->name) + 2);
           strcpy(fullname, path);
           strcat(fullname, "/");
           strcat(fullname, attrs->name);
-          D(("%s -> %s",  attrs->name, fullname));
+          D(("%s -> %s", attrs->name, fullname));
           attrs->target = sftp_readlink(fullname);
         }
       }
-      xprintf("%s\n", sftp_format_attr(fakejob.a, attrs, nowtime.tm_year, flags));
+      xprintf("%s\n",
+              sftp_format_attr(fakejob.a, attrs, nowtime.tm_year, flags));
     }
   } else if(strchr(options, '1')) {
     /* single-column listing */
@@ -1179,7 +1158,7 @@ static int cmd_ls(int ac,
     /* We have C columns of width M, with C-1 single-character blank columns
      * between them.  So the total width is C * M + (C - 1).  The lot had
      * better fit into W columns in total.
-     * 
+     *
      * We want to find the maximum C such that:
      *     C * M + C - 1 <= W
      * <=> C * (M + 1) <= W + 1
@@ -1216,10 +1195,11 @@ static int cmd_ls(int ac,
         wchar_t *wname = sftp_mbs2wcs(allattrs[i].name);
         const size_t w = wcswidth(wname, SIZE_MAX);
         free(wname);
-        xprintf("%s%*s",
-                allattrs[i].name,
+        xprintf("%s%*s", allattrs[i].name,
                 (m + 1 < cols && i + rows < nallattrs
-                 ? (int)(maxnamewidth - w + 1) : 0), "");
+                     ? (int)(maxnamewidth - w + 1)
+                     : 0),
+                "");
       }
       xprintf("\n");
     }
@@ -1229,9 +1209,8 @@ static int cmd_ls(int ac,
   return 0;
 }
 
-static int cmd_lls(int ac,
-                   char **av) {
-  const char **args = sftp_alloc(fakejob.a, (ac + 2) * sizeof (char *));
+static int cmd_lls(int ac, char **av) {
+  const char **args = sftp_alloc(fakejob.a, (ac + 2) * sizeof(char *));
   int n = 0;
   pid_t pid;
 
@@ -1253,8 +1232,7 @@ static int cmd_lls(int ac,
   return 0;
 }
 
-static int cmd_lumask(int ac,
-                      char **av) {
+static int cmd_lumask(int ac, char **av) {
   mode_t n;
 
   if(ac) {
@@ -1277,8 +1255,7 @@ static int cmd_lumask(int ac,
   return 0;
 }
 
-static int cmd_lmkdir(int attribute((unused)) ac,
-                      char **av) {
+static int cmd_lmkdir(int attribute((unused)) ac, char **av) {
   if(mkdir(av[0], 0777) < 0) {
     error("creating directory %s: %s", av[0], strerror(errno));
     return -1;
@@ -1286,10 +1263,9 @@ static int cmd_lmkdir(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_chown(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_chown(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
-  
+
   if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
     return -1;
   if(protocol->version >= 4) {
@@ -1304,10 +1280,9 @@ static int cmd_chown(int attribute((unused)) ac,
   return sftp_setstat(av[1], &attrs);
 }
 
-static int cmd_chgrp(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_chgrp(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
-  
+
   if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
     return -1;
   if(protocol->version >= 4) {
@@ -1322,10 +1297,9 @@ static int cmd_chgrp(int attribute((unused)) ac,
   return sftp_setstat(av[1], &attrs);
 }
 
-static int cmd_chmod(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_chmod(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
-  
+
   attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
   attrs.type = SSH_FILEXFER_TYPE_UNKNOWN;
   errno = 0;
@@ -1335,18 +1309,15 @@ static int cmd_chmod(int attribute((unused)) ac,
   return sftp_setstat(av[1], &attrs);
 }
 
-static int cmd_rm(int attribute((unused)) ac,
-                  char **av) {
+static int cmd_rm(int attribute((unused)) ac, char **av) {
   return sftp_remove(av[0]);
 }
 
-static int cmd_rmdir(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_rmdir(int attribute((unused)) ac, char **av) {
   return sftp_rmdir(av[0]);
 }
 
-static int cmd_mv(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_mv(int attribute((unused)) ac, char **av) {
   if(ac == 3) {
     const char *ptr = av[0];
     int c;
@@ -1357,11 +1328,20 @@ static int cmd_mv(int attribute((unused)) ac,
       return error("invalid options '%s'", av[0]);
     while((c = *ptr++)) {
       switch(c) {
-      case 'n': flags |= SSH_FXF_RENAME_NATIVE; break;
-      case 'a': flags |= SSH_FXF_RENAME_ATOMIC; break;
-      case 'o': flags |= SSH_FXF_RENAME_OVERWRITE; break;
-      case 'p': posixrename = 1; break;
-      default: return error("invalid options '%s'", av[0]);
+      case 'n':
+        flags |= SSH_FXF_RENAME_NATIVE;
+        break;
+      case 'a':
+        flags |= SSH_FXF_RENAME_ATOMIC;
+        break;
+      case 'o':
+        flags |= SSH_FXF_RENAME_OVERWRITE;
+        break;
+      case 'p':
+        posixrename = 1;
+        break;
+      default:
+        return error("invalid options '%s'", av[0]);
       }
     }
     if(posixrename)
@@ -1372,44 +1352,42 @@ static int cmd_mv(int attribute((unused)) ac,
     return sftp_rename(av[0], av[1], 0);
 }
 
-static int cmd_symlink(int attribute((unused)) ac,
-                       char **av) {
+static int cmd_symlink(int attribute((unused)) ac, char **av) {
   return sftp_link(av[0], av[1], 1);
 }
 
-static int cmd_link(int attribute((unused)) ac,
-                    char **av) {
+static int cmd_link(int attribute((unused)) ac, char **av) {
   return sftp_link(av[0], av[1], 0);
 }
 
 /* cmd_get uses a background thread to send requests */
 struct outstanding_read {
-  uint32_t id;                          /* 0 or a request ID */
-  off_t offset;                         /* offset in source file */
+  uint32_t id;  /* 0 or a request ID */
+  off_t offset; /* offset in source file */
 };
 
 struct reader_data {
-  pthread_mutex_t m;                    /* protects everything here */
-  pthread_cond_t c1;                    /* signaled when a response received */
-  pthread_cond_t c2;                    /* signaled when a request sent */
-  struct client_handle h;               /* target handle */
-  struct outstanding_read *reqs;        /* in-flight requests */
-  uint64_t next_offset;                 /* next offset */
+  pthread_mutex_t m;             /* protects everything here */
+  pthread_cond_t c1;             /* signaled when a response received */
+  pthread_cond_t c2;             /* signaled when a request sent */
+  struct client_handle h;        /* target handle */
+  struct outstanding_read *reqs; /* in-flight requests */
+  uint64_t next_offset;          /* next offset */
   int outstanding, eof, failed;
-  uint64_t size;                        /* file size */
-  uint64_t written;                     /* byte written so far */
-  int fd;                               /* file to write to */
-  char *local, *tmp;                    /* output filename */
+  uint64_t size;     /* file size */
+  uint64_t written;  /* byte written so far */
+  int fd;            /* file to write to */
+  char *local, *tmp; /* output filename */
   /* For text translation: */
-  FILE *translated_fp;                  /* file to write to (in stdio-speak) */
-  size_t translated_state;              /* how far thru newline we've seen */
+  FILE *translated_fp;     /* file to write to (in stdio-speak) */
+  size_t translated_state; /* how far thru newline we've seen */
 };
 
 static void *reader_thread(void *arg) {
   struct reader_data *const r = arg;
   int n;
   uint32_t id, len;
-  
+
   ferrcheck(pthread_mutex_lock(&r->m));
   while(!r->eof && !r->failed) {
     /* Wait for a job to be reaped */
@@ -1460,8 +1438,8 @@ static int write_translated_init(struct reader_data *r) {
   return 0;
 }
 
-static int write_translated(struct reader_data *r,
-                            const void *vptr, size_t bytes) {
+static int write_translated(struct reader_data *r, const void *vptr,
+                            size_t bytes) {
   const char *ptr = vptr;
   while(bytes > 0) {
     const int c = (unsigned char)*ptr++;
@@ -1481,8 +1459,8 @@ static int write_translated(struct reader_data *r,
     } else {
       if(r->translated_state) {
         /* We're part way thru something that turned out not to be a newline. */
-        if(fwrite(newline, 1, r->translated_state, r->translated_fp)
-           != r->translated_state)
+        if(fwrite(newline, 1, r->translated_state, r->translated_fp) !=
+           r->translated_state)
           return -1;
         r->translated_state = 0;
         /* Try again from the current point. */
@@ -1507,7 +1485,8 @@ static int write_translated_done(struct reader_data *r) {
     if(r->translated_state) {
       /* The file ends part way thru something that starts out like a newline
        * sequence but turns out not to be one. */
-      if(fwrite(newline, 1, r->translated_state, r->translated_fp) != r->translated_state)
+      if(fwrite(newline, 1, r->translated_state, r->translated_fp) !=
+         r->translated_state)
         rc = -1;
       r->translated_state = 0;
     }
@@ -1556,7 +1535,7 @@ static void reap_write_response(struct reader_data *r) {
      * the right place in the file according to what we asked for.  There's
      * not much point releasing the lock while doing the write - the
      * background thread will have done all it wants while we were awaiting
-     * the response. 
+     * the response.
      *
      * In text mode we can rely on the responses arriving in the correct
      * order.
@@ -1579,8 +1558,7 @@ static void reap_write_response(struct reader_data *r) {
   }
 }
 
-static int cmd_get(int ac,
-                   char **av) {
+static int cmd_get(int ac, char **av) {
   int preserve = 0;
   const char *e;
   char *remote;
@@ -1605,7 +1583,7 @@ static int cmd_get(int ac,
         preserve = 1;
         break;
       case 'f':
-        flags |= SSH_FXF_NOFOLLOW; 
+        flags |= SSH_FXF_NOFOLLOW;
         break;
       case 'L':
         seek = 1;
@@ -1628,7 +1606,7 @@ static int cmd_get(int ac,
   /* we'll write to a temporary file */
   r.tmp = sftp_alloc(fakejob.a, strlen(r.local) + 5);
   sprintf(r.tmp, "%s.new", r.local);
-  if((r.fd = open(r.tmp, O_WRONLY|O_TRUNC|O_CREAT, 0666)) < 0) {
+  if((r.fd = open(r.tmp, O_WRONLY | O_TRUNC | O_CREAT, 0666)) < 0) {
     error("error opening %s: %s", r.tmp, strerror(errno));
     goto error;
   }
@@ -1639,9 +1617,8 @@ static int cmd_get(int ac,
     r.fd = -1;
   }
   /* open the remote file */
-  if(sftp_open(remote, ACE4_READ_DATA|ACE4_READ_ATTRIBUTES,
-               SSH_FXF_OPEN_EXISTING|flags,
-               &attrs, &r.h))
+  if(sftp_open(remote, ACE4_READ_DATA | ACE4_READ_ATTRIBUTES,
+               SSH_FXF_OPEN_EXISTING | flags, &attrs, &r.h))
     goto error;
   /* stat the file */
   if(sftp_fstat(&r.h, &attrs))
@@ -1649,8 +1626,8 @@ static int cmd_get(int ac,
   if(!textmode && (attrs.valid & SSH_FILEXFER_ATTR_SIZE)) {
     /* We know how big the file is.  Check we can fit it! */
     if((uint64_t)(off_t)attrs.size != attrs.size) {
-      error("remote file %s is too large (%"PRIu64" bytes)",
-            remote, attrs.size);
+      error("remote file %s is too large (%" PRIu64 " bytes)", remote,
+            attrs.size);
       goto error;
     }
     r.size = attrs.size;
@@ -1663,7 +1640,7 @@ static int cmd_get(int ac,
     if(sftp_text_seek(&r.h, line))
       goto error;
   }
-  gettimeofday(&started,  0);
+  gettimeofday(&started, 0);
   ferrcheck(pthread_mutex_init(&r.m, 0));
   ferrcheck(pthread_cond_init(&r.c1, 0));
   ferrcheck(pthread_cond_init(&r.c2, 0));
@@ -1680,7 +1657,7 @@ static int cmd_get(int ac,
     while(!r.outstanding)
       ferrcheck(pthread_cond_wait(&r.c2, &r.m));
     reap_write_response(&r);
-    /* Notify the background thread that something changed. */ 
+    /* Notify the background thread that something changed. */
     ferrcheck(pthread_cond_signal(&r.c1));
   }
   ferrcheck(pthread_mutex_unlock(&r.m));
@@ -1696,13 +1673,13 @@ static int cmd_get(int ac,
   ferrcheck(pthread_cond_destroy(&r.c1));
   ferrcheck(pthread_cond_destroy(&r.c2));
   progress(0, 0, 0);
-  if(r.failed) 
+  if(r.failed)
     goto error;
   gettimeofday(&finished, 0);
   if(progress_indicators) {
-    elapsed = ((finished.tv_sec - started.tv_sec)
-               + (finished.tv_usec - started.tv_usec) / 1000000.0);
-    xprintf("%"PRIu64" bytes in %.1f seconds", r.written, elapsed);
+    elapsed = ((finished.tv_sec - started.tv_sec) +
+               (finished.tv_usec - started.tv_usec) / 1000000.0);
+    xprintf("%" PRIu64 " bytes in %.1f seconds", r.written, elapsed);
     if(elapsed > 0.1)
       xprintf(" %.0f bytes/sec", r.written / elapsed);
     xprintf("\n");
@@ -1712,7 +1689,7 @@ static int cmd_get(int ac,
   r.h.len = 0;
   if(preserve) {
     /* Set permissions etc */
-    attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* don't truncate */
+    attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE;   /* don't truncate */
     attrs.valid &= ~SSH_FILEXFER_ATTR_UIDGID; /* different mapping! */
     if(sftp_set_fstatus(fakejob.a, r.fd, &attrs, &e) != SSH_FX_OK) {
       error("cannot %s %s: %s", e, r.tmp, strerror(errno));
@@ -1735,7 +1712,7 @@ static int cmd_get(int ac,
   }
   return 0;
 error:
-  write_translated_done(&r);            /* ok to call if not initialized */
+  write_translated_done(&r); /* ok to call if not initialized */
   if(r.fd >= 0)
     close(r.fd);
   if(r.tmp)
@@ -1747,20 +1724,20 @@ error:
 
 /* put uses a thread to gather responses */
 struct outstanding_write {
-  uint32_t id;                          /* or 0 for empty slot */
-  ssize_t n;                            /* size of this request */
+  uint32_t id; /* or 0 for empty slot */
+  ssize_t n;   /* size of this request */
 };
 
 struct writer_data {
-  pthread_mutex_t m;                    /* protects everything here */
-  pthread_cond_t c1;                    /* signal when writer modifies */
-  pthread_cond_t c2;                    /* signal when reader modifies */
-  int failed;                           /* set on failure */
-  int outstanding;                      /* number of outstanding requests */
-  int finished;                         /* set when writer finished */
-  struct outstanding_write *reqs;       /* outstanding requests */
-  const char *remote;                   /* remote path */
-  uint64_t written, total;              /* total size */
+  pthread_mutex_t m;              /* protects everything here */
+  pthread_cond_t c1;              /* signal when writer modifies */
+  pthread_cond_t c2;              /* signal when reader modifies */
+  int failed;                     /* set on failure */
+  int outstanding;                /* number of outstanding requests */
+  int finished;                   /* set when writer finished */
+  struct outstanding_write *reqs; /* outstanding requests */
+  const char *remote;             /* remote path */
+  uint64_t written, total;        /* total size */
 };
 
 static void *writer_thread(void *arg) {
@@ -1778,7 +1755,7 @@ static void *writer_thread(void *arg) {
       continue;
     }
     /* Await the incoming response */
-    getresponse(SSH_FXP_STATUS, 0/*don't care about id*/, "SSH_FXP_WRITE");
+    getresponse(SSH_FXP_STATUS, 0 /*don't care about id*/, "SSH_FXP_WRITE");
     ferrcheck(pthread_cond_signal(&w->c2));
     /* Find the request ID */
     for(i = 0; i < nrequests && w->reqs[i].id != fakejob.id; ++i)
@@ -1796,13 +1773,12 @@ static void *writer_thread(void *arg) {
       w->failed = 1;
     }
   }
-  progress(0, 0, 0);                    /* clear progress indicator */
+  progress(0, 0, 0); /* clear progress indicator */
   ferrcheck(pthread_mutex_unlock(&w->m));
   return 0;
 }
 
-static int cmd_put(int ac,
-                   char **av) {
+static int cmd_put(int ac, char **av) {
   char *local;
   const char *remote;
   struct sftpattr attrs;
@@ -1832,16 +1808,16 @@ static int cmd_put(int ac,
       case 'P':
         preserve = 1;
         break;
-      case 'a': 
+      case 'a':
         disp = SSH_FXF_OPEN_OR_CREATE;
-        flags |= SSH_FXF_APPEND_DATA; 
+        flags |= SSH_FXF_APPEND_DATA;
         break;
-      case 'A': 
+      case 'A':
         disp = SSH_FXF_OPEN_EXISTING;
-        flags |= SSH_FXF_APPEND_DATA; 
+        flags |= SSH_FXF_APPEND_DATA;
         break;
       case 'f':
-        flags |= SSH_FXF_NOFOLLOW; 
+        flags |= SSH_FXF_NOFOLLOW;
         break;
       case 't':
         disp = SSH_FXF_CREATE_NEW;
@@ -1870,7 +1846,7 @@ static int cmd_put(int ac,
     --ac;
   } else
     remote = basename(local);
- if((fd = open(local, O_RDONLY)) < 0) {
+  if((fd = open(local, O_RDONLY)) < 0) {
     error("cannot open %s: %s", local, strerror(errno));
     goto error;
   }
@@ -1895,9 +1871,8 @@ static int cmd_put(int ac,
     /* Mask out things that don't make sense: we set the size by dint of
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
-    attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE
-                     |SSH_FILEXFER_ATTR_LINK_COUNT
-                     |SSH_FILEXFER_ATTR_UIDGID);
+    attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_LINK_COUNT |
+                     SSH_FILEXFER_ATTR_UIDGID);
     /* Mask off attributes that don't work in this protocol version */
     attrs.valid &= attrmask;
     assert(!(attrs.valid & SSH_FILEXFER_ATTR_CTIME));
@@ -1909,8 +1884,7 @@ static int cmd_put(int ac,
   }
   if(textmode)
     flags |= SSH_FXF_TEXT_MODE;
-  if(sftp_open(remote, ACE4_WRITE_DATA|ACE4_WRITE_ATTRIBUTES,
-               disp | flags,
+  if(sftp_open(remote, ACE4_WRITE_DATA | ACE4_WRITE_ATTRIBUTES, disp | flags,
                &attrs, &h))
     goto error;
   if(textmode) {
@@ -1922,7 +1896,7 @@ static int cmd_put(int ac,
   }
   w.reqs = sftp_alloc(fakejob.a, nrequests * sizeof *w.reqs);
   w.remote = remote;
-  gettimeofday(&started,  0);
+  gettimeofday(&started, 0);
   ferrcheck(pthread_mutex_init(&w.m, 0));
   ferrcheck(pthread_cond_init(&w.c1, 0));
   ferrcheck(pthread_cond_init(&w.c2, 0));
@@ -1945,15 +1919,15 @@ static int cmd_put(int ac,
     sftp_send_uint64(&fakeworker, offset);
     sftp_send_need(fakejob.worker, buffersize + 4);
     if(textmode) {
-      char *const start = ((char *)fakejob.worker->buffer
-                           + fakejob.worker->bufused + 4);
+      char *const start =
+          ((char *)fakejob.worker->buffer + fakejob.worker->bufused + 4);
       char *ptr = start;
       size_t left = buffersize;
       const size_t newline_len = strlen(newline);
       int c;
       /* We will need to perform a translation step.  We read from stdio into
        * our buffer expanding newlines as necessary. */
-      
+
       while(left > 0 && (c = getc(fp)) != EOF) {
         if(c == '\n') {
           /* We found a newline.  Let us translated it to the desired wire
@@ -2025,15 +1999,15 @@ static int cmd_put(int ac,
     goto error;
   gettimeofday(&finished, 0);
   if(progress_indicators) {
-    elapsed = ((finished.tv_sec - started.tv_sec)
-               + (finished.tv_usec - started.tv_usec) / 1000000.0);
-    xprintf("%"PRIu64" bytes in %.1f seconds", w.written, elapsed);
+    elapsed = ((finished.tv_sec - started.tv_sec) +
+               (finished.tv_usec - started.tv_usec) / 1000000.0);
+    xprintf("%" PRIu64 " bytes in %.1f seconds", w.written, elapsed);
     if(elapsed > 0.1)
       xprintf(" %.0f bytes/sec", w.written / elapsed);
     xprintf("\n");
   }
   if(fd >= 0) {
-    close(fd); 
+    close(fd);
     fd = -1;
   }
   if(fp) {
@@ -2054,7 +2028,7 @@ error:
     close(fd);
   if(h.len) {
     sftp_close(&h);
-    sftp_remove(remote);                /* tidy up our mess */
+    sftp_remove(remote); /* tidy up our mess */
   }
   return -1;
 }
@@ -2073,7 +2047,7 @@ static int cmd_progress(int ac, char **av) {
 }
 
 static int cmd_text(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
+                    char attribute((unused)) * *av) {
   if(protocol->version < 4)
     return error("text mode not supported in protocol version %d",
                  protocol->version);
@@ -2082,13 +2056,12 @@ static int cmd_text(int attribute((unused)) ac,
 }
 
 static int cmd_binary(int attribute((unused)) ac,
-                      char attribute((unused)) **av) {
+                      char attribute((unused)) * *av) {
   textmode = 0;
   return 0;
 }
 
-static int cmd_version(int ac,
-                       char attribute((unused)) **av) {
+static int cmd_version(int ac, char attribute((unused)) * *av) {
   if(ac == 1) {
     const uint32_t id = newid();
 
@@ -2099,12 +2072,18 @@ static int cmd_version(int ac,
     sftp_send_path(&fakejob, &fakeworker, av[0]);
     sftp_send_end(&fakeworker);
     getresponse(SSH_FXP_STATUS, id, "version-select");
-    if(status()) return -1;
-    if(!strcmp(av[0], "3")) protocol = &sftp_v3;
-    else if(!strcmp(av[0], "4")) protocol = &sftp_v4;
-    else if(!strcmp(av[0], "5")) protocol = &sftp_v5;
-    else if(!strcmp(av[0], "6")) protocol = &sftp_v6;
-    else fatal("unknown protocol %s", av[0]);
+    if(status())
+      return -1;
+    if(!strcmp(av[0], "3"))
+      protocol = &sftp_v3;
+    else if(!strcmp(av[0], "4"))
+      protocol = &sftp_v4;
+    else if(!strcmp(av[0], "5"))
+      protocol = &sftp_v5;
+    else if(!strcmp(av[0], "6"))
+      protocol = &sftp_v6;
+    else
+      fatal("unknown protocol %s", av[0]);
     return 0;
   } else {
     xprintf("Protocol version: %d\n", protocol->version);
@@ -2112,7 +2091,7 @@ static int cmd_version(int ac,
       xprintf("Server vendor:    %s\n"
               "Server name:      %s\n"
               "Server version:   %s\n"
-              "Server build:     %"PRIu64"\n",
+              "Server build:     %" PRIu64 "\n",
               vendorname, servername, serverversion, serverbuild);
     if(serverversions)
       xprintf("Server supports:  %s\n", serverversions);
@@ -2121,7 +2100,7 @@ static int cmd_version(int ac,
 }
 
 static int cmd_debug(int attribute((unused)) ac,
-                     char attribute((unused)) **av) {
+                     char attribute((unused)) * *av) {
   sftp_debugging = !sftp_debugging;
   D(("sftp_debugging enabled"));
   return 0;
@@ -2136,32 +2115,30 @@ static void report_bytes(int width, const char *what, uint64_t howmuch) {
     return;
   xprintf("%s:%*s ", what, width - (int)strlen(what), "");
   if(howmuch >= 8 * gbyte)
-    xprintf("%"PRIu64" Gbytes\n", howmuch / gbyte);
+    xprintf("%" PRIu64 " Gbytes\n", howmuch / gbyte);
   else if(howmuch >= 8 * mbyte)
-    xprintf("%"PRIu64" Mbytes\n", howmuch / mbyte);
+    xprintf("%" PRIu64 " Mbytes\n", howmuch / mbyte);
   else if(howmuch >= 8 * kbyte)
-    xprintf("%"PRIu64" Kbytes\n", howmuch / kbyte);
-  else 
-    xprintf("%"PRIu64" bytes\n", howmuch);
+    xprintf("%" PRIu64 " Kbytes\n", howmuch / kbyte);
+  else
+    xprintf("%" PRIu64 " bytes\n", howmuch);
 }
 
-static int cmd_df(int ac,
-                  char **av) {
+static int cmd_df(int ac, char **av) {
   struct space_available as;
 
-  if(sftp_space_available(ac ? av[0] : remote_cwd(), &as)) 
+  if(sftp_space_available(ac ? av[0] : remote_cwd(), &as))
     return -1;
   report_bytes(32, "Bytes on device", as.bytes_on_device);
   report_bytes(32, "Unused bytes on device", as.unused_bytes_on_device);
   report_bytes(32, "Available bytes on device", as.bytes_available_to_user);
-  report_bytes(32, "Unused available bytes on device", 
+  report_bytes(32, "Unused available bytes on device",
                as.unused_bytes_available_to_user);
   report_bytes(32, "Bytes per allocation unit", as.bytes_per_allocation_unit);
   return 0;
 }
 
-static int cmd_mkdir(int ac,
-                     char **av) {
+static int cmd_mkdir(int ac, char **av) {
   const char *path;
   mode_t mode;
 
@@ -2176,15 +2153,15 @@ static int cmd_mkdir(int ac,
 }
 
 static int cmd_init(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
+                    char attribute((unused)) * *av) {
   return sftp_init();
 }
 
 static int cmd_unsupported(int attribute((unused)) ac,
-                           char attribute((unused)) **av) {
+                           char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, 0xFFFFFFFF);
-  sftp_send_uint32(&fakeworker, 0);          /* id */
+  sftp_send_uint32(&fakeworker, 0); /* id */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_unsupported");
   status();
@@ -2192,10 +2169,10 @@ static int cmd_unsupported(int attribute((unused)) ac,
 }
 
 static int cmd_ext_unsupported(int attribute((unused)) ac,
-                               char attribute((unused)) **av) {
+                               char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
-  sftp_send_uint32(&fakeworker, 0);          /* id */
+  sftp_send_uint32(&fakeworker, 0); /* id */
   sftp_send_string(&fakeworker, "no-such-sftp-extension@rjk.greenend.org.uk");
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_unsupported");
@@ -2203,8 +2180,7 @@ static int cmd_ext_unsupported(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_readlink(int attribute((unused)) ac,
-                        char **av) {
+static int cmd_readlink(int attribute((unused)) ac, char **av) {
   char *r = sftp_readlink(av[0]);
 
   if(r) {
@@ -2214,8 +2190,7 @@ static int cmd_readlink(int attribute((unused)) ac,
     return -1;
 }
 
-static int cmd_realpath(int attribute((unused)) ac,
-                        char **av) {
+static int cmd_realpath(int attribute((unused)) ac, char **av) {
   char *r = sftp_realpath(av[0]);
 
   if(r) {
@@ -2225,8 +2200,7 @@ static int cmd_realpath(int attribute((unused)) ac,
     return -1;
 }
 
-static int cmd_realpath6(int attribute((unused)) ac,
-                         char **av) {
+static int cmd_realpath6(int attribute((unused)) ac, char **av) {
   int control_byte;
   char *resolved;
   struct sftpattr attrs;
@@ -2254,8 +2228,7 @@ static int cmd_realpath6(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_lrealpath(int attribute((unused)) ac,
-                         char **av) {
+static int cmd_lrealpath(int attribute((unused)) ac, char **av) {
   char *r;
   unsigned flags;
 
@@ -2264,7 +2237,7 @@ static int cmd_lrealpath(int attribute((unused)) ac,
   else if(!strcmp(av[0], "stat-if"))
     flags = RP_READLINK;
   else if(!strcmp(av[0], "stat-always"))
-    flags = RP_READLINK|RP_MUST_EXIST;
+    flags = RP_READLINK | RP_MUST_EXIST;
   else
     return error("unknown control string '%s'", av[0]);
   r = sftp_find_realpath(fakejob.a, av[1], flags);
@@ -2278,7 +2251,7 @@ static int cmd_lrealpath(int attribute((unused)) ac,
 }
 
 static int cmd_bad_handle(int attribute((unused)) ac,
-                          char attribute((unused)) **av) {
+                          char attribute((unused)) * *av) {
   struct client_handle h;
 
   h.len = 8;
@@ -2298,7 +2271,7 @@ static int cmd_bad_handle(int attribute((unused)) ac,
 }
 
 static int cmd_bad_packet(int attribute((unused)) ac,
-                          char attribute((unused)) **av) {
+                          char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
   /* completely missing ID */
@@ -2307,21 +2280,21 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   status();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
-  sftp_send_uint8(&fakeworker, 0);           /* broken ID */
+  sftp_send_uint8(&fakeworker, 0); /* broken ID */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
   sftp_send_uint32(&fakeworker, 0);
-  sftp_send_uint8(&fakeworker, 0);           /* truncated handle length */
+  sftp_send_uint8(&fakeworker, 0); /* truncated handle length */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
   sftp_send_uint32(&fakeworker, 0);
-  sftp_send_uint32(&fakeworker, 64);         /* truncated handle */
+  sftp_send_uint32(&fakeworker, 64); /* truncated handle */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
@@ -2336,7 +2309,7 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
   sftp_send_uint32(&fakeworker, 0);
   sftp_send_string(&fakeworker, "12345678");
-  sftp_send_uint32(&fakeworker, 0);          /* truncated uint64 */
+  sftp_send_uint32(&fakeworker, 0); /* truncated uint64 */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
@@ -2350,14 +2323,14 @@ static int cmd_bad_packet(int attribute((unused)) ac,
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READLINK);
   sftp_send_uint32(&fakeworker, 0);
-  sftp_send_uint32(&fakeworker, 32);         /* truncated string */
+  sftp_send_uint32(&fakeworker, 32); /* truncated string */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READLINK);
   sftp_send_uint32(&fakeworker, 0);
-  sftp_send_uint8(&fakeworker, 0);           /* truncated string length */
+  sftp_send_uint8(&fakeworker, 0); /* truncated string length */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
   status();
@@ -2365,12 +2338,12 @@ static int cmd_bad_packet(int attribute((unused)) ac,
 }
 
 static int cmd_bad_packet456(int attribute((unused)) ac,
-                             char attribute((unused)) **av) {
+                             char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_SETSTAT);
   sftp_send_uint32(&fakeworker, 0);
   sftp_send_string(&fakeworker, "path");
-  sftp_send_uint32(&fakeworker, 0);          /* valid attributes */
+  sftp_send_uint32(&fakeworker, 0); /* valid attributes */
   /* missing type field */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_packet");
@@ -2379,12 +2352,12 @@ static int cmd_bad_packet456(int attribute((unused)) ac,
 }
 
 static int cmd_bad_path(int attribute((unused)) ac,
-                             char attribute((unused)) **av) {
+                        char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_OPENDIR);
   sftp_send_uint32(&fakeworker, 0);
-  sftp_send_string(&fakeworker, "\xC0");     /* can't be the start of a UTF-8
-                                         * sequence */
+  sftp_send_string(&fakeworker, "\xC0"); /* can't be the start of a UTF-8
+                                          * sequence */
   /* missing type field */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_bad_path");
@@ -2392,50 +2365,47 @@ static int cmd_bad_path(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_stat(int attribute((unused)) ac,
-                    char **av) {
+static int cmd_stat(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
   time_t now;
   struct tm nowtime;
 
-  if(sftp_stat(av[0], &attrs, SSH_FXP_STAT)) return -1;
+  if(sftp_stat(av[0], &attrs, SSH_FXP_STAT))
+    return -1;
   time(&now);
   gmtime_r(&now, &nowtime);
   xprintf("%s\n", sftp_format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
   return 0;
 }
 
-static int cmd_lstat(int attribute((unused)) ac,
-                     char **av) {
+static int cmd_lstat(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
   time_t now;
   struct tm nowtime;
 
-  if(sftp_stat(av[0], &attrs, SSH_FXP_LSTAT)) return -1;
+  if(sftp_stat(av[0], &attrs, SSH_FXP_LSTAT))
+    return -1;
   time(&now);
   gmtime_r(&now, &nowtime);
   xprintf("%s\n", sftp_format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
   return 0;
 }
 
-static int cmd_statfs(int attribute((unused)) ac,
-                      char **av) {
+static int cmd_statfs(int attribute((unused)) ac, char **av) {
   struct statvfs_reply sr;
 
-  if(sftp_statvfs(av[0], &sr)) return -1;
-  xprintf("bsize %"PRIu64" frsize %"PRIu64
-          " id %"PRIx64" flags %"PRIx64" namemax %"PRIu64"\n"
-          "  blocks %9"PRIu64"/%-9"PRIu64" (%"PRIu64")\n"
-          "  files  %9"PRIu64"/%-9"PRIu64" (%"PRIu64")\n",
-          sr.bsize, sr.frsize,
-          sr.fsid, sr.flags, sr.namemax,
-          sr.bfree, sr.blocks, sr.bavail,
-          sr.ffree, sr.files, sr.favail);
+  if(sftp_statvfs(av[0], &sr))
+    return -1;
+  xprintf("bsize %" PRIu64 " frsize %" PRIu64 " id %" PRIx64 " flags %" PRIx64
+          " namemax %" PRIu64 "\n"
+          "  blocks %9" PRIu64 "/%-9" PRIu64 " (%" PRIu64 ")\n"
+          "  files  %9" PRIu64 "/%-9" PRIu64 " (%" PRIu64 ")\n",
+          sr.bsize, sr.frsize, sr.fsid, sr.flags, sr.namemax, sr.bfree,
+          sr.blocks, sr.bavail, sr.ffree, sr.files, sr.favail);
   return 0;
 }
 
-static int cmd_truncate(int attribute((unused)) ac,
-                        char **av) {
+static int cmd_truncate(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
 
   memset(&attrs, 0, sizeof attrs);
@@ -2445,13 +2415,19 @@ static int cmd_truncate(int attribute((unused)) ac,
 }
 
 static int cmd_overlap(int attribute((unused)) ac,
-                       char attribute((unused)) **av) {
+                       char attribute((unused)) * *av) {
   struct sftpattr attrs;
-  static const char a[] = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-  static const char b[] = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-  static const char c[] = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
-  static const char d[] = "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
-  static const char expect[] = "aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  static const char a[] =
+      "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+  static const char b[] =
+      "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+  static const char c[] =
+      "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+  static const char d[] =
+      "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd";
+  static const char expect[] =
+      "aaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbccccccccccccccccdddddddddddddddddddddddd"
+      "dddddddddddddddddddddddddddddddddddddddd";
   char buffer[128];
   int n, r, rc = -1;
   uint32_t ida, idb, idc, idd;
@@ -2459,8 +2435,7 @@ static int cmd_overlap(int attribute((unused)) ac,
   struct client_handle h;
 
   memset(&attrs, 0, sizeof attrs);
-  if(sftp_open("dest", ACE4_WRITE_DATA,
-               SSH_FXF_CREATE_TRUNCATE, &attrs, &h))
+  if(sftp_open("dest", ACE4_WRITE_DATA, SSH_FXF_CREATE_TRUNCATE, &attrs, &h))
     goto error;
   if((fd = open("dest", O_RDWR)) < 0) {
     perror("open dest");
@@ -2474,7 +2449,7 @@ static int cmd_overlap(int attribute((unused)) ac,
     sftp_send_uint64(&fakeworker, 0);
     sftp_send_bytes(&fakeworker, a, 64);
     sftp_send_end(&fakeworker);
-    
+
     sftp_send_begin(&fakeworker);
     sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
     sftp_send_uint32(&fakeworker, idb = newid());
@@ -2482,7 +2457,7 @@ static int cmd_overlap(int attribute((unused)) ac,
     sftp_send_uint64(&fakeworker, 16);
     sftp_send_bytes(&fakeworker, b, 64);
     sftp_send_end(&fakeworker);
-    
+
     sftp_send_begin(&fakeworker);
     sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
     sftp_send_uint32(&fakeworker, idc = newid());
@@ -2490,7 +2465,7 @@ static int cmd_overlap(int attribute((unused)) ac,
     sftp_send_uint64(&fakeworker, 32);
     sftp_send_bytes(&fakeworker, c, 64);
     sftp_send_end(&fakeworker);
-    
+
     sftp_send_begin(&fakeworker);
     sftp_send_uint8(&fakeworker, SSH_FXP_WRITE);
     sftp_send_uint32(&fakeworker, idd = newid());
@@ -2510,13 +2485,14 @@ static int cmd_overlap(int attribute((unused)) ac,
       goto error;
     }
     r = read(fd, buffer, sizeof buffer);
-    if(r != 48+64) {
-      fprintf(stderr, "expected %d bytes got %d\n", 48+64, r);
+    if(r != 48 + 64) {
+      fprintf(stderr, "expected %d bytes got %d\n", 48 + 64, r);
       goto error;
     }
-    buffer[r] = 0;                      /* ensure buffer terminated */
-    if(memcmp(buffer, expect, 48+64)) {
-      fprintf(stderr, "buffer contents mismatch\n"
+    buffer[r] = 0; /* ensure buffer terminated */
+    if(memcmp(buffer, expect, 48 + 64)) {
+      fprintf(stderr,
+              "buffer contents mismatch\n"
               "expect: %s\n"
               "   got: %s\n",
               expect, buffer);
@@ -2534,243 +2510,66 @@ error:
   return rc;
 }
 
-
 /* Table of command line operations */
 static const struct command commands[] = {
-  {
-    "_bad_handle", 0, 0, cmd_bad_handle,
-    0,
-    "operate on a bogus handle"
-  },
-  {
-    "_bad_packet", 0, 0, cmd_bad_packet,
-    0,
-    "send bad packets"
-  },
-  {
-    "_bad_packet456", 0, 0, cmd_bad_packet456,
-    0,
-    "send bad packets (protos >= 4 only)"
-  },
-  {
-    "_bad_path", 0, 0, cmd_bad_path,
-    0,
-    "send bad paths"
-  },
-  {
-    "_ext_unsupported", 0, 0, cmd_ext_unsupported,
-    0,
-    "send an unsupported extension"
-  },
-  {
-    "_init", 0, 0, cmd_init,
-    0,
-    "resend SSH_FXP_INIT"
-  },
-  {
-    "_lrealpath", 2, 2, cmd_lrealpath,
-    "CONTROL PATH",
-    "expand a local path name"
-  },
-  {
-    "_overlap", 0, 0, cmd_overlap,
-    "",
-    "test overlapping writes"
-  },
-  {
-    "_unsupported", 0, 0, cmd_unsupported,
-    0,
-    "send an unsupported command"
-  },
-  {
-    "binary", 0, 0, cmd_binary,
-    0,
-    "binary mode"
-  },
-  {
-    "bye", 0, 0, cmd_quit,
-    0,
-    "quit"
-  },
-  {
-    "cd", 1, 1, cmd_cd,
-    "DIR",
-    "change remote directory"
-  },
-  {
-    "chgrp", 2, 2, cmd_chgrp,
-    "GID PATH",
-    "change remote file group"
-  },
-  {
-    "chmod", 2, 2, cmd_chmod,
-    "OCTAL PATH",
-    "change remote file permissions"
-  },
-  {
-    "chown", 2, 2, cmd_chown,
-    "UID PATH",
-    "change remote file ownership"
-  },
-  {
-    "debug", 0, 0, cmd_debug,
-    0,
-    "toggle sftp_debugging"
-  },
-  {
-    "df", 0, 1, cmd_df,
-    "[PATH]",
-    "query available space"
-  },
-  {
-    "exit", 0, 0, cmd_quit,
-    0,
-    "quit"
-  },
-  {
-    "get", 1, 3, cmd_get,
-    "[-PfL<line>] REMOTE-PATH [LOCAL-PATH]",
-    "retrieve a remote file"
-  },
-  {
-    "help", 0, 0, cmd_help,
-    0,
-    "display help"
-  },
-  {
-    "lcd", 1, 1, cmd_lcd,
-    "DIR",
-    "change local directory"
-  },
-  {
-    "link", 2, 2, cmd_link,
-    "OLDPATH NEWPATH",
-    "create a remote hard link"
-  },
-  {
-    "lpwd", 0, 0, cmd_lpwd,
-    "DIR",
-    "display current local directory"
-  },
-  {
-    "lls", 0, INT_MAX, cmd_lls,
-    "[OPTIONS] [LOCAL-PATH]",
-    "list local directory"
-  },
-  {
-    "lmkdir", 1, 1, cmd_lmkdir,
-    "LOCAL-PATH",
-    "create local directory"
-  },
-  {
-    "ls", 0, 2, cmd_ls,
-    "[OPTIONS] [PATH]",
-    "list remote directory"
-  },
-  {
-    "lstat", 1, 1, cmd_lstat,
-    "PATH",
-    "lstat a file"
-  },
-  {
-    "lumask", 0, 1, cmd_lumask,
-    "OCTAL",
-    "get or set local umask"
-  },
-  {
-    "mkdir", 1, 2, cmd_mkdir,
-    "[MODE] DIRECTORY",
-    "create a remote directory"
-  },
-  {
-    "mv", 2, 3, cmd_mv,
-    "[-naop] OLDPATH NEWPATH",
-    "rename a remote file"
-  },
-  {
-    "progress", 0, 1, cmd_progress,
-    "[on|off]",
-    "set or toggle progress indicators"
-  },
-  {
-    "put", 1, 3, cmd_put, "[-PaftemMODE] LOCAL-PATH [REMOTE-PATH]",
-    "upload a file"
-  },
-  {
-    "pwd", 0, 0, cmd_pwd,
-    0,
-    "display current remote directory" 
-  },
-  {
-    "quit", 0, 0, cmd_quit,
-    0,
-    "quit"
-  },
-  {
-    "readlink", 1, 1, cmd_readlink,
-    "PATH",
-    "inspect a symlink"
-  },
-  {
-    "realpath", 1, 1, cmd_realpath,
-    "PATH",
-    "expand a path name"
-  },
-  {
-    "realpath6", 2, INT_MAX, cmd_realpath6,
-    "CONTROL PATH [COMPOSE...]",
-    "expand a path name"
-  },
-  {
-    "rename", 2, 2, cmd_mv,
-    "OLDPATH NEWPATH",
-    "rename a remote file"
-  },
-  {
-    "rm", 1, 1, cmd_rm,
-    "PATH",
-    "remove remote file"
-  },
-  {
-    "rmdir", 1, 1, cmd_rmdir,
-    "PATH",
-    "remove remote directory"
-  },
-  {
-    "symlink", 2, 2, cmd_symlink,
-    "TARGET NEWPATH",
-    "create a remote symlink"
-  },
-  {
-    "stat", 1, 1, cmd_stat,
-    "PATH",
-    "stat a file"
-  },
-  {
-    "statfs", 1, 1, cmd_statfs,
-    "PATH",
-    "stat a filesystem"
-  },
-  {
-    "text", 0, 0, cmd_text,
-    0,
-    "text mode"
-  },
-  {
-    "truncate", 2, 2, cmd_truncate,
-    "LENGTH FILE",
-    "truncate a file"
-  },
-  {
-    "version", 0, 1, cmd_version,
-    0,
-    "set or display protocol version"
-  },
-  { 0, 0, 0, 0, 0, 0 }
-};
+    {"_bad_handle", 0, 0, cmd_bad_handle, 0, "operate on a bogus handle"},
+    {"_bad_packet", 0, 0, cmd_bad_packet, 0, "send bad packets"},
+    {"_bad_packet456", 0, 0, cmd_bad_packet456, 0,
+     "send bad packets (protos >= 4 only)"},
+    {"_bad_path", 0, 0, cmd_bad_path, 0, "send bad paths"},
+    {"_ext_unsupported", 0, 0, cmd_ext_unsupported, 0,
+     "send an unsupported extension"},
+    {"_init", 0, 0, cmd_init, 0, "resend SSH_FXP_INIT"},
+    {"_lrealpath", 2, 2, cmd_lrealpath, "CONTROL PATH",
+     "expand a local path name"},
+    {"_overlap", 0, 0, cmd_overlap, "", "test overlapping writes"},
+    {"_unsupported", 0, 0, cmd_unsupported, 0, "send an unsupported command"},
+    {"binary", 0, 0, cmd_binary, 0, "binary mode"},
+    {"bye", 0, 0, cmd_quit, 0, "quit"},
+    {"cd", 1, 1, cmd_cd, "DIR", "change remote directory"},
+    {"chgrp", 2, 2, cmd_chgrp, "GID PATH", "change remote file group"},
+    {"chmod", 2, 2, cmd_chmod, "OCTAL PATH", "change remote file permissions"},
+    {"chown", 2, 2, cmd_chown, "UID PATH", "change remote file ownership"},
+    {"debug", 0, 0, cmd_debug, 0, "toggle sftp_debugging"},
+    {"df", 0, 1, cmd_df, "[PATH]", "query available space"},
+    {"exit", 0, 0, cmd_quit, 0, "quit"},
+    {"get", 1, 3, cmd_get, "[-PfL<line>] REMOTE-PATH [LOCAL-PATH]",
+     "retrieve a remote file"},
+    {"help", 0, 0, cmd_help, 0, "display help"},
+    {"lcd", 1, 1, cmd_lcd, "DIR", "change local directory"},
+    {"link", 2, 2, cmd_link, "OLDPATH NEWPATH", "create a remote hard link"},
+    {"lpwd", 0, 0, cmd_lpwd, "DIR", "display current local directory"},
+    {"lls", 0, INT_MAX, cmd_lls, "[OPTIONS] [LOCAL-PATH]",
+     "list local directory"},
+    {"lmkdir", 1, 1, cmd_lmkdir, "LOCAL-PATH", "create local directory"},
+    {"ls", 0, 2, cmd_ls, "[OPTIONS] [PATH]", "list remote directory"},
+    {"lstat", 1, 1, cmd_lstat, "PATH", "lstat a file"},
+    {"lumask", 0, 1, cmd_lumask, "OCTAL", "get or set local umask"},
+    {"mkdir", 1, 2, cmd_mkdir, "[MODE] DIRECTORY", "create a remote directory"},
+    {"mv", 2, 3, cmd_mv, "[-naop] OLDPATH NEWPATH", "rename a remote file"},
+    {"progress", 0, 1, cmd_progress, "[on|off]",
+     "set or toggle progress indicators"},
+    {"put", 1, 3, cmd_put, "[-PaftemMODE] LOCAL-PATH [REMOTE-PATH]",
+     "upload a file"},
+    {"pwd", 0, 0, cmd_pwd, 0, "display current remote directory"},
+    {"quit", 0, 0, cmd_quit, 0, "quit"},
+    {"readlink", 1, 1, cmd_readlink, "PATH", "inspect a symlink"},
+    {"realpath", 1, 1, cmd_realpath, "PATH", "expand a path name"},
+    {"realpath6", 2, INT_MAX, cmd_realpath6, "CONTROL PATH [COMPOSE...]",
+     "expand a path name"},
+    {"rename", 2, 2, cmd_mv, "OLDPATH NEWPATH", "rename a remote file"},
+    {"rm", 1, 1, cmd_rm, "PATH", "remove remote file"},
+    {"rmdir", 1, 1, cmd_rmdir, "PATH", "remove remote directory"},
+    {"symlink", 2, 2, cmd_symlink, "TARGET NEWPATH", "create a remote symlink"},
+    {"stat", 1, 1, cmd_stat, "PATH", "stat a file"},
+    {"statfs", 1, 1, cmd_statfs, "PATH", "stat a filesystem"},
+    {"text", 0, 0, cmd_text, 0, "text mode"},
+    {"truncate", 2, 2, cmd_truncate, "LENGTH FILE", "truncate a file"},
+    {"version", 0, 1, cmd_version, 0, "set or display protocol version"},
+    {0, 0, 0, 0, 0, 0}};
 
 static int cmd_help(int attribute((unused)) ac,
-                    char attribute((unused)) **av) {
+                    char attribute((unused)) * *av) {
   int n;
   size_t max = 0, len = 0;
 
@@ -2780,7 +2579,7 @@ static int cmd_help(int attribute((unused)) ac,
     len = strlen(commands[n].name);
     if(commands[n].args)
       len += strlen(commands[n].args) + 1;
-    if(len > max) 
+    if(len > max)
       max = len;
   }
   for(n = 0; commands[n].name; ++n) {
@@ -2829,7 +2628,7 @@ static void process(const char *prompt, FILE *fp) {
   char *line;
   int ac, n, rc;
   char *avbuf[256], **av;
- 
+
   while((line = input(prompt, fp))) {
     ++inputline;
     if(line[0] == '#')
@@ -2866,15 +2665,15 @@ static void process(const char *prompt, FILE *fp) {
     ++av;
     --ac;
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
-      error("wrong number of arguments (got %d, want %d-%d)",
-            ac, commands[n].minargs, commands[n].maxargs);
+      error("wrong number of arguments (got %d, want %d-%d)", ac,
+            commands[n].minargs, commands[n].maxargs);
       if(stoponerror)
         fatal("stopping on error");
       goto next;
     }
     if(commands[n].handler(ac, av) && stoponerror)
       fatal("stopping on error");
-next:
+  next:
     if(fflush(stdout) < 0)
       fatal("error calling fflush: %s", strerror(errno));
     sftp_alloc_destroy(fakejob.a);
@@ -2918,41 +2717,104 @@ int main(int argc, char **argv) {
   }
 
   while((n = getopt_long(argc, argv, "hVrB:b:P:R:s:S:12CF:o:vdH:p:46D:",
-			 options, 0)) >= 0) {
+                         options, 0)) >= 0) {
     switch(n) {
-    case 'h': help();
-    case 'V': version();
-    case 'r': dropbear++; break;
-    case 'B': buffersize = atoi(optarg); break;
-    case 'b': batchfile = optarg; stoponerror = 1; progress_indicators = 0; break;
-    case 'P': program = optarg; break;
-    case 'R': nrequests = atoi(optarg); break;
-    case 's': subsystem = optarg; break;
-    case 'S': sftpversion = atoi(optarg); break;
-    case '1': sshversion = 1; break;
-    case '2': sshversion = 2; break;
-    case 'C': compress = 1; break;
-    case 'F': sshconf = optarg; break;
-    case 'o': sshoptions[nsshoptions++] = optarg; break;
-    case 'v': sshverbose++; break;
-    case 'd': sftp_debugging = 1; break;
-    case 'D': sftp_debugging = 1; sftp_debugpath = optarg; break;
-    case 256: quirk_reverse_symlink = 1; break;
-    case 257: stoponerror = 1; break;
-    case 258: stoponerror = 0; break;
-    case 259: progress_indicators = 1; break;
-    case 260: progress_indicators = 0; break;
-    case 261: echo = 1; break;
-    case 262: signal(SIGPIPE, SIG_DFL); break; /* stupid python */
-    case 263: sftpversion = atoi(optarg); forceversion = 1; break;
-    case 264: program_debugpath = optarg; break;
-    case 'H': host = optarg; break;
-    case 'p': port = optarg; break;
+    case 'h':
+      help();
+    case 'V':
+      version();
+    case 'r':
+      dropbear++;
+      break;
+    case 'B':
+      buffersize = atoi(optarg);
+      break;
+    case 'b':
+      batchfile = optarg;
+      stoponerror = 1;
+      progress_indicators = 0;
+      break;
+    case 'P':
+      program = optarg;
+      break;
+    case 'R':
+      nrequests = atoi(optarg);
+      break;
+    case 's':
+      subsystem = optarg;
+      break;
+    case 'S':
+      sftpversion = atoi(optarg);
+      break;
+    case '1':
+      sshversion = 1;
+      break;
+    case '2':
+      sshversion = 2;
+      break;
+    case 'C':
+      compress = 1;
+      break;
+    case 'F':
+      sshconf = optarg;
+      break;
+    case 'o':
+      sshoptions[nsshoptions++] = optarg;
+      break;
+    case 'v':
+      sshverbose++;
+      break;
+    case 'd':
+      sftp_debugging = 1;
+      break;
+    case 'D':
+      sftp_debugging = 1;
+      sftp_debugpath = optarg;
+      break;
+    case 256:
+      quirk_reverse_symlink = 1;
+      break;
+    case 257:
+      stoponerror = 1;
+      break;
+    case 258:
+      stoponerror = 0;
+      break;
+    case 259:
+      progress_indicators = 1;
+      break;
+    case 260:
+      progress_indicators = 0;
+      break;
+    case 261:
+      echo = 1;
+      break;
+    case 262:
+      signal(SIGPIPE, SIG_DFL);
+      break; /* stupid python */
+    case 263:
+      sftpversion = atoi(optarg);
+      forceversion = 1;
+      break;
+    case 264:
+      program_debugpath = optarg;
+      break;
+    case 'H':
+      host = optarg;
+      break;
+    case 'p':
+      port = optarg;
+      break;
 #if HAVE_GETADDRINFO
-    case '4': hints.ai_family = PF_INET; break;
-    case '6': hints.ai_family = PF_INET6; break;
+    case '4':
+      hints.ai_family = PF_INET;
+      break;
+    case '6':
+      hints.ai_family = PF_INET6;
+      break;
 #endif
-    default: exit(1);
+    default:
+      exit(1);
     }
   }
 
@@ -2968,7 +2830,7 @@ int main(int argc, char **argv) {
 
   if((sftpversion < 3 || sftpversion > 6) && !forceversion)
     fatal("unknown SFTP version %d", sftpversion);
-  
+
   if(host || port) {
 #if HAVE_GETADDRINFO
     struct addrinfo *res;
@@ -2977,14 +2839,13 @@ int main(int argc, char **argv) {
     if(!(host && port) || program || subsystem)
       fatal("inconsistent options");
     if((rc = getaddrinfo(host, port, &hints, &res)))
-      fatal("error resolving host %s port %s: %s",
-            host, port, gai_strerror(rc));
-    if((fd = socket(res->ai_family, res->ai_socktype,
-                    res->ai_protocol)) < 0)
+      fatal("error resolving host %s port %s: %s", host, port,
+            gai_strerror(rc));
+    if((fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) < 0)
       fatal("error calling socket: %s", strerror(errno));
     if(connect(fd, res->ai_addr, res->ai_addrlen) < 0)
-      fatal("error connecting to host %s port %s: %s",
-            host, port, strerror(errno));
+      fatal("error connecting to host %s port %s: %s", host, port,
+            strerror(errno));
     sftpin = sftpout = fd;
 #else
     /* It's hardly a core feature... */
@@ -3048,16 +2909,15 @@ int main(int argc, char **argv) {
   }
   fakejob.a = sftp_alloc_init(&allocator);
   fakejob.worker = &fakeworker;
-  if((fakeworker.utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8"))
-     == (iconv_t)-1)
+  if((fakeworker.utf8_to_local = iconv_open(nl_langinfo(CODESET), "UTF-8")) ==
+     (iconv_t)-1)
     fatal("error calling iconv_open: %s", strerror(errno));
-  if((fakeworker.local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET)))
-     == (iconv_t)-1)
+  if((fakeworker.local_to_utf8 = iconv_open("UTF-8", nl_langinfo(CODESET))) ==
+     (iconv_t)-1)
     fatal("error calling iconv_open: %s", strerror(errno));
 
   if(sftp_init())
     return 1;
-  
 
   if(batchfile) {
     FILE *fp;

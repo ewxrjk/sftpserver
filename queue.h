@@ -21,11 +21,11 @@
 /** @file queue.h @brief Thread pool/queue interface */
 
 #ifndef QUEUE_H
-#define QUEUE_H
+#  define QUEUE_H
 
 struct allocator;
 
-#if NTHREADS > 1
+#  if NTHREADS > 1
 
 /** @brief Queue-specific callbacks */
 struct queuedetails {
@@ -52,9 +52,8 @@ struct queuedetails {
  * @param details Queue-specific callbacks (not copied)
  * @param nthreads Number of threads to create
  */
-void queue_init(struct queue **qp,
-		const struct queuedetails *details,
-		int nthreads);
+void queue_init(struct queue **qp, const struct queuedetails *details,
+                int nthreads);
 
 /** @brief Add a job to a thread pool's queue
  * @param q Queue pointer
@@ -71,7 +70,7 @@ void queue_add(struct queue *q, void *job);
  * All unprocessed jobs are executed before completion. */
 void queue_destroy(struct queue *q);
 
-#endif
+#  endif
 
 #endif /* QUEUE_H */
 

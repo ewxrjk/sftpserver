@@ -21,7 +21,7 @@
 /** @file alloc.h @brief Allocator interface */
 
 #ifndef ALLOC_H
-#define ALLOC_H
+#  define ALLOC_H
 
 struct chunk;
 

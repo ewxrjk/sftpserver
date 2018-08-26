@@ -21,28 +21,28 @@
 /** @file putword.h @brief Macros for storing network-order values */
 
 #ifndef PUTWORD_H
-#define PUTWORD_H
+#  define PUTWORD_H
 
-#include <arpa/inet.h>
+#  include <arpa/inet.h>
 
-#ifndef ASM
-# define ASM 1
-#endif
+#  ifndef ASM
+#    define ASM 1
+#  endif
 
 /** @brief Unaligned 16-bit network-order store
  * @param where Where to store value
  * @param u Value to store
  */
 static inline void put16(void *where, uint16_t u) {
-#if (__i386__ || __amd64__) && __GNUC__ && ASM
+#  if(__i386__ || __amd64__) && __GNUC__ && ASM
   __asm__ volatile("xchg %h[U],%b[U]\n\tmovw %[U],%[WHERE]"
-                   : [U] "+Q" (u)
-                   : [WHERE] "m" (*(uint16_t *)where));
-#else
+                   : [U] "+Q"(u)
+                   : [WHERE] "m"(*(uint16_t *)where));
+#  else
   uint8_t *ptr = where;
   *ptr++ = (uint8_t)(u >> 8);
   *ptr = (uint8_t)u;
-#endif
+#  endif
 }
 
 /** @brief Unaligned 32-bit network-order store
@@ -50,17 +50,17 @@ static inline void put16(void *where, uint16_t u) {
  * @param u Value to store
  */
 static inline void put32(void *where, uint32_t u) {
-#if (__i386__ || __amd64__) && __GNUC__ && ASM
+#  if(__i386__ || __amd64__) && __GNUC__ && ASM
   __asm__ volatile("bswapl %[U]\n\tmovl %[U],%[WHERE]"
-                   : [U] "+r" (u)
-                   : [WHERE] "m" (*(uint32_t *)where));
-#else
+                   : [U] "+r"(u)
+                   : [WHERE] "m"(*(uint32_t *)where));
+#  else
   uint8_t *ptr = where;
   *ptr++ = (uint8_t)(u >> 24);
   *ptr++ = (uint8_t)(u >> 16);
   *ptr++ = (uint8_t)(u >> 8);
   *ptr++ = (uint8_t)(u);
-#endif
+#  endif
 }
 
 /** @brief Unaligned 64-bit network-order store
@@ -68,14 +68,14 @@ static inline void put32(void *where, uint32_t u) {
  * @param u Value to store
  */
 static inline void put64(void *where, uint64_t u) {
-#if __amd64__ && __GNUC__ && ASM
+#  if __amd64__ && __GNUC__ && ASM
   __asm__ volatile("bswapq %[U]\n\tmovq %[U],%[WHERE]"
-                   : [U] "+r" (u)
-                   : [WHERE] "m" (*(uint64_t *)where));
-#else
+                   : [U] "+r"(u)
+                   : [WHERE] "m"(*(uint64_t *)where));
+#  else
   put32(where, u >> 32);
   put32((char *)where + 4, (uint32_t)u);
-#endif
+#  endif
 }
 
 /** @brief Unaligned 16-bit network-order fetch
@@ -83,16 +83,16 @@ static inline void put64(void *where, uint64_t u) {
  * @return Fetched value
  */
 static inline uint16_t get16(const void *where) {
-#if (__i386__ || __amd64__) && __GNUC__ && ASM
+#  if(__i386__ || __amd64__) && __GNUC__ && ASM
   uint16_t r;
   __asm__("movw %[WHERE],%[R]\t\nxchg %h[R],%b[R]"
-          : [R] "=Q" (r)
-          : [WHERE] "m" (*(const uint16_t *)where));
+          : [R] "=Q"(r)
+          : [WHERE] "m"(*(const uint16_t *)where));
   return r;
-#else
+#  else
   const uint8_t *ptr = where;
   return (ptr[0] << 8) + ptr[1];
-#endif
+#  endif
 }
 
 /** @brief Unaligned 32-bit network-order fetch
@@ -100,16 +100,16 @@ static inline uint16_t get16(const void *where) {
  * @return Fetched value
  */
 static inline uint32_t get32(const void *where) {
-#if (__i386__ || __amd64__) && __GNUC__ && ASM
+#  if(__i386__ || __amd64__) && __GNUC__ && ASM
   uint32_t r;
   __asm__("movl %[WHERE],%[R]\n\tbswapl %[R]"
-          : [R] "=r" (r)
-          : [WHERE] "m" (*(const uint32_t *)where));
+          : [R] "=r"(r)
+          : [WHERE] "m"(*(const uint32_t *)where));
   return r;
-#else
+#  else
   const uint8_t *ptr = where;
   return ((unsigned)ptr[0] << 24) + (ptr[1] << 16) + (ptr[2] << 8) + ptr[3];
-#endif
+#  endif
 }
 
 /** @brief Unaligned 64-bit network-order fetch
@@ -117,15 +117,15 @@ static inline uint32_t get32(const void *where) {
  * @return Fetched value
  */
 static inline uint64_t get64(const void *where) {
-#if __amd64__ && __GNUC__ && ASM
+#  if __amd64__ && __GNUC__ && ASM
   uint64_t r;
   __asm__("movq %[WHERE],%[R]\n\tbswapq %[R]"
-          : [R] "=r" (r)
-          : [WHERE] "m" (*(const uint64_t *)where));
+          : [R] "=r"(r)
+          : [WHERE] "m"(*(const uint64_t *)where));
   return r;
-#else
+#  else
   return ((uint64_t)get32(where) << 32) + get32((const char *)where + 4);
-#endif
+#  endif
 }
 
 #endif /* PUTWORD_H */

@@ -21,8 +21,7 @@
 /** @file utils.h @brief Utility functions interface */
 
 #ifndef UTILS_H
-#define UTILS_H
-
+#  define UTILS_H
 
 /** @brief Read bytes from @p fd
  * @param fd File descriptor to read from
@@ -36,8 +35,8 @@ int do_read(int fd, void *buffer, size_t size);
 
 /* libreadliine contains xmalloc/xrealloc!  We use some #defines to work around
  * the problem. */
-#define xmalloc sftp__xmalloc
-#define xrealloc sftp__xrealloc
+#  define xmalloc sftp__xmalloc
+#  define xrealloc sftp__xrealloc
 
 /** @brief Allocate memory
  * @param n Number of bytes to allocate
@@ -96,8 +95,7 @@ char *xstrdup(const char *s);
  * @param t String to append
  * @return New string
  */
-char *append(struct allocator *a, char *s, size_t *ns, 
-             const char *t);
+char *append(struct allocator *a, char *s, size_t *ns, const char *t);
 
 /** @brief Append to a string
  * @param a Allocator
@@ -107,8 +105,8 @@ char *append(struct allocator *a, char *s, size_t *ns,
  * @param lt Length of @p t
  * @return New string
  */
-char *appendn(struct allocator *a, char *s, size_t *ns, 
-              const char *t, size_t lt);
+char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
+              size_t lt);
 
 /** @brief Convenient wrapper for readlink(2)
  * @param a Allocator to store result
@@ -145,20 +143,19 @@ char *sftp_do_readlink(struct allocator *a, const char *path);
  *
  * Sets @c errno on erorr.
  */
-char *sftp_find_realpath(struct allocator *a, const char *path,
-                         unsigned flags);
+char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags);
 
 /** @brief Follow symlinks
  *
  * See sftp_find_realpath().
  */
-#define RP_READLINK 0x0001
+#  define RP_READLINK 0x0001
 
 /** @brief Path must exist
  *
  * See sftp_find_realpath().
  */
-#define RP_MUST_EXIST 0x0002
+#  define RP_MUST_EXIST 0x0002
 
 /** @brief Compute the name of the current directory
  * @param a Allocator to store result
@@ -182,9 +179,8 @@ const char *sftp_dirname(struct allocator *a, const char *path);
  *
  * Terminates the process.
  */
-void fatal(const char *msg, ...)
-  attribute((noreturn))
-  attribute((format(printf,1,2)));
+void fatal(const char *msg, ...) attribute((noreturn))
+    attribute((format(printf, 1, 2)));
 
 /** @brief Fork a subprocess
  * @return 0 in the child, process ID in the parent

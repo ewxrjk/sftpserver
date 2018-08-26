@@ -32,9 +32,10 @@
 #include <limits.h>
 
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
-			  const char *path, unsigned flags);
+                          const char *path, unsigned flags);
 
-char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags) {
+char *sftp_find_realpath(struct allocator *a, const char *path,
+                         unsigned flags) {
   char *cwd, *abspath, *result = 0;
   size_t nresult = 0;
 
@@ -73,7 +74,7 @@ char *sftp_find_realpath(struct allocator *a, const char *path, unsigned flags) 
  * @return Modified result
  */
 static char *process_path(struct allocator *a, char *result, size_t *nresultp,
-			  const char *path, unsigned flags) {
+                          const char *path, unsigned flags) {
   D(("process_path path='%s' result='%s'", path, result));
   while(*path) {
     if(*path == '/')
@@ -92,7 +93,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
         if(ls != result)
           *ls = 0;
         else
-          strcpy(result, "/");          /* /.. = / */
+          strcpy(result, "/"); /* /.. = / */
         D(("result[0] -> '%s'", result));
       } else {
         const size_t oldresultlen = strlen(result);
@@ -105,7 +106,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
          * link */
         if(flags & RP_READLINK) {
           const char *const target = sftp_do_readlink(a, result);
-        
+
           if(target) {
             if(target[0] == '/')
               /* Absolute symlink, go back to the root */
@@ -134,7 +135,7 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
         }
         D(("result[2] -> '%s'", result));
       }
-     path += elementlen;
+      path += elementlen;
     }
   }
   D(("returning '%s'", result));

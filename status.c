@@ -31,45 +31,76 @@
 
 const char *status_to_string(uint32_t status) {
   switch(status) {
-  case SSH_FX_OK: return "OK";
-  case SSH_FX_EOF: return "end of file";
-  case SSH_FX_NO_SUCH_FILE: return "file does not exist";
-  case SSH_FX_PERMISSION_DENIED: return "permission denied";
-  case SSH_FX_FAILURE: return "operation failed";
-  case SSH_FX_BAD_MESSAGE: return "badly encoded SFTP packet";
-  case SSH_FX_NO_CONNECTION: return "no connection";
-  case SSH_FX_CONNECTION_LOST: return "connection lost";
-  case SSH_FX_OP_UNSUPPORTED: return "operation not supported";
-  case SSH_FX_INVALID_HANDLE: return "invalid handle";
-  case SSH_FX_NO_SUCH_PATH: return "path does not exist or is invalid";
-  case SSH_FX_FILE_ALREADY_EXISTS: return "file already exists";
-  case SSH_FX_WRITE_PROTECT: return "file is on read-only medium";
-  case SSH_FX_NO_MEDIA: return "no medium in drive";
-  case SSH_FX_NO_SPACE_ON_FILESYSTEM: return "no space on filesystem";
-  case SSH_FX_QUOTA_EXCEEDED: return "quota exceeded";
-  case SSH_FX_UNKNOWN_PRINCIPAL: return "unknown principal";
-  case SSH_FX_LOCK_CONFLICT: return "file is locked";
-  case SSH_FX_DIR_NOT_EMPTY: return "directory is not empty";
-  case SSH_FX_NOT_A_DIRECTORY: return "file is not a directory";
-  case SSH_FX_INVALID_FILENAME: return "invalid filename";
-  case SSH_FX_LINK_LOOP: return "too many symbolic links";
-  case SSH_FX_CANNOT_DELETE: return "file cannot be deleted";
-  case SSH_FX_INVALID_PARAMETER: return "invalid parameter";
-  case SSH_FX_FILE_IS_A_DIRECTORY: return "file is a directory";
-  case SSH_FX_BYTE_RANGE_LOCK_CONFLICT: return "byte range is locked";
-  case SSH_FX_BYTE_RANGE_LOCK_REFUSED: return "cannot lock byte range";
-  case SSH_FX_DELETE_PENDING: return "file deletion pending";
-  case SSH_FX_FILE_CORRUPT: return "file is corrupt";
-  case SSH_FX_OWNER_INVALID: return "invalid owner";
-  case SSH_FX_GROUP_INVALID: return "invalid group";
-  case SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK: return "no such lock";
-  default: return "unknown status";
+  case SSH_FX_OK:
+    return "OK";
+  case SSH_FX_EOF:
+    return "end of file";
+  case SSH_FX_NO_SUCH_FILE:
+    return "file does not exist";
+  case SSH_FX_PERMISSION_DENIED:
+    return "permission denied";
+  case SSH_FX_FAILURE:
+    return "operation failed";
+  case SSH_FX_BAD_MESSAGE:
+    return "badly encoded SFTP packet";
+  case SSH_FX_NO_CONNECTION:
+    return "no connection";
+  case SSH_FX_CONNECTION_LOST:
+    return "connection lost";
+  case SSH_FX_OP_UNSUPPORTED:
+    return "operation not supported";
+  case SSH_FX_INVALID_HANDLE:
+    return "invalid handle";
+  case SSH_FX_NO_SUCH_PATH:
+    return "path does not exist or is invalid";
+  case SSH_FX_FILE_ALREADY_EXISTS:
+    return "file already exists";
+  case SSH_FX_WRITE_PROTECT:
+    return "file is on read-only medium";
+  case SSH_FX_NO_MEDIA:
+    return "no medium in drive";
+  case SSH_FX_NO_SPACE_ON_FILESYSTEM:
+    return "no space on filesystem";
+  case SSH_FX_QUOTA_EXCEEDED:
+    return "quota exceeded";
+  case SSH_FX_UNKNOWN_PRINCIPAL:
+    return "unknown principal";
+  case SSH_FX_LOCK_CONFLICT:
+    return "file is locked";
+  case SSH_FX_DIR_NOT_EMPTY:
+    return "directory is not empty";
+  case SSH_FX_NOT_A_DIRECTORY:
+    return "file is not a directory";
+  case SSH_FX_INVALID_FILENAME:
+    return "invalid filename";
+  case SSH_FX_LINK_LOOP:
+    return "too many symbolic links";
+  case SSH_FX_CANNOT_DELETE:
+    return "file cannot be deleted";
+  case SSH_FX_INVALID_PARAMETER:
+    return "invalid parameter";
+  case SSH_FX_FILE_IS_A_DIRECTORY:
+    return "file is a directory";
+  case SSH_FX_BYTE_RANGE_LOCK_CONFLICT:
+    return "byte range is locked";
+  case SSH_FX_BYTE_RANGE_LOCK_REFUSED:
+    return "cannot lock byte range";
+  case SSH_FX_DELETE_PENDING:
+    return "file deletion pending";
+  case SSH_FX_FILE_CORRUPT:
+    return "file is corrupt";
+  case SSH_FX_OWNER_INVALID:
+    return "invalid owner";
+  case SSH_FX_GROUP_INVALID:
+    return "invalid group";
+  case SSH_FX_NO_MATCHING_BYTE_RANGE_LOCK:
+    return "no such lock";
+  default:
+    return "unknown status";
   }
 }
 
-void sftp_send_status(struct sftpjob *job, 
-                 uint32_t status,
-                 const char *msg) {
+void sftp_send_status(struct sftpjob *job, uint32_t status, const char *msg) {
   if(status == HANDLER_ERRNO) {
     /* Bodge to allow us to treat -1 as a magical status meaning 'consult
      * errno'.  This goes back via the protocol-specific status callback, so
@@ -84,16 +115,22 @@ void sftp_send_status(struct sftpjob *job,
   /* Limit to status values known to this version of the protocol */
   if(status > protocol->maxstatus) {
     switch(status) {
-    case SSH_FX_INVALID_FILENAME: status = SSH_FX_BAD_MESSAGE; break;
-    case SSH_FX_NO_SUCH_PATH: status = SSH_FX_NO_SUCH_FILE; break;
-    default: status = SSH_FX_FAILURE; break;
+    case SSH_FX_INVALID_FILENAME:
+      status = SSH_FX_BAD_MESSAGE;
+      break;
+    case SSH_FX_NO_SUCH_PATH:
+      status = SSH_FX_NO_SUCH_FILE;
+      break;
+    default:
+      status = SSH_FX_FAILURE;
+      break;
     }
   }
   sftp_send_begin(job->worker);
   sftp_send_uint8(job->worker, SSH_FXP_STATUS);
   sftp_send_uint32(job->worker, job->id);
   sftp_send_uint32(job->worker, status);
-  sftp_send_path(job, job->worker, msg);     /* needs to be UTF-8 */
+  sftp_send_path(job, job->worker, msg); /* needs to be UTF-8 */
   /* We are not I18N'd yet.  Doing so will require the following:
    *  - determine an RFC1766 interpretation of the current LC_MESSAGES
    *    setting
@@ -111,28 +148,28 @@ static const struct {
   int errno_value;
   uint32_t status_value;
 } errnotab[] = {
-  { 0, SSH_FX_OK },
-  { EPERM, SSH_FX_PERMISSION_DENIED },
-  { EACCES, SSH_FX_PERMISSION_DENIED },
-  { ENOENT, SSH_FX_NO_SUCH_FILE },
-  { EIO, SSH_FX_FILE_CORRUPT },
-  { ENOSPC, SSH_FX_NO_SPACE_ON_FILESYSTEM },
-  { ENOTDIR, SSH_FX_NOT_A_DIRECTORY },
-  { EISDIR, SSH_FX_FILE_IS_A_DIRECTORY },
-  { EEXIST, SSH_FX_FILE_ALREADY_EXISTS },
-  { EROFS, SSH_FX_WRITE_PROTECT },
-  { ELOOP, SSH_FX_LINK_LOOP },
-  { ENAMETOOLONG, SSH_FX_INVALID_FILENAME },
-  { ENOTEMPTY, SSH_FX_DIR_NOT_EMPTY },
-  { EDQUOT, SSH_FX_QUOTA_EXCEEDED },
-  { -1, SSH_FX_FAILURE },
+    {0, SSH_FX_OK},
+    {EPERM, SSH_FX_PERMISSION_DENIED},
+    {EACCES, SSH_FX_PERMISSION_DENIED},
+    {ENOENT, SSH_FX_NO_SUCH_FILE},
+    {EIO, SSH_FX_FILE_CORRUPT},
+    {ENOSPC, SSH_FX_NO_SPACE_ON_FILESYSTEM},
+    {ENOTDIR, SSH_FX_NOT_A_DIRECTORY},
+    {EISDIR, SSH_FX_FILE_IS_A_DIRECTORY},
+    {EEXIST, SSH_FX_FILE_ALREADY_EXISTS},
+    {EROFS, SSH_FX_WRITE_PROTECT},
+    {ELOOP, SSH_FX_LINK_LOOP},
+    {ENAMETOOLONG, SSH_FX_INVALID_FILENAME},
+    {ENOTEMPTY, SSH_FX_DIR_NOT_EMPTY},
+    {EDQUOT, SSH_FX_QUOTA_EXCEEDED},
+    {-1, SSH_FX_FAILURE},
 };
 
 void sftp_send_errno_status(struct sftpjob *job) {
   int n;
   const int errno_value = errno;
 
-  for(n = 0; 
+  for(n = 0;
       errnotab[n].errno_value != errno_value && errnotab[n].errno_value != -1;
       ++n)
     ;
