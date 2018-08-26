@@ -36,7 +36,7 @@ don’t care.
 You will need iconv and readline libraries.
 
 It’s best to run `make check` before installing.  This requires
-[Python](http://www.python.org/) to be installed.
+[Python 3](http://www.python.org/) to be installed.
 
 Status
 ------
@@ -84,7 +84,7 @@ If you send patches, please use `diff -u` format.
 Licence
 -------
 
-Copyright (C) 2007, 2009-2011, 2014, 2016 Richard Kettlewell
+Copyright (C) 2007, 2009-2011, 2014-18 Richard Kettlewell
 
 Portions copyright (C) 2015 Michel Kraus
 

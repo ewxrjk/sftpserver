@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011 Richard Kettlewell
+# Copyright (C) 2007, 2011,14,15,18 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ AC_DEFUN([RJK_BUILDSYS_MISC],[
     # extra includes
     if test "$host" = "$build"; then
       case $host_os in
-      freebsd* ) 
+      freebsd* )
         rjk_cv_extraincludes=/usr/local/include
         ;;
       esac
@@ -62,7 +62,7 @@ AC_DEFUN([RJK_BUILDSYS_MISC],[
     rjk_cv_extralibs=none
     if test "$host" = "$build"; then
       case $host_os in
-      freebsd* ) 
+      freebsd* )
         rjk_cv_extralibs=/usr/local/lib
         ;;
       esac
@@ -250,28 +250,26 @@ AC_DEFUN([RJK_GETOPT],[
   ])
 ])
 
-AC_DEFUN([RJK_PYTHON24],[
-  AC_CACHE_CHECK([for Python 2.4 or better],[rjk_cv_python24],[
-    if python24 -V >/dev/null 2>&1; then
-      rjk_cv_python24=python24
-    elif python2.4 -V >/dev/null 2>&1; then
-      rjk_cv_python24=python2.4
+AC_DEFUN([RJK_PYTHON3],[
+  AC_CACHE_CHECK([for Python 3],[rjk_cv_python3],[
+    if python3 -V >/dev/null 2>&1; then
+      rjk_cv_python3=python3
     elif python -V >confpyver 2>&1; then
       read p v < confpyver
       case "$v" in
-      1* | 2.0* | 2.1* | 2.2* | 2.3* )
+      1* | 2* )
         ;;
       * )
-        rjk_cv_python24=python
+        rjk_cv_python3=python
         ;;
       esac
     fi
     rm -f confpyver
-    if test "$rjk_cv_python24" = ""; then
-      AC_MSG_ERROR([cannot find Python 2.4 or better])
+    if test "$rjk_cv_python3" = ""; then
+      AC_MSG_ERROR([cannot find Python 3.x])
     fi
   ])
-  AC_SUBST([PYTHON24],[$rjk_cv_python24])
+  AC_SUBST([PYTHON3],[$rjk_cv_python3])
 ])
 
 dnl Local Variables:

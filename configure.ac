@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011, 2014, 2015 Richard Kettlewell
+# Copyright (C) 2007, 2011, 2014-2016, 2018 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -55,7 +55,7 @@ RJK_GCC_WARNINGS
 RJK_GCC_ATTRS
 RJK_STAT_TIMESPEC
 RJK_GETOPT
-RJK_PYTHON24
+RJK_PYTHON3
 
 dnl See commentary in v3.c for what's going on here
 AC_MSG_CHECKING([whether to reverse SSH_FXP_SYMLINK arguments])

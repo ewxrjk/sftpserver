@@ -1,5 +1,5 @@
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011, 2014 Richard Kettlewell
+# Copyright (C) 2007, 2011,14,16,18 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,15 +52,15 @@ all: ${SEDOUTPUTS}
 check: gesftpserver sftpclient pwtest aliases
 	rm -f *.gcda *.gcov
 	./pwtest
-	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests $(TESTS)
-	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
-	${GCOV} ${srcdir}/*.c  | ${PYTHON24} ${srcdir}/format-gconv-report --html .
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
+	${GCOV} ${srcdir}/*.c  | ${PYTHON3} ${srcdir}/format-gconv-report --html .
 
 #${srcdir}/paramiko-test
 
 check-valgrind: gesftpserver-valgrind sftpclient pwtest aliases
 	rm -f ,valgrind*
-	srcdir=${srcdir} ${PYTHON24} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind $(TESTS)
 
 aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
 		gesftpserver-valgrind

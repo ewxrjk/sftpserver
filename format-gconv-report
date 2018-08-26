@@ -1,6 +1,6 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007 Richard Kettlewell
+# Copyright (C) 2007, 2018 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,18 +59,13 @@ for line in sys.stdin:
       covered_lines += this_lines * this_pc / 100.0
     name = None
 
-def cmp(a,b):
-  if percent[a] < percent[b]: return -1 
-  elif percent[a] > percent[b]: return 1
-  else: return 0
-
-keys = percent.keys()
-keys.sort(cmp)
+keys = list(percent.keys())
+keys.sort(key=lambda a: percent[a])
 
 if len(keys):
   for k in keys:
-    print "%20s: %d%%" % (k, percent[k])
-  print "Total coverage: %d%%" % (100 * (covered_lines / total_lines))
+    print("%20s: %d%%" % (k, percent[k]))
+  print("Total coverage: %d%%" % (100 * (covered_lines / total_lines)))
 
 if htmldir is not None and len(keys):
   index = open(os.path.join(htmldir, "index.html"), "w")

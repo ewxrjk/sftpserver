@@ -1,7 +1,7 @@
-#! /usr/bin/env python
+#! /usr/bin/env python3
 #
 # This file is part of the Green End SFTP Server.
-# Copyright (C) 2007, 2011, 2016 Richard Kettlewell
+# Copyright (C) 2007, 2011, 2016, 2018 Richard Kettlewell
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ server = "gesftpserver"
 def rmrf(path):
     if os.path.lexists(path):
         if (not os.path.islink(path)) and os.path.isdir(path):
-            os.chmod(path, 0700)
+            os.chmod(path, 0o700)
             for name in os.listdir(path):
                 rmrf(os.path.join(path,name))
             os.rmdir(path)
@@ -43,7 +43,7 @@ def fatal(msg):
 if os.getuid() == 0:
     fatal("These tests are not suitable for running as root.")
 
-os.umask(022)                           # for consistent permissions
+os.umask(0o22)                           # for consistent permissions
 failed = 0
 protocols = ['2', '3', '4', '5', '6', '7']
 dir = 'tests'
@@ -56,7 +56,7 @@ while len(args) > 0 and args[0][0] == '-':
         args = args[2:]
     elif args[0] == "--server":
         server = args[1]
-        args = args[2:] 
+        args = args[2:]
     elif args[0] == "--directory":
         dir = args[1]
         args = args[2:]
@@ -100,12 +100,13 @@ for test in tests:
                         "%s/%s-%s.debug" % (builddir, test, proto)]
         output = Popen(clientcmd,
                        stdout=PIPE,
-                       stderr=STDOUT).communicate()[0].split('\n')
+                       stderr=STDOUT).communicate()[0].split(b'\n')
+        output = [str(s, "ASCII") for s in output]
         if output[len(output)-1] == "":
             output = output[:-1]
         n = 0
         errors = []
-        for expected in file(os.path.join(srcdir, dir, '%s' % test)):
+        for expected in open(os.path.join(srcdir, dir, '%s' % test), "r"):
             expected = expected[:-1]    # strip newline
             if n >= len(output):
                 errors.append("EXPECTED[%d]: %s" % (n, expected))
@@ -120,7 +121,7 @@ for test in tests:
                         errors.append("EXPECTED[%d]: %s" % (n + 1, expected))
                         errors.append("     GOT[%d]: %s" % (n + 1, got))
                 except:
-                    print "\n\nPossible invalid regexp:\n%s\n" % expected
+                    print("\n\nPossible invalid regexp:\n%s\n" % expected)
                     raise
             else:
                 if expected != got:
@@ -145,12 +146,12 @@ for test in tests:
             sys.stderr.write("passed\n")
 
 if failed:
-    print "%d tests failed" % failed
+    print("%d tests failed" % failed)
     sys.exit(1)
 else:
     os.chdir("/")
     rmrf(os.path.join(builddir, ',testroot'))
-    print "OK"
+    print("OK")
 
 # Local Variables:
 # mode:python
