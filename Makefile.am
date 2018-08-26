@@ -94,3 +94,6 @@ format-gconv-report getopt.c getopt1.c getopt.h CHANGES.md
 
 %.s: %.c
 	$(COMPILE) -o $@ -S $<
+
+version:
+	@echo $(VERSION)

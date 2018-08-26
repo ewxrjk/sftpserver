@@ -1,0 +1,15 @@
+#! /bin/bash
+set -e
+rm -rf products
+mkdir products
+./autogen.sh
+./configure
+make clean
+make distcheck
+version=$(make version)
+fakeroot make dist # don't pollute tar with my uid
+mv sftpserver-${version}.tar.gz products/.
+cd products
+gpg --sign sftpserver-${version}.tar.gz
+cd ..
+ls -l products

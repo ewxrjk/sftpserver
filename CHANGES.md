@@ -1,6 +1,6 @@
 # Release History
 
-## Changes in version (next)
+## Changes in version 1
 
 * Fix attribute formatting in v3 directory listings.
 * Fix handling of empty paths. [Fixes #3](https://github.com/ewxrjk/sftpserver/issues/3).
