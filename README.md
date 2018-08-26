@@ -9,8 +9,8 @@ possible to use it as a drop-in replacement for the OpenSSH server.
 Requirements
 ------------
 
-This software runs under Linux, Mac OS X and FreeBSD.  It may work
-on other UNIX platforms.
+This software runs under Linux and macOS.
+It may work on other UNIX platforms.
 
 Installation
 ------------
