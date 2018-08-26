@@ -41,3 +41,4 @@ pwtest
 cov-int
 products
 .coverity
+.gdb_history
