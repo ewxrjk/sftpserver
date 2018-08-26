@@ -1,0 +1,81 @@
+#! /bin/bash
+#
+# Copyright (C) 2014-15 Richard Kettlewell
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+set -e
+
+submit=false
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --submit )
+    submit=true
+    shift
+    ;;
+  * )
+    echo >&2 "ERROR: unknown option $1"
+    exit 1
+    ;;
+  esac
+done
+
+name=sftpserver
+covpath=/usr/local/coverity/bin
+version="$(git log --pretty=format:%H -1 HEAD)"
+tag="$(git tag --contains HEAD)"
+if [ "${tag}" = "" ]; then
+  echo
+  echo "WARNING: no tag found"
+  echo "Suggested format: coverity-YYYY-MM-DD"
+  echo
+  description="$(git log --pretty=format:%ai/%H -1 HEAD)"
+else
+  description="$tag"
+fi
+
+# .coverity should set token, email and project
+. .coverity
+
+echo
+echo Building ...
+echo
+
+make distclean || true
+rm -rf cov-int
+./configure
+"${covpath}/cov-build" --dir cov-int make
+make distclean
+tar czvf ${name}.tgz cov-int
+rm -rf cov-int
+if $submit; then
+  echo
+  echo Submitting ...
+  echo
+  curl --form token="${token}" \
+    --form email="${email}" \
+    --form file=@${name}.tgz \
+    --form version="${version}" \
+    --form description="${description}" \
+    "https://scan.coverity.com/builds?project=${project}"
+else
+  echo
+  echo "Would submit with:"
+  echo
+  echo "email=${email}"
+  echo "file=@${name}.tgz"
+  echo "version=${version}"
+  echo "description=${description}"
+  echo "project=${project}"
+  echo
+fi

@@ -40,3 +40,4 @@ GTAGS
 pwtest
 cov-int
 products
+.coverity
