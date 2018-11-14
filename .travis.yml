@@ -2,7 +2,7 @@ os:
 - linux
 - osx
 
-dist: trusty
+dist: xenial
 addons:
   apt:
     packages:
