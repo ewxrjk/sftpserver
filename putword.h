@@ -37,7 +37,8 @@ static inline void put16(void *where, uint16_t u) {
 #  if(__i386__ || __amd64__) && __GNUC__ && ASM
   __asm__ volatile("xchg %h[U],%b[U]\n\tmovw %[U],%[WHERE]"
                    : [U] "+Q"(u)
-                   : [WHERE] "m"(*(uint16_t *)where));
+                   : [WHERE] "m"(*(uint16_t *)where)
+                   : "memory");
 #  else
   uint8_t *ptr = where;
   *ptr++ = (uint8_t)(u >> 8);
@@ -53,7 +54,8 @@ static inline void put32(void *where, uint32_t u) {
 #  if(__i386__ || __amd64__) && __GNUC__ && ASM
   __asm__ volatile("bswapl %[U]\n\tmovl %[U],%[WHERE]"
                    : [U] "+r"(u)
-                   : [WHERE] "m"(*(uint32_t *)where));
+                   : [WHERE] "m"(*(uint32_t *)where)
+                   : "memory");
 #  else
   uint8_t *ptr = where;
   *ptr++ = (uint8_t)(u >> 24);
@@ -71,7 +73,8 @@ static inline void put64(void *where, uint64_t u) {
 #  if __amd64__ && __GNUC__ && ASM
   __asm__ volatile("bswapq %[U]\n\tmovq %[U],%[WHERE]"
                    : [U] "+r"(u)
-                   : [WHERE] "m"(*(uint64_t *)where));
+                   : [WHERE] "m"(*(uint64_t *)where)
+                   : "memory");
 #  else
   put32(where, u >> 32);
   put32((char *)where + 4, (uint32_t)u);
