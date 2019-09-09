@@ -596,7 +596,7 @@ uint32_t sftp_vany_mkdir(struct sftpjob *job) {
   pcheck(sftp_parse_path(job, &path));
   pcheck(protocol->parseattrs(job, &attrs));
   D(("sftp_vany_mkdir %s", path));
-  attrs.valid &= ~SSH_FILEXFER_ATTR_SIZE; /* makes no sense */
+  attrs.valid &= (uint32_t)~SSH_FILEXFER_ATTR_SIZE; /* makes no sense */
   if(attrs.valid & SSH_FILEXFER_ATTR_PERMISSIONS) {
     D(("initial permissions are %#o (%d decimal)", attrs.permissions,
        attrs.permissions));

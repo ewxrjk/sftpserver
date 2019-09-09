@@ -661,7 +661,7 @@ static int sftp_rename(const char *oldpath, const char *newpath,
 
   remote_cwd();
   /* In v3/4 atomic is assumed, overwrite and native are not available */
-  if(protocol->version <= 4 && (flags & ~SSH_FXF_RENAME_ATOMIC) != 0)
+  if(protocol->version <= 4 && (flags & (uint32_t)~SSH_FXF_RENAME_ATOMIC) != 0)
     return error("cannot emulate rename flags %#x in protocol %d", flags,
                  protocol->version);
   sftp_send_begin(&fakeworker);
@@ -779,8 +779,8 @@ static int sftp_open(const char *path, uint32_t desired_access, uint32_t flags,
       else
         pflags |= SSH_FXF_TEXT;
     }
-    if(flags & ~(SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
-                 SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE))
+    if(flags & (uint32_t)~(SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
+                           SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE))
       return error("future SSH_FXP_OPEN flags (%#" PRIx32
                    ") cannot be emulated in protocol %d",
                    flags, protocol->version);
@@ -1871,12 +1871,13 @@ static int cmd_put(int ac, char **av) {
     /* Mask out things that don't make sense: we set the size by dint of
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
-    attrs.valid &= ~(SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_LINK_COUNT |
-                     SSH_FILEXFER_ATTR_UIDGID);
+    attrs.valid &= (uint32_t)~(SSH_FILEXFER_ATTR_SIZE
+                               | SSH_FILEXFER_ATTR_LINK_COUNT
+                               | SSH_FILEXFER_ATTR_UIDGID);
     /* Mask off attributes that don't work in this protocol version */
     attrs.valid &= attrmask;
     assert(!(attrs.valid & SSH_FILEXFER_ATTR_CTIME));
-    attrs.attrib_bits &= ~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
+    attrs.attrib_bits &= (uint32_t)~SSH_FILEXFER_ATTR_FLAGS_HIDDEN;
   }
   if(setmode) {
     attrs.valid |= SSH_FILEXFER_ATTR_PERMISSIONS;
@@ -2146,7 +2147,7 @@ static int cmd_mkdir(int ac, char **av) {
     mode = strtoul(av[0], 0, 8);
     path = av[1];
   } else {
-    mode = -1;
+    mode = (mode_t)-1;
     path = av[0];
   }
   return sftp_mkdir(path, mode);
@@ -2160,7 +2161,7 @@ static int cmd_init(int attribute((unused)) ac,
 static int cmd_unsupported(int attribute((unused)) ac,
                            char attribute((unused)) * *av) {
   sftp_send_begin(&fakeworker);
-  sftp_send_uint8(&fakeworker, 0xFFFFFFFF);
+  sftp_send_uint8(&fakeworker, 0xFF);
   sftp_send_uint32(&fakeworker, 0); /* id */
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_STATUS, 0, "_unsupported");
