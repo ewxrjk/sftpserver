@@ -32,7 +32,7 @@ struct queuedetails {
   /** @brief Per-thread initialization
    * @return Per-thread value to be passed to other callbacks
    */
-  void *(*init)();
+  void *(*init)(void);
 
   /** @brief Worker method
    * @param job Job to process
