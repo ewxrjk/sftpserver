@@ -658,7 +658,7 @@ static void sftp_service(void) {
   /* draft -13 s7.6 "The server SHOULD NOT apply a 'umask' to the mode
    * bits". */
   umask(0);
-  while(!do_read(0, &len, sizeof len)) {
+  while(sftp_state_get() != sftp_state_stop && !do_read(0, &len, sizeof len)) {
     job = xmalloc(sizeof *job);
     job->len = ntohl(len);
     if(!job->len || job->len > MAXREQUEST)

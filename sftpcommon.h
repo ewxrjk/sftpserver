@@ -94,6 +94,22 @@ struct stat;
  */
 const char *status_to_string(uint32_t status);
 
+/** @brief Possible SFTP service states */
+enum sftp_state {
+  sftp_state_run = 0,
+  sftp_state_stop = 1,
+};
+
+/** @brief Get the current SFTP service state
+ * @return State value
+ */
+enum sftp_state sftp_state_get(void);
+
+/** @brief Set the SFTP service state
+ * @param s New state value
+ */
+void sftp_state_set(enum sftp_state s);
+
 #endif /* SFTPCOMMON_H */
 
 /*

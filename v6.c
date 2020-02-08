@@ -28,6 +28,7 @@
 #include "debug.h"
 #include "utils.h"
 #include "globals.h"
+#include "queue.h"
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
@@ -178,7 +179,8 @@ uint32_t sftp_v6_version_select(struct sftpjob *job) {
     sftp_send_status(job, SSH_FX_INVALID_PARAMETER,
                      "badly timed version-select");
   /* We MUST close the channel.  (-13, s5.5). */
-  exit(-1);
+  sftp_state_set(sftp_state_stop);
+  return HANDLER_RESPONDED;             /* even though we sent nothing */
 }
 
 static const struct sftpcmd sftpv6tab[] = {

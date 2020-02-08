@@ -21,10 +21,31 @@
 #include "sftpcommon.h"
 #include "types.h"
 #include "globals.h"
+#include "thread.h"
+#include "utils.h"
+#include <stdlib.h>
+#include <string.h>
 
 #if NTHREADS > 1
 struct queue *workqueue = 0;
 #endif
+
+static pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER;
+static enum sftp_state state;
+
+void sftp_state_set(enum sftp_state s) {
+  ferrcheck(pthread_mutex_lock(&state_lock));
+  state = s;
+  ferrcheck(pthread_mutex_unlock(&state_lock));
+}
+
+enum sftp_state sftp_state_get(void) {
+  enum sftp_state r;
+  ferrcheck(pthread_mutex_lock(&state_lock));
+  r = state;
+  ferrcheck(pthread_mutex_unlock(&state_lock));
+  return r;
+}
 
 /*
 Local Variables:
