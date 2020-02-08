@@ -36,7 +36,9 @@ don’t care.
 You will need iconv and readline libraries.
 
 It’s best to run `make check` before installing.  This requires
-[Python 3](http://www.python.org/) to be installed.
+[Python 3](http://www.python.org/) to be installed:
+
+    apt install python3 python3-termcolors
 
 Status
 ------

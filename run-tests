@@ -72,22 +72,37 @@ if len(args) > 0:
     tests = args
 else:
     tests = os.listdir(os.path.join(srcdir, dir))
+# Execute tests in a consistent order
 tests.sort()
 
 # Clean up
 rmrf(os.path.join(builddir, ',testroot'))
 
+# Colorize output (if possible)
+def colored(text, color=None, on_color=None, attrs=None):
+    return text
+if sys.stdout.isatty():
+    try:
+        import termcolor
+        colored = termcolor.colored
+    except:
+        pass
+
 for test in tests:
     for proto in protocols:
+        # Skip dotfiles, backup files, and tests that don't apply to the
+        # current protocol
         if ('.' in test
             or not proto in test
             or '#' in test
             or '~' in test):
             continue
         sys.stderr.write("Testing %s/%s protocol %s ... " % (dir, test, proto))
+        # Make a working directory for the test
         root = os.path.join(builddir, ',testroot','%s.%s' % (test, proto))
         os.makedirs(root)
         os.chdir(root)
+        # Run the client with the server as a child process
         clientcmd=[client,
                    "--force-version", proto,
                    "-P", server,
@@ -96,62 +111,77 @@ for test in tests:
                    '--fix-sigpipe',   # stupid Python
                    '--no-stop-on-error']
         if debug:
+            # Save server debug output
             clientcmd+=["--program-debug-path",
                         "%s/%s-%s.debug" % (builddir, test, proto)]
+        # Run the client
         output = Popen(clientcmd,
                        stdout=PIPE,
                        stderr=STDOUT).communicate()[0].split(b'\n')
+        # Get the output, with newlines stripped
         output = [str(s, "ASCII") for s in output]
         if output[len(output)-1] == "":
             output = output[:-1]
-        n = 0
-        errors = []
-        for expected in open(os.path.join(srcdir, dir, '%s' % test), "r"):
-            expected = expected[:-1]    # strip newline
-            if n >= len(output):
-                errors.append("EXPECTED[%d]: %s" % (n, expected))
-                errors.append("     GOT[%d]: EOF" % n)
-                break
-            got = output[n]
-            n += 1
-            if len(expected) > 0 and expected[0] == '#':
-                expected = expected[1:]
-                try:
-                    if not re.match(expected, got):
-                        errors.append("EXPECTED[%d]: %s" % (n + 1, expected))
-                        errors.append("     GOT[%d]: %s" % (n + 1, got))
-                except:
-                    print("\n\nPossible invalid regexp:\n%s\n" % expected)
-                    raise
+        # Get the script, with newlines stripped
+        with open(os.path.join(srcdir, dir, '%s' % test), "r") as f:
+            script = [l[:-1] for l in f]
+        # Find the maximum line length in each
+        omax = max([len(l) for l in output])
+        smax = max([len(l) for l in script])
+        errors = 0
+        report = []
+        # Iterate over the lines, checking them and formatting the results
+        for lineno in range(0, max(len(output), len(script))):
+            if lineno >= len(output):
+                # Truncated output is bad
+                ok = False
+                sline = script[lineno]
+                oline = ""
+            elif lineno >= len(script):
+                # Excessive output is bad
+                ok = False
+                sline = ""
+                oline = output[lineno]
             else:
-                if expected != got:
-                    errors.append("EXPECTED[%d]: %s" % (n + 1, expected))
-                    errors.append("     GOT[%d]: %s" % (n + 1, got))
-        if n < len(output):
-            while n < len(output):
-                errors.append("   EXTRA[%d]: %s" % (n + 1, output[n]))
-                n += 1
-        if len(errors) > 0:
-            sys.stderr.write("FAILED\n")
-            sys.stderr.write("---errors---\n");
-            for n in range(0, len(errors)):
-                sys.stderr.write("%3d: %s\n" % (n+1, errors[n]))
-            sys.stderr.write("\n")
-            sys.stderr.write("---output---\n");
-            for n in range(0, len(output)):
-                sys.stderr.write("%3d: %s\n" % (n+1, output[n]))
-            sys.stderr.write("---end---\n");
+                sline = script[lineno]
+                oline = output[lineno]
+                if len(sline) > 0 and sline[0] == '#':
+                    # Lines starting # are regexps matching expected output
+                    pattern = sline[1:]
+                    ok = re.match(pattern, oline)
+                else:
+                    # Other lines are the commands, which we expect to be
+                    # echoed back.
+                    ok = (oline == sline)
+            if ok:
+                marker = " "
+                f=lambda t: t
+            else:
+                # Mismatching lines are marked with a * and colored red (if
+                # possible)
+                marker = "*"
+                errors += 1
+                f=lambda t: colored(t, "red")
+            report.append(f("%s %-*s %-*s\n" % (marker, smax, sline, omax, oline)))
+        if errors > 0:
+            sys.stderr.write(colored("FAILED\n", "red"))
+            sys.stderr.write("Command:\n  %s\n" % " ".join(clientcmd))
+            sys.stderr.write("Output discrepancies:\n")
+            for l in report:
+                sys.stderr.write(l)
             failed += 1
         else:
-            sys.stderr.write("passed\n")
+            sys.stderr.write(colored("passed\n", "green"))
 
 if failed:
-    print("%d tests failed" % failed)
+    print(colored("%d tests failed" % failed, "red"))
     sys.exit(1)
 else:
+    # On success, delete the test root. It's preserved for inspection on
+    # failure.
     os.chdir("/")
     rmrf(os.path.join(builddir, ',testroot'))
-    print("OK")
+    print(colored("OK", "green"))
 
 # Local Variables:
 # mode:python
