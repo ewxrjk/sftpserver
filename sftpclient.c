@@ -161,13 +161,13 @@ static void attribute((noreturn)) help(void) {
           "  -r, --dropbear           Use dbclient instead of ssh\n"
           "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
           "  -b, --batch PATH         Read batch file\n"
-          "  -P, --program PATH       Execute program as SFTP server\n");
-  xprintf(
-      "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
-      "  -s, --subsystem NAME     Remote subsystem name\n"
-      "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
-      "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n");
-  xprintf("Options passed to SSH:\n"
+          "  -P, --program PATH       Execute program as SFTP server\n"
+          "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
+          "  -s, --subsystem NAME     Remote subsystem name\n"
+          "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
+          "  --echo                   Echo commands\n"
+          "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n"
+          "Options passed to SSH:\n"
           "  -1, -2                   Select protocol version\n"
           "  -C                       Enable compression\n"
           "  -F PATH                  Use alternative  config file\n"
