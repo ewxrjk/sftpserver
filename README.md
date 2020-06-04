@@ -17,6 +17,7 @@ Installation
 
 The general procedure is:
 
+    ./autogen.sh
     ./configure
     make check       # builds software and runs tests
     make install     # probably as root
