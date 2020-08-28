@@ -1,5 +1,12 @@
 # Release History
 
+## Changes in version 2
+
+* Fix interpretation of malformed handles
+* Correct attribute ordering. Bug fix from Bernd Holzmüller.
+* Tests use Python 3
+* Build fixes
+
 ## Changes in version 1
 
 * Fix attribute formatting in v3 directory listings.
