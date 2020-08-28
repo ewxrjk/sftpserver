@@ -172,6 +172,8 @@ void queue_serializable_job(struct sftpjob *job) {
 
   job->ptr = job->data;
   job->left = job->len;
+  type = 0; // First sftp_parse_uint8 can't fail, but GCC LTO doesn't know this
+            // and moans
   if(!sftp_parse_uint8(job, &type) &&
      (type == SSH_FXP_READ || type == SSH_FXP_WRITE) &&
      sftp_parse_uint32(job, &id) == SSH_FX_OK &&

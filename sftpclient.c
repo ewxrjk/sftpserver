@@ -155,24 +155,25 @@ static void attribute((noreturn)) help(void) {
           "\n"
           "Quick and dirty SFTP client\n"
           "\n");
-  xprintf("Options:\n"
-          "  --help, -h               Display usage message\n"
-          "  --version, -V            Display version number\n"
-          "  -r, --dropbear           Use dbclient instead of ssh\n"
-          "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
-          "  -b, --batch PATH         Read batch file\n"
-          "  -P, --program PATH       Execute program as SFTP server\n"
-          "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
-          "  -s, --subsystem NAME     Remote subsystem name\n"
-          "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
-          "  --echo                   Echo commands\n"
-          "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n"
-          "Options passed to SSH:\n"
-          "  -1, -2                   Select protocol version\n"
-          "  -C                       Enable compression\n"
-          "  -F PATH                  Use alternative  config file\n"
-          "  -o OPTION                Pass option to client\n"
-          "  -v                       Raise logging level\n");
+  xprintf(
+      "Options:\n"
+      "  --help, -h               Display usage message\n"
+      "  --version, -V            Display version number\n"
+      "  -r, --dropbear           Use dbclient instead of ssh\n"
+      "  -B, --buffer BYTES       Select buffer size (default 8192)\n"
+      "  -b, --batch PATH         Read batch file\n"
+      "  -P, --program PATH       Execute program as SFTP server\n"
+      "  -R, --requests COUNT     Maximum outstanding requests (default 8)\n"
+      "  -s, --subsystem NAME     Remote subsystem name\n"
+      "  -S, --sftp-version VER   Protocol version to request (default 3)\n"
+      "  --echo                   Echo commands\n"
+      "  --quirk-openssh          Server gets SSH_FXP_SYMLINK backwards\n"
+      "Options passed to SSH:\n"
+      "  -1, -2                   Select protocol version\n"
+      "  -C                       Enable compression\n"
+      "  -F PATH                  Use alternative  config file\n"
+      "  -o OPTION                Pass option to client\n"
+      "  -v                       Raise logging level\n");
   exit(0);
 }
 
@@ -779,8 +780,8 @@ static int sftp_open(const char *path, uint32_t desired_access, uint32_t flags,
       else
         pflags |= SSH_FXF_TEXT;
     }
-    if(flags & (uint32_t)~(SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
-                           SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE))
+    if(flags & (uint32_t) ~(SSH_FXF_ACCESS_DISPOSITION | SSH_FXF_APPEND_DATA |
+                            SSH_FXF_APPEND_DATA_ATOMIC | SSH_FXF_TEXT_MODE))
       return error("future SSH_FXP_OPEN flags (%#" PRIx32
                    ") cannot be emulated in protocol %d",
                    flags, protocol->version);
@@ -918,6 +919,7 @@ static int sftp_statvfs(const char *path, struct statvfs_reply *sr) {
   sftp_send_path(&fakejob, &fakeworker, path);
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_EXTENDED_REPLY, id, statvfs_extension);
+  memset(sr, 0, sizeof *sr); // workaround overenthusiastic warning with LTO
   cpcheck(sftp_parse_uint64(&fakejob, &sr->bsize));
   cpcheck(sftp_parse_uint64(&fakejob, &sr->frsize));
   cpcheck(sftp_parse_uint64(&fakejob, &sr->blocks));
@@ -1871,9 +1873,9 @@ static int cmd_put(int ac, char **av) {
     /* Mask out things that don't make sense: we set the size by dint of
      * uploading data, we don't want to try to set a numeric UID or GID, and we
      * cannot set the allocation size or link count. */
-    attrs.valid &= (uint32_t)~(SSH_FILEXFER_ATTR_SIZE
-                               | SSH_FILEXFER_ATTR_LINK_COUNT
-                               | SSH_FILEXFER_ATTR_UIDGID);
+    attrs.valid &=
+        (uint32_t) ~(SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_LINK_COUNT |
+                     SSH_FILEXFER_ATTR_UIDGID);
     /* Mask off attributes that don't work in this protocol version */
     attrs.valid &= attrmask;
     assert(!(attrs.valid & SSH_FILEXFER_ATTR_CTIME));
