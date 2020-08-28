@@ -180,7 +180,6 @@ AC_DEFUN([RJK_GCOV],[
 AC_DEFUN([RJK_THREADS],[
   AC_CANONICAL_BUILD
   AC_CANONICAL_HOST
-  # If you're cross-compiling then you're on your own
   AC_MSG_CHECKING([how to build threaded code])
   if test "$host" = "$build"; then
     case $host_os in
@@ -202,6 +201,10 @@ AC_DEFUN([RJK_THREADS],[
       AC_CHECK_LIB([pthread],[pthread_create])
       ;;
     esac
+  else
+    # Guess that cross platforms are like Linux/BSD
+    AC_MSG_RESULT([-lpthread])
+    AC_CHECK_LIB([pthread],[pthread_create])
   fi
   # We always ask for this.
   AC_DEFINE([_REENTRANT],[1],[define for re-entrant functions])
