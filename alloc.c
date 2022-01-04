@@ -112,7 +112,7 @@ void *sftp_alloc(struct allocator *a, size_t n) {
   assert(m <= c->left);
   /* We always return 0-filled memory.  In this case we fill by block, which is
    * guaranteed to be at least enough (compare below). */
-  memset(c->ptr, 0, m * sizeof(union block));
+  sftp_memset(c->ptr, 0, m * sizeof(union block));
   c->left -= m;
   c->ptr += m;
   return c->ptr - m;
@@ -142,7 +142,7 @@ void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn,
         /* 0-fill the new space.  Note that we do this in byte terms (compare
          * above), to deal with the case where the allocation shrinks by (say)
          * a single non-zero byte but then expands again. */
-        memset((char *)ptr + oldn, 0, newn - oldn);
+        sftp_memset((char *)ptr + oldn, 0, newn - oldn);
         return ptr;
       }
       /* If we get here then we are expanding but there is not enough space to
@@ -154,7 +154,7 @@ void *sftp_alloc_more(struct allocator *a, void *ptr, size_t oldn,
     }
     /* We have no choice but to allocate new space */
     newptr = sftp_alloc(a, newn);
-    memcpy(newptr, ptr, oldn);
+    sftp_memcpy(newptr, ptr, oldn);
     return newptr;
   } else
     /* There was no old allocation, just create a new one the easy way */

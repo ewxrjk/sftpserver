@@ -109,7 +109,7 @@ void queue_init(struct queue **qr, const struct queuedetails *details,
   struct queue *q;
 
   q = xmalloc(sizeof *q);
-  memset(q, 0, sizeof *q);
+  sftp_memset(q, 0, sizeof *q);
   q->jobs = 0;
   q->jobstail = &q->jobs;
   ferrcheck(pthread_mutex_init(&q->m, 0));

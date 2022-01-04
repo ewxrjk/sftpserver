@@ -29,6 +29,7 @@
 #include "stat.h"
 #include "handle.h"
 #include "serialize.h"
+#include "utils.h"
 #include <string.h>
 
 int sftp_v456_encode(struct sftpjob *job, char **path) {
@@ -107,7 +108,7 @@ void sftp_v456_sendattrs(struct sftpjob *job, const struct sftpattr *attrs) {
 uint32_t sftp_v456_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n, rc;
 
-  memset(attrs, 0, sizeof *attrs);
+  sftp_memset(attrs, 0, sizeof *attrs);
   if((rc = sftp_parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
     return rc;
   if((attrs->valid & protocol->attrmask) != attrs->valid) {

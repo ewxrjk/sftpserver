@@ -72,7 +72,7 @@ static void find_free_handle(struct handleid *id, int type) {
     nhandles = (nhandles ? 2 * nhandles : 16);
     assert(nhandles != 0);
     handles = xrecalloc(handles, nhandles, sizeof(*handles));
-    memset(handles + n, 0, (nhandles - n) * sizeof(*handles));
+    sftp_memset(handles + n, 0, (nhandles - n) * sizeof(*handles));
   }
   while(!sequence)
     ++sequence; /* never have a tag of 0 */

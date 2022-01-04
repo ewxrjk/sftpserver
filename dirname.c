@@ -34,7 +34,7 @@ const char *sftp_dirname(struct allocator *a, const char *path) {
 
       assert(len + 1 != 0);
       d = sftp_alloc(a, len + 1);
-      memcpy(d, path, len);
+      sftp_memcpy(d, path, len);
       return d;
     } else
       return "/";

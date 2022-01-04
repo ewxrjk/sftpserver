@@ -129,7 +129,7 @@ void sftp_send_uint64(struct worker *w, uint64_t u) {
 void sftp_send_bytes(struct worker *w, const void *bytes, size_t n) {
   sftp_send_need(w, n + 4);
   sftp_send_raw32(n);
-  memcpy(w->buffer + w->bufused, bytes, n);
+  sftp_memcpy(w->buffer + w->bufused, bytes, n);
   w->bufused += n;
 }
 

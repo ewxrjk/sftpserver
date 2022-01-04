@@ -42,7 +42,7 @@ int futimes(int fd, const struct timeval *times);
 void sftp_stat_to_attrs(struct allocator *a, const struct stat *sb,
                         struct sftpattr *attrs, uint32_t flags,
                         const char *path) {
-  memset(attrs, 0, sizeof *attrs);
+  sftp_memset(attrs, 0, sizeof *attrs);
   attrs->valid = (SSH_FILEXFER_ATTR_SIZE | SSH_FILEXFER_ATTR_PERMISSIONS |
                   SSH_FILEXFER_ATTR_ACCESSTIME | SSH_FILEXFER_ATTR_MODIFYTIME |
                   SSH_FILEXFER_ATTR_UIDGID | SSH_FILEXFER_ATTR_ALLOCATION_SIZE |
@@ -425,7 +425,7 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
       *whyp = "stat";
       return HANDLER_ERRNO;
     }
-    memset(times, 0, sizeof times);
+    sftp_memset(times, 0, sizeof times);
     times[0].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
                            ? (time_t)attrs.atime.seconds
                            : current.st_atime);

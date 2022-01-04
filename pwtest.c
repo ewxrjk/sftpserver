@@ -19,6 +19,7 @@
  */
 #include "sftpcommon.h"
 #include "putword.h"
+#include "utils.h"
 #include <string.h>
 #include <assert.h>
 
@@ -27,7 +28,7 @@ int main() {
   int n, m;
 
   for(n = 0; n <= 14; ++n) {
-    memset(buffer, 0xAF, 16);
+    sftp_memset(buffer, 0xAF, 16);
     put16(buffer + n, 0x0102);
     assert(get16(buffer + n) == 0x0102);
     for(m = 0; m < 16; ++m) {
@@ -39,7 +40,7 @@ int main() {
   }
 
   for(n = 0; n <= 12; ++n) {
-    memset(buffer, 0xAF, 16);
+    sftp_memset(buffer, 0xAF, 16);
     put32(buffer + n, 0x01020304);
     // assert(get32(buffer + n) == 0x01020304);
     for(m = 0; m < 16; ++m) {
@@ -51,7 +52,7 @@ int main() {
   }
 
   for(n = 0; n <= 8; ++n) {
-    memset(buffer, 0xAF, 16);
+    sftp_memset(buffer, 0xAF, 16);
     put64(buffer + n, 0x0102030405060708ULL);
     // assert(get64(buffer + n) == 0x0102030405060708ULL);
     for(m = 0; m < 16; ++m) {

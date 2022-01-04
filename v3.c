@@ -130,7 +130,7 @@ static void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs) {
 static uint32_t v3_parseattrs(struct sftpjob *job, struct sftpattr *attrs) {
   uint32_t n, rc;
 
-  memset(attrs, 0, sizeof *attrs);
+  sftp_memset(attrs, 0, sizeof *attrs);
   if((rc = sftp_parse_uint32(job, &attrs->valid)) != SSH_FX_OK)
     return rc;
   if((attrs->valid & protocol->attrmask) != attrs->valid) {
@@ -387,7 +387,7 @@ uint32_t sftp_vany_readlink(struct sftpjob *job) {
     }
     return HANDLER_ERRNO;
   }
-  memset(&attr, 0, sizeof attr);
+  sftp_memset(&attr, 0, sizeof attr);
   attr.name = result;
   sftp_send_begin(job->worker);
   sftp_send_uint8(job->worker, SSH_FXP_NAME);
@@ -433,7 +433,7 @@ uint32_t sftp_vany_readdir(struct sftpjob *job) {
     sftp_send_status(job, rc, "invalid directory handle");
     return HANDLER_RESPONDED;
   }
-  memset(d, 0, sizeof d);
+  sftp_memset(d, 0, sizeof d);
   for(n = 0; n < MAXNAMES;) {
     /* readdir() has a slightly shonky interface - a null return can mean EOF
      * or error, and there is no guarantee that errno is reset to 0 on EOF. */
@@ -485,7 +485,7 @@ uint32_t sftp_v345_realpath(struct sftpjob *job) {
 
   pcheck(sftp_parse_path(job, &path));
   D(("sftp_v345_realpath %s", path));
-  memset(&attr, 0, sizeof attr);
+  sftp_memset(&attr, 0, sizeof attr);
   attr.name = sftp_find_realpath(job->a, path, RP_READLINK);
   if(attr.name) {
     D(("...real path is %s", attr.name));

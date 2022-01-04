@@ -33,12 +33,12 @@ wchar_t *sftp_mbs2wcs(const char *s) {
   size_t len;
   mbstate_t ps;
 
-  memset(&ps, 0, sizeof ps);
+  sftp_memset(&ps, 0, sizeof ps);
   len = mbsrtowcs(0, &s, 0, &ps);
   if(len == (size_t)-1)
     return 0;
   ws = xcalloc(len + 1, sizeof *ws);
-  memset(&ps, 0, sizeof ps);
+  sftp_memset(&ps, 0, sizeof ps);
   mbsrtowcs(ws, &s, len, &ps);
   return ws;
 }

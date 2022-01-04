@@ -54,23 +54,23 @@ int do_read(int fd, void *buffer, size_t size) {
 void *xmalloc(size_t n) {
   void *ptr;
 
-  if(n) {
-    if(!(ptr = malloc(n)))
-      fatal("xmalloc: out of memory (%zu)", n);
-    return ptr;
-  } else
-    return 0;
+  if(!n)
+    n = 1;
+  if(!(ptr = malloc(n)))
+    fatal("xmalloc: out of memory (%zu)", n);
+  return ptr;
 }
 
 void *xcalloc(size_t n, size_t size) {
   void *ptr;
 
-  if(n && size) {
-    if(!(ptr = calloc(n, size)))
-      fatal("xcalloc: out of memory (%zu, %zu)", n, size);
-    return ptr;
-  } else
-    return 0;
+  if(!n)
+    n = 1;
+  if(!size)
+    size = 1;
+  if(!(ptr = calloc(n, size)))
+    fatal("xcalloc: out of memory (%zu, %zu)", n, size);
+  return ptr;
 }
 
 void *xrecalloc(void *ptr, size_t n, size_t size) {
@@ -147,7 +147,7 @@ char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
     assert(s);
   }
 
-  memcpy(s + ls, t, lt);
+  sftp_memcpy(s + ls, t, lt);
   s[ls + lt] = 0;
   return s;
 }

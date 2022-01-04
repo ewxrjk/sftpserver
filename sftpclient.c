@@ -919,7 +919,8 @@ static int sftp_statvfs(const char *path, struct statvfs_reply *sr) {
   sftp_send_path(&fakejob, &fakeworker, path);
   sftp_send_end(&fakeworker);
   getresponse(SSH_FXP_EXTENDED_REPLY, id, statvfs_extension);
-  memset(sr, 0, sizeof *sr); // workaround overenthusiastic warning with LTO
+  sftp_memset(sr, 0,
+              sizeof *sr); // workaround overenthusiastic warning with LTO
   cpcheck(sftp_parse_uint64(&fakejob, &sr->bsize));
   cpcheck(sftp_parse_uint64(&fakejob, &sr->frsize));
   cpcheck(sftp_parse_uint64(&fakejob, &sr->blocks));
@@ -1048,9 +1049,9 @@ static void reverse(void *array, size_t count, size_t size) {
      * fine. If size is odd then size/2 goes up to but excludes the middle
      * member which is also fine. */
     for(n = 0; n < size / 2; ++n) {
-      memcpy(tmp, base + n * size, size);
-      memcpy(base + n * size, base + (count - n - 1) * size, size);
-      memcpy(base + (count - n - 1) * size, tmp, size);
+      sftp_memcpy(tmp, base + n * size, size);
+      sftp_memcpy(base + n * size, base + (count - n - 1) * size, size);
+      sftp_memcpy(base + (count - n - 1) * size, tmp, size);
     }
     free(tmp);
   }
@@ -1573,8 +1574,8 @@ static int cmd_get(int ac, char **av) {
   int seek = 0;
   uint64_t line = 0;
 
-  memset(&attrs, 0, sizeof attrs);
-  memset(&r, 0, sizeof r);
+  sftp_memset(&attrs, 0, sizeof attrs);
+  sftp_memset(&r, 0, sizeof r);
   r.fd = -1;
   if(av[0][0] == '-') {
     const char *s = *av++;
@@ -1799,9 +1800,9 @@ static int cmd_put(int ac, char **av) {
   int setmode = 0;
   mode_t mode = 0;
 
-  memset(&h, 0, sizeof h);
-  memset(&attrs, 0, sizeof attrs);
-  memset(&w, 0, sizeof w);
+  sftp_memset(&h, 0, sizeof h);
+  sftp_memset(&attrs, 0, sizeof attrs);
+  sftp_memset(&w, 0, sizeof w);
   if(av[0][0] == '-') {
     const char *s = *av++;
     ++s;
@@ -2411,7 +2412,7 @@ static int cmd_statfs(int attribute((unused)) ac, char **av) {
 static int cmd_truncate(int attribute((unused)) ac, char **av) {
   struct sftpattr attrs;
 
-  memset(&attrs, 0, sizeof attrs);
+  sftp_memset(&attrs, 0, sizeof attrs);
   attrs.valid = SSH_FILEXFER_ATTR_SIZE;
   attrs.size = strtoull(av[0], 0, 0);
   return sftp_setstat(av[1], &attrs);
@@ -2437,7 +2438,7 @@ static int cmd_overlap(int attribute((unused)) ac,
   int fd = -1;
   struct client_handle h;
 
-  memset(&attrs, 0, sizeof attrs);
+  sftp_memset(&attrs, 0, sizeof attrs);
   if(sftp_open("dest", ACE4_WRITE_DATA, SSH_FXF_CREATE_TRUNCATE, &attrs, &h))
     goto error;
   if((fd = open("dest", O_RDWR)) < 0) {
@@ -2697,7 +2698,7 @@ int main(int argc, char **argv) {
   int dropbear = 0;
 
 #if HAVE_GETADDRINFO
-  memset(&hints, 0, sizeof hints);
+  sftp_memset(&hints, 0, sizeof hints);
   hints.ai_flags = 0;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;

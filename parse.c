@@ -27,6 +27,7 @@
 #include "sftp.h"
 #include "globals.h"
 #include "putword.h"
+#include "utils.h"
 #include <string.h>
 
 uint32_t sftp_parse_uint8(struct sftpjob *job, uint8_t *ur) {
@@ -78,7 +79,7 @@ uint32_t sftp_parse_string(struct sftpjob *job, char **strp, size_t *lenp) {
     *lenp = len;
   if(strp) {
     str = sftp_alloc(job->a, len + 1); /* 0-fills */
-    memcpy(str, job->ptr, len);
+    sftp_memcpy(str, job->ptr, len);
     *strp = str;
   }
   job->ptr += len;

@@ -185,7 +185,7 @@ void queue_serializable_job(struct sftpjob *job) {
     handleflags = sftp_handle_flags(&hid);
   } else {
     /* Anything else has dummy values */
-    memset(&hid, 0, sizeof hid);
+    sftp_memset(&hid, 0, sizeof hid);
     offset = 0;
     len64 = ~(uint64_t)0;
     handleflags = 0;

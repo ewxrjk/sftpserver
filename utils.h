@@ -23,6 +23,9 @@
 #ifndef UTILS_H
 #  define UTILS_H
 
+#  include <string.h>
+#  include <assert.h>
+
 /** @brief Read bytes from @p fd
  * @param fd File descriptor to read from
  * @param buffer Buffer to store data in
@@ -33,7 +36,7 @@
  */
 int do_read(int fd, void *buffer, size_t size);
 
-/* libreadliine contains xmalloc/xrealloc!  We use some #defines to work around
+/* libreadline contains xmalloc/xrealloc!  We use some #defines to work around
  * the problem. */
 #  define xmalloc sftp__xmalloc
 #  define xrealloc sftp__xrealloc
@@ -197,6 +200,34 @@ pid_t xfork(void);
  * explicitly.
  */
 void forked(void);
+
+/** @brief memcpy wrapper
+ *
+ * Equivalent to @c memcpy except that the prohibition on null pointer
+ * arguments is removed when @p n is 0.
+ */
+static inline void *sftp_memcpy(void *restrict dest, const void *restrict src,
+                                size_t n) {
+  if(n) {
+    assert(dest);
+    assert(src);
+    return memcpy(dest, src, n);
+  }
+  return dest;
+}
+
+/** @brief sftp_memset wrapper
+ *
+ * Equivalent to @c memset except that the prohibition on null pointer
+ * arguments is removed when @p n is 0.
+ */
+static inline void *sftp_memset(void *s, int ch, size_t n) {
+  if(n) {
+    assert(s);
+    return memset(s, ch, n);
+  }
+  return s;
+}
 
 /** @brief Whether to log to syslog
  *

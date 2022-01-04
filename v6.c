@@ -81,7 +81,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
   switch(control_byte) {
   case SSH_FXP_REALPATH_NO_CHECK:
     /* Don't stat, send dummy attributes */
-    memset(&attrs, 0, sizeof attrs);
+    sftp_memset(&attrs, 0, sizeof attrs);
     attrs.name = resolvedpath;
     break;
   case SSH_FXP_REALPATH_STAT_IF:
@@ -89,7 +89,7 @@ uint32_t sftp_v6_realpath(struct sftpjob *job) {
     if(stat(resolvedpath, &sb) >= 0 || lstat(resolvedpath, &sb) >= 0)
       sftp_stat_to_attrs(job->a, &sb, &attrs, 0xFFFFFFFF, resolvedpath);
     else {
-      memset(&attrs, 0, sizeof attrs);
+      sftp_memset(&attrs, 0, sizeof attrs);
       attrs.name = resolvedpath;
     }
     break;
@@ -180,7 +180,7 @@ uint32_t sftp_v6_version_select(struct sftpjob *job) {
                      "badly timed version-select");
   /* We MUST close the channel.  (-13, s5.5). */
   sftp_state_set(sftp_state_stop);
-  return HANDLER_RESPONDED;             /* even though we sent nothing */
+  return HANDLER_RESPONDED; /* even though we sent nothing */
 }
 
 static const struct sftpcmd sftpv6tab[] = {

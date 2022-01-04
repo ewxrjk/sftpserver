@@ -308,7 +308,7 @@ const struct sftpprotocol sftp_preinit = {sizeof sftppreinittab /
 static void *worker_init(void) {
   struct worker *w = xmalloc(sizeof *w);
 
-  memset(w, 0, sizeof *w);
+  sftp_memset(w, 0, sizeof *w);
   w->buffer = 0;
   if((w->utf8_to_local = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
     fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
@@ -432,7 +432,7 @@ int main(int argc, char **argv) {
   int daemonize = 0;
   struct addrinfo hints;
 
-  memset(&hints, 0, sizeof hints);
+  sftp_memset(&hints, 0, sizeof hints);
   hints.ai_flags = AI_PASSIVE;
   hints.ai_family = PF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
