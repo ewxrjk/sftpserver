@@ -118,9 +118,9 @@ static void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs) {
      * bogus timestamps or have some other workaround, then delete the
      * checks. */
     if(m != attrs->mtime.seconds)
-      fatal("sending out-of-range mtime");
+      sftp_fatal("sending out-of-range mtime");
     if(a != attrs->atime.seconds)
-      fatal("sending out-of-range mtime");
+      sftp_fatal("sending out-of-range mtime");
     sftp_send_uint32(job->worker, a);
     sftp_send_uint32(job->worker, m);
   }

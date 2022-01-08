@@ -251,15 +251,15 @@ const char *sftp_format_attr(struct allocator *a, const struct sftpattr *attrs,
   nbits = 0;
   if(flags & FORMAT_ATTRS && (attrs->valid & SSH_FILEXFER_ATTR_BITS) &&
      attrs->attrib_bits) {
-    bits = append(a, bits, &nbits, "[");
+    bits = sftp_str_append(a, bits, &nbits, "[");
     for(n = 0; n < sizeof attr_bits / sizeof *attr_bits; ++n) {
       if(attrs->attrib_bits & attr_bits[n].bit) {
         if(bits[1])
-          bits = append(a, bits, &nbits, ",");
-        bits = append(a, bits, &nbits, attr_bits[n].description);
+          bits = sftp_str_append(a, bits, &nbits, ",");
+        bits = sftp_str_append(a, bits, &nbits, attr_bits[n].description);
       }
     }
-    bits = append(a, bits, &nbits, "]");
+    bits = sftp_str_append(a, bits, &nbits, "]");
   }
   /* Format the result */
   formatted = sftp_alloc(a, 80 + strlen(attrs->name));

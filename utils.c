@@ -32,9 +32,9 @@
 #include <limits.h>
 #include <assert.h>
 
-int log_syslog;
+int sftp_log_syslog;
 
-int do_read(int fd, void *buffer, size_t size) {
+int sftp_xread(int fd, void *buffer, size_t size) {
   size_t sofar = 0;
   ssize_t n;
   char *ptr = buffer;
@@ -46,22 +46,22 @@ int do_read(int fd, void *buffer, size_t size) {
     else if(n == 0)
       return -1; /* eof */
     else
-      fatal("read error: %s", strerror(errno));
+      sftp_fatal("read error: %s", strerror(errno));
   }
   return 0; /* ok */
 }
 
-void *xmalloc(size_t n) {
+void *sftp_xmalloc(size_t n) {
   void *ptr;
 
   if(!n)
     n = 1;
   if(!(ptr = malloc(n)))
-    fatal("xmalloc: out of memory (%zu)", n);
+    sftp_fatal("sftp_xmalloc: out of memory (%zu)", n);
   return ptr;
 }
 
-void *xcalloc(size_t n, size_t size) {
+void *sftp_xcalloc(size_t n, size_t size) {
   void *ptr;
 
   if(!n)
@@ -69,17 +69,17 @@ void *xcalloc(size_t n, size_t size) {
   if(!size)
     size = 1;
   if(!(ptr = calloc(n, size)))
-    fatal("xcalloc: out of memory (%zu, %zu)", n, size);
+    sftp_fatal("sftp_xcalloc: out of memory (%zu, %zu)", n, size);
   return ptr;
 }
 
-void *xrecalloc(void *ptr, size_t n, size_t size) {
+void *sftp_xrecalloc(void *ptr, size_t n, size_t size) {
   if(n > SIZE_MAX / size)
-    fatal("xrecalloc: out of memory (%zu, %zu)", n, size);
+    sftp_fatal("sftp_xrecalloc: out of memory (%zu, %zu)", n, size);
   n *= size;
   if(n) {
     if(!(ptr = realloc(ptr, n)))
-      fatal("xrecalloc: out of memory (%zu)", n);
+      sftp_fatal("sftp_xrecalloc: out of memory (%zu)", n);
     return ptr;
   } else {
     free(ptr);
@@ -87,10 +87,10 @@ void *xrecalloc(void *ptr, size_t n, size_t size) {
   }
 }
 
-void *xrealloc(void *ptr, size_t n) {
+void *sftp_xrealloc(void *ptr, size_t n) {
   if(n) {
     if(!(ptr = realloc(ptr, n)))
-      fatal("xrealloc: out of memory (%zu)", n);
+      sftp_fatal("sftp_xrealloc: out of memory (%zu)", n);
     return ptr;
   } else {
     free(ptr);
@@ -98,15 +98,17 @@ void *xrealloc(void *ptr, size_t n) {
   }
 }
 
-char *xstrdup(const char *s) { return strcpy(xmalloc(strlen(s) + 1), s); }
+char *sftp_xstrdup(const char *s) {
+  return strcpy(sftp_xmalloc(strlen(s) + 1), s);
+}
 
 static void (*exitfn)(int) attribute((noreturn)) = exit;
 
-void fatal(const char *msg, ...) {
+void sftp_fatal(const char *msg, ...) {
   va_list ap;
 
   va_start(ap, msg);
-  if(log_syslog)
+  if(sftp_log_syslog)
     vsyslog(LOG_ERR, msg, ap);
   else {
     fprintf(stderr, "FATAL: ");
@@ -117,20 +119,20 @@ void fatal(const char *msg, ...) {
   exitfn(-1);
 }
 
-void forked(void) { exitfn = _exit; }
+void sftp_forked(void) { exitfn = _exit; }
 
-pid_t xfork(void) {
+pid_t sftp_xfork(void) {
   pid_t pid;
 
   if((pid = fork()) < 0)
-    fatal("fork: %s", strerror(errno));
+    sftp_fatal("fork: %s", strerror(errno));
   if(!pid)
-    forked();
+    sftp_forked();
   return pid;
 }
 
-char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
-              size_t lt) {
+char *sftp_str_appendn(struct allocator *a, char *s, size_t *ns, const char *t,
+                       size_t lt) {
   const size_t ls = s ? strlen(s) : 0, need = lt + ls + 1;
 
   if(need > *ns) {
@@ -139,7 +141,7 @@ char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
     while(need > newsize && newsize)
       newsize *= 2;
     if(!newsize)
-      fatal("appendn: out of memory (%zu, %zu)", ls, need);
+      sftp_fatal("sftp_str_appendn: out of memory (%zu, %zu)", ls, need);
     s = sftp_alloc_more(a, s, *ns, newsize);
     *ns = newsize;
   } else {
@@ -152,8 +154,8 @@ char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
   return s;
 }
 
-char *append(struct allocator *a, char *s, size_t *ns, const char *t) {
-  return appendn(a, s, ns, t, strlen(t));
+char *sftp_str_append(struct allocator *a, char *s, size_t *ns, const char *t) {
+  return sftp_str_appendn(a, s, ns, t, strlen(t));
 }
 
 /*

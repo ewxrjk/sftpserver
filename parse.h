@@ -88,15 +88,15 @@ uint32_t sftp_parse_handle(struct sftpjob *job, struct handleid *id);
 /** @brief Error checking wrapper for sftp_parse_... functions
  * @param E expression to check
  *
- * If the parse fails, @ref fatal() is called.  This macro is only used in the
- * client.
+ * If the parse fails, @ref sftp_fatal() is called.  This macro is only used in
+ * the client.
  */
 #    define cpcheck(E)                                                         \
       do {                                                                     \
         const uint32_t rc = (E);                                               \
         if(rc) {                                                               \
           D(("%s:%d: %s returned %" PRIu32, __FILE__, __LINE__, #E, rc));      \
-          fatal("error parsing response from server");                         \
+          sftp_fatal("error parsing response from server");                    \
         }                                                                      \
       } while(0)
 #  else

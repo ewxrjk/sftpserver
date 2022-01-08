@@ -71,8 +71,8 @@ void sftp_send_need(struct worker *w, size_t n) {
     while(newsize && newsize < w->bufsize + n)
       newsize <<= 1;
     if(!newsize)
-      fatal("sftp_send_need: out of memory (%zu)", n);
-    w->buffer = xrealloc(w->buffer, w->bufsize = newsize);
+      sftp_fatal("sftp_send_need: out of memory (%zu)", n);
+    w->buffer = sftp_xrealloc(w->buffer, w->bufsize = newsize);
   }
 }
 
@@ -101,7 +101,7 @@ void sftp_send_end(struct worker *w) {
     if((n = write(sftpout, w->buffer + written, w->bufused - written)) > 0)
       written += n;
     else if(n < 0)
-      fatal("error sending response: %s", strerror(errno));
+      sftp_fatal("error sending response: %s", strerror(errno));
   ferrcheck(pthread_mutex_unlock(&output_lock));
   w->bufused = 0x80000000;
 }
@@ -139,7 +139,7 @@ void sftp_send_string(struct worker *w, const char *s) {
 
 void sftp_send_path(struct sftpjob *job, struct worker *w, const char *path) {
   if(protocol->encode(job, (char **)&path))
-    fatal("cannot encode local path name '%s'", path);
+    sftp_fatal("cannot encode local path name '%s'", path);
   sftp_send_string(w, path);
 }
 

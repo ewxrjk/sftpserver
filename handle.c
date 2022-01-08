@@ -71,7 +71,7 @@ static void find_free_handle(struct handleid *id, int type) {
     /* need more space */
     nhandles = (nhandles ? 2 * nhandles : 16);
     assert(nhandles != 0);
-    handles = xrecalloc(handles, nhandles, sizeof(*handles));
+    handles = sftp_xrecalloc(handles, nhandles, sizeof(*handles));
     sftp_memset(handles + n, 0, (nhandles - n) * sizeof(*handles));
   }
   while(!sequence)
@@ -87,7 +87,7 @@ void sftp_handle_new_file(struct handleid *id, int fd, const char *path,
   ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   find_free_handle(id, SSH_FXP_OPEN);
   handles[id->id].u.fd = fd;
-  handles[id->id].path = xstrdup(path);
+  handles[id->id].path = sftp_xstrdup(path);
   handles[id->id].flags = flags;
   ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
 }
@@ -96,7 +96,7 @@ void sftp_handle_new_dir(struct handleid *id, DIR *dp, const char *path) {
   ferrcheck(pthread_mutex_lock(&sftp_handle_lock));
   find_free_handle(id, SSH_FXP_OPENDIR);
   handles[id->id].u.dir = dp;
-  handles[id->id].path = xstrdup(path);
+  handles[id->id].path = sftp_xstrdup(path);
   ferrcheck(pthread_mutex_unlock(&sftp_handle_lock));
 }
 

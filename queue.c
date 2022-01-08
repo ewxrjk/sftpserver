@@ -108,7 +108,7 @@ void queue_init(struct queue **qr, const struct queuedetails *details,
   int n;
   struct queue *q;
 
-  q = xmalloc(sizeof *q);
+  q = sftp_xmalloc(sizeof *q);
   sftp_memset(q, 0, sizeof *q);
   q->jobs = 0;
   q->jobstail = &q->jobs;
@@ -116,7 +116,7 @@ void queue_init(struct queue **qr, const struct queuedetails *details,
   ferrcheck(pthread_cond_init(&q->c, 0));
   q->details = details;
   q->nthreads = nthreads;
-  q->threads = xcalloc(nthreads, sizeof(pthread_t));
+  q->threads = sftp_xcalloc(nthreads, sizeof(pthread_t));
   q->join = 0;
   for(n = 0; n < q->nthreads; ++n)
     ferrcheck(pthread_create(&q->threads[n], 0, queue_thread, q));
@@ -126,7 +126,7 @@ void queue_init(struct queue **qr, const struct queuedetails *details,
 void queue_add(struct queue *q, void *job) {
   struct queuejob *qj;
 
-  qj = xmalloc(sizeof *qj);
+  qj = sftp_xmalloc(sizeof *qj);
   qj->next = 0;
   qj->job = job;
   ferrcheck(pthread_mutex_lock(&q->m));

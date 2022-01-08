@@ -99,10 +99,10 @@ void *sftp_alloc(struct allocator *a, size_t n) {
   if(!(c = a->chunks) || c->left < m) {
     /* Make sure we allocate enough space */
     const size_t cs = m >= NBLOCKS ? m + 1 : NBLOCKS;
-    /* xcalloc -> calloc which 0-fills */
+    /* sftp_xcalloc -> calloc which 0-fills */
     union block *nb;
 
-    nb = xcalloc(cs, sizeof(union block));
+    nb = sftp_xcalloc(cs, sizeof(union block));
     c = &nb->c;
     c->next = a->chunks;
     c->ptr = nb + 1;

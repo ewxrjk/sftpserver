@@ -101,7 +101,7 @@ uint32_t sftp_generic_open(struct sftpjob *job, const char *path,
     open_flags = O_RDWR;
     break;
   default:
-    fatal("bitwise operators have broken");
+    sftp_fatal("bitwise operators have broken");
   }
   /* UNIX systems generally do not allow the owner to be changed by
    * non-superusers. */

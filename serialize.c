@@ -191,7 +191,7 @@ void queue_serializable_job(struct sftpjob *job) {
     handleflags = 0;
   }
   ferrcheck(pthread_mutex_lock(&sq_mutex));
-  q = xmalloc(sizeof *q);
+  q = sftp_xmalloc(sizeof *q);
   q->older = newest;
   q->job = job;
   q->type = type;

@@ -59,7 +59,7 @@ char *sftp_find_realpath(struct allocator *a, const char *path,
   }
 
   /* The result always starts with a / */
-  result = append(a, result, &nresult, "/");
+  result = sftp_str_append(a, result, &nresult, "/");
 
   /* All the work happens below */
   return process_path(a, result, &nresult, path, flags);
@@ -99,8 +99,8 @@ static char *process_path(struct allocator *a, char *result, size_t *nresultp,
         const size_t oldresultlen = strlen(result);
         /* Append the new path element */
         if(result[1])
-          result = append(a, result, nresultp, "/");
-        result = appendn(a, result, nresultp, path, elementlen);
+          result = sftp_str_append(a, result, nresultp, "/");
+        result = sftp_str_appendn(a, result, nresultp, path, elementlen);
         D(("result[1] -> '%s'", result));
         /* If we're following symlinks, see if the path so far points to a
          * link */

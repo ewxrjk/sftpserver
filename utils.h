@@ -32,44 +32,39 @@
  * @param size Number of bytes to read
  * @return 0 on success, non-0 if EOF before @p size bytes read
  *
- * Loops if necessary to cope with short reads.  Calls fatal() on error.
+ * Loops if necessary to cope with short reads.  Calls sftp_fatal() on error.
  */
-int do_read(int fd, void *buffer, size_t size);
-
-/* libreadline contains xmalloc/xrealloc!  We use some #defines to work around
- * the problem. */
-#  define xmalloc sftp__xmalloc
-#  define xrealloc sftp__xrealloc
+int sftp_xread(int fd, void *buffer, size_t size);
 
 /** @brief Allocate memory
  * @param n Number of bytes to allocate
  * @return Pointer to allocated memory
  *
- * Equivalent to @c malloc() but calls fatal() on error.
+ * Equivalent to @c malloc() but calls sftp_fatal() on error.
  *
  * Does not zero-fill.
  */
-void *xmalloc(size_t n);
+void *sftp_xmalloc(size_t n);
 
 /** @brief Allocate memory
  * @param n Number of objects to allocate
  * @param size Size of one object
  * @return Pointer to allocated memory
  *
- * Equivalent to @c calloc() but calls fatal() on error.
+ * Equivalent to @c calloc() but calls sftp_fatal() on error.
  */
-void *xcalloc(size_t n, size_t size);
+void *sftp_xcalloc(size_t n, size_t size);
 
 /** @brief Reallocate memory
  * @param ptr Existing allocation
  * @param n Number of bytes to allocate
  * @return Pointer to allocated memory
  *
- * Equivalent to @c realloc() but calls fatal() on error.
+ * Equivalent to @c realloc() but calls sftp_fatal() on error.
  *
  * Does not zero-fill.
  */
-void *xrealloc(void *ptr, size_t n);
+void *sftp_xrealloc(void *ptr, size_t n);
 
 /** @brief Reallocate memory
  * @param ptr Existing allocation
@@ -77,19 +72,19 @@ void *xrealloc(void *ptr, size_t n);
  * @param size Size of one object
  * @return Pointer to allocated memory
  *
- * Equivalent to @c realloc() but calls fatal() on error.
+ * Equivalent to @c realloc() but calls sftp_fatal() on error.
  *
  * Does not zero-fill.
  */
-void *xrecalloc(void *ptr, size_t n, size_t size);
+void *sftp_xrecalloc(void *ptr, size_t n, size_t size);
 
 /** @brief Duplicate a string
  * @param s String to duplicate
  * @return Duplicated string
  *
- * Equivalent to @c strdup() but calls fatal() on error.
+ * Equivalent to @c strdup() but calls sftp_fatal() on error.
  */
-char *xstrdup(const char *s);
+char *sftp_xstrdup(const char *s);
 
 /** @brief Append to a string
  * @param a Allocator
@@ -98,7 +93,7 @@ char *xstrdup(const char *s);
  * @param t String to append
  * @return New string
  */
-char *append(struct allocator *a, char *s, size_t *ns, const char *t);
+char *sftp_str_append(struct allocator *a, char *s, size_t *ns, const char *t);
 
 /** @brief Append to a string
  * @param a Allocator
@@ -108,8 +103,8 @@ char *append(struct allocator *a, char *s, size_t *ns, const char *t);
  * @param lt Length of @p t
  * @return New string
  */
-char *appendn(struct allocator *a, char *s, size_t *ns, const char *t,
-              size_t lt);
+char *sftp_str_appendn(struct allocator *a, char *s, size_t *ns, const char *t,
+                       size_t lt);
 
 /** @brief Convenient wrapper for readlink(2)
  * @param a Allocator to store result
@@ -178,28 +173,28 @@ const char *sftp_dirname(struct allocator *a, const char *path);
  * @param ... Arguments
  *
  * The error is written either to standard error or syslog; see @ref
- * log_syslog.
+ * sftp_log_syslog.
  *
  * Terminates the process.
  */
-void fatal(const char *msg, ...) attribute((noreturn))
+void sftp_fatal(const char *msg, ...) attribute((noreturn))
     attribute((format(printf, 1, 2)));
 
 /** @brief Fork a subprocess
  * @return 0 in the child, process ID in the parent
  *
- * Calls fatal() on error.
+ * Calls sftp_fatal() on error.
  */
-pid_t xfork(void);
+pid_t sftp_xfork(void);
 
 /** @brief Called after forking
  *
- * Affects the way that fatal() terminates the process.
+ * Affects the way that sftp_fatal() terminates the process.
  *
- * xfork() already calls it, any other calls to @c fork() should call it
+ * sftp_xfork() already calls it, any other calls to @c fork() should call it
  * explicitly.
  */
-void forked(void);
+void sftp_forked(void);
 
 /** @brief memcpy wrapper
  *
@@ -231,9 +226,9 @@ static inline void *sftp_memset(void *s, int ch, size_t n) {
 
 /** @brief Whether to log to syslog
  *
- * Affects where fatal() writes to.
+ * Affects where sftp_fatal() writes to.
  */
-extern int log_syslog;
+extern int sftp_log_syslog;
 
 #endif /* UTILS_H */
 

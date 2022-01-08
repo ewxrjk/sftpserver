@@ -104,29 +104,29 @@ static const struct option options[] = {
 
 /* display usage message and terminate */
 static void attribute((noreturn)) help(void) {
-  xprintf("Usage:\n"
-          "  gesftpserver [OPTIONS]\n"
-          "\n"
-          "Green End SFTP server.  Not intended for interactive use!\n"
-          "\n");
-  xprintf("Options:\n"
-          "  --help, -h               Display usage message\n"
-          "  --version, -V            Display version number\n"
+  sftp_xprintf("Usage:\n"
+               "  gesftpserver [OPTIONS]\n"
+               "\n"
+               "Green End SFTP server.  Not intended for interactive use!\n"
+               "\n");
+  sftp_xprintf("Options:\n"
+               "  --help, -h               Display usage message\n"
+               "  --version, -V            Display version number\n"
 #if DAEMON
-          "  --chroot, -r PATH        Change root to PATH\n"
-          "  --user, -u USER          Change to user USER\n"
-          "  --listen, -L PORT        Listen on PORT\n"
-          "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
-          "  -4|-6                    Force IPv4 or IPv6 for --listen\n"
-          "  --background, -b         Daemonize\n"
+               "  --chroot, -r PATH        Change root to PATH\n"
+               "  --user, -u USER          Change to user USER\n"
+               "  --listen, -L PORT        Listen on PORT\n"
+               "  --host, -H HOSTNAME      Bind to HOSTNAME (default *)\n"
+               "  -4|-6                    Force IPv4 or IPv6 for --listen\n"
+               "  --background, -b         Daemonize\n"
 #endif
-          "  --readonly, -R           Read-only mode\n");
+               "  --readonly, -R           Read-only mode\n");
   exit(0);
 }
 
 /* display version number and terminate */
 static void attribute((noreturn)) version(void) {
-  xprintf("Green End SFTP server version %s\n", VERSION);
+  sftp_xprintf("Green End SFTP server version %s\n", VERSION);
   exit(0);
 }
 
@@ -306,16 +306,16 @@ const struct sftpprotocol sftp_preinit = {sizeof sftppreinittab /
  * @return Initialized worker state
  */
 static void *worker_init(void) {
-  struct worker *w = xmalloc(sizeof *w);
+  struct worker *w = sftp_xmalloc(sizeof *w);
 
   sftp_memset(w, 0, sizeof *w);
   w->buffer = 0;
   if((w->utf8_to_local = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
-    fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
-          strerror(errno));
+    sftp_fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
+               strerror(errno));
   if((w->local_to_utf8 = iconv_open("UTF-8", local_encoding)) == (iconv_t)-1)
-    fatal("error calling iconv_open(UTF-8,%s): %s", local_encoding,
-          strerror(errno));
+    sftp_fatal("error calling iconv_open(UTF-8,%s): %s", local_encoding,
+               strerror(errno));
   return w;
 }
 
@@ -445,7 +445,7 @@ int main(int argc, char **argv) {
   if(strstr(bn, "-debug")) {
     const char *home = getenv("HOME");
 
-    sftp_debugpath = xmalloc(strlen(home) + 40);
+    sftp_debugpath = sftp_xmalloc(strlen(home) + 40);
     sprintf((char *)sftp_debugpath, "%s/.gesftpserver.%ju", home,
             (uintmax_t)getpid());
     sftp_debugging = 1;
@@ -504,7 +504,7 @@ int main(int argc, char **argv) {
 
 #if DAEMON
   if(daemonize && !port)
-    fatal("--background requires --port");
+    sftp_fatal("--background requires --port");
 #endif
 
   /* If writes to the client fail then we'll get EPIPE.  Arguably it might
@@ -525,16 +525,16 @@ int main(int argc, char **argv) {
 
 #if HAVE_PRCTL
   if(prctl(PR_SET_DUMPABLE, 0L) < 0)
-    fatal("error calling prctl: %s", strerror(errno));
+    sftp_fatal("error calling prctl: %s", strerror(errno));
 #endif
 
 #if DAEMON
   if(user) {
     /* Look up the user */
     if(!(pw = getpwnam(user)))
-      fatal("no such user as %s", user);
+      sftp_fatal("no such user as %s", user);
     if(initgroups(user, pw->pw_gid))
-      fatal("error calling initgroups: %s", strerror(errno));
+      sftp_fatal("error calling initgroups: %s", strerror(errno));
   }
 
   if(port) {
@@ -547,59 +547,59 @@ int main(int argc, char **argv) {
     sa.sa_flags = SA_RESTART;
     sigemptyset(&sa.sa_mask);
     if(sigaction(SIGCHLD, &sa, 0) < 0)
-      fatal("error calling sigaction: %s", strerror(errno));
+      sftp_fatal("error calling sigaction: %s", strerror(errno));
     if((rc = getaddrinfo(host, port, &hints, &res))) {
       if(host)
-        fatal("error resolving host %s port %s: %s", host, port,
-              gai_strerror(rc));
+        sftp_fatal("error resolving host %s port %s: %s", host, port,
+                   gai_strerror(rc));
       else
-        fatal("error resolving port %s: %s", port, gai_strerror(rc));
+        sftp_fatal("error resolving port %s: %s", port, gai_strerror(rc));
     }
     if((listenfd = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) <
        0)
-      fatal("error calling socket: %s", strerror(errno));
+      sftp_fatal("error calling socket: %s", strerror(errno));
     if(setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof one) < 0)
-      fatal("error calling setsockopt: %s", strerror(errno));
+      sftp_fatal("error calling setsockopt: %s", strerror(errno));
     if(bind(listenfd, res->ai_addr, res->ai_addrlen) < 0)
-      fatal("error calling socket: %s", strerror(errno));
+      sftp_fatal("error calling socket: %s", strerror(errno));
     if(listen(listenfd, SOMAXCONN) < 0)
-      fatal("error calling listen: %s", strerror(errno));
+      sftp_fatal("error calling listen: %s", strerror(errno));
   } else if(host)
-    fatal("--host makes no sense without --port");
+    sftp_fatal("--host makes no sense without --port");
 
   if((cd = iconv_open(local_encoding, "UTF-8")) == (iconv_t)-1)
-    fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
-          strerror(errno));
+    sftp_fatal("error calling iconv_open(%s,UTF-8): %s", local_encoding,
+               strerror(errno));
   iconv_close(cd);
   if((cd = iconv_open("UTF-8", local_encoding)) == (iconv_t)-1)
-    fatal("error calling iconv_open(UTF-8, %s): %s", local_encoding,
-          strerror(errno));
+    sftp_fatal("error calling iconv_open(UTF-8, %s): %s", local_encoding,
+               strerror(errno));
   iconv_close(cd);
 
   if(root) {
     /* Enter our chroot */
     if(chdir(root) < 0)
-      fatal("error calling chdir %s: %s", root, strerror(errno));
+      sftp_fatal("error calling chdir %s: %s", root, strerror(errno));
     if(chroot(".") < 0)
-      fatal("error calling chroot: %s", strerror(errno));
+      sftp_fatal("error calling chroot: %s", strerror(errno));
   }
 
   if(user) {
     /* Become the right user */
     assert(pw != 0);
     if(setgid(pw->pw_gid) < 0)
-      fatal("error calling setgid: %s", strerror(errno));
+      sftp_fatal("error calling setgid: %s", strerror(errno));
     if(setuid(pw->pw_uid) < 0)
-      fatal("error calling setuid: %s", strerror(errno));
+      sftp_fatal("error calling setuid: %s", strerror(errno));
     if(setuid(0) >= 0)
-      fatal("setuid(0) unexpectedly succeeded");
+      sftp_fatal("setuid(0) unexpectedly succeeded");
   }
 
   if(daemonize) {
     openlog(bn, LOG_PID, LOG_FTP);
-    log_syslog = 1;
+    sftp_log_syslog = 1;
     if(daemon(0, 0) < 0)
-      fatal("error calling daemon: %s", strerror(errno));
+      sftp_fatal("error calling daemon: %s", strerror(errno));
   }
 
   if(!port) {
@@ -624,12 +624,12 @@ int main(int argc, char **argv) {
           sleep(60);
           break;
         case 0:
-          forked();
+          sftp_forked();
           signal(SIGCHLD, SIG_DFL); /* XXX */
           if(dup2(fd, 0) < 0 || dup2(fd, 1) < 0)
-            fatal("dup2: %s", strerror(errno));
+            sftp_fatal("dup2: %s", strerror(errno));
           if(close(fd) < 0 || close(listenfd) < 0)
-            fatal("close: %s", strerror(errno));
+            sftp_fatal("close: %s", strerror(errno));
           sftp_service();
           _exit(0);
         default:
@@ -658,16 +658,17 @@ static void sftp_service(void) {
   /* draft -13 s7.6 "The server SHOULD NOT apply a 'umask' to the mode
    * bits". */
   umask(0);
-  while(sftp_state_get() != sftp_state_stop && !do_read(0, &len, sizeof len)) {
-    job = xmalloc(sizeof *job);
+  while(sftp_state_get() != sftp_state_stop &&
+        !sftp_xread(0, &len, sizeof len)) {
+    job = sftp_xmalloc(sizeof *job);
     job->len = ntohl(len);
     if(!job->len || job->len > MAXREQUEST)
-      fatal("invalid request size");
-    job->data = xmalloc(job->len);
-    if(do_read(0, job->data, job->len))
+      sftp_fatal("invalid request size");
+    job->data = sftp_xmalloc(job->len);
+    if(sftp_xread(0, job->data, job->len))
       /* Job data missing or truncated - the other end is not playing the game
        * fair so we give up straight away */
-      fatal("read error: unexpected eof");
+      sftp_fatal("read error: unexpected eof");
     if(sftp_debugging) {
       D(("request:"));
       sftp_debug_hexdump(job->data, job->len);

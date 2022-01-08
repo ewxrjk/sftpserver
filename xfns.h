@@ -26,33 +26,33 @@
 /** @brief Close @p fd
  * @param fd File descriptor to close
  *
- * Calls fatal() on error.
+ * Calls sftp_fatal() on error.
  */
-void xclose(int fd);
+void sftp_xclose(int fd);
 
 /** @brief Duplicate @p fd
  * @param fd File descriptor to duplicate
  * @param newfd New file descriptor
  *
- * Calls fatal() on error.
+ * Calls sftp_fatal() on error.
  */
-void xdup2(int fd, int newfd);
+void sftp_xdup2(int fd, int newfd);
 
 /** @brief Create a pipe
  * @param pfd Where to store endpoint file descriptors
  *
- * Calls fatal() on error.
+ * Calls sftp_fatal() on error.
  */
-void xpipe(int *pfd);
+void sftp_xpipe(int *pfd);
 
 /** @brief Write to stdout
  * @param fmt Format string as per @c printf()
  * @param ... Arguments
  * @return Number of characters written
  *
- * Calls fatal() on error.
+ * Calls sftp_fatal() on error.
  */
-int xprintf(const char *fmt, ...) attribute((format(printf, 1, 2)));
+int sftp_xprintf(const char *fmt, ...) attribute((format(printf, 1, 2)));
 
 #endif /* XFNS_H */
 
