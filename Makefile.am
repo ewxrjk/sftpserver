@@ -60,7 +60,7 @@ check: gesftpserver sftpclient pwtest aliases
 
 check-valgrind: gesftpserver-valgrind sftpclient pwtest aliases
 	rm -f ,valgrind*
-	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests --server ./gesftpserver-valgrind $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --debug --directory tests --server ./gesftpserver-valgrind $(TESTS)
 
 aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
 		gesftpserver-valgrind
