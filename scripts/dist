@@ -10,6 +10,6 @@ version=$(make version)
 fakeroot make dist # don't pollute tar with my uid
 mv sftpserver-${version}.tar.gz products/.
 cd products
-gpg --sign sftpserver-${version}.tar.gz
+gpg --detach-sign -a sftpserver-${version}.tar.gz
 cd ..
 ls -l products
