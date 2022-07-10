@@ -84,8 +84,17 @@ static void v3_sendnames(struct sftpjob *job, int nnames,
   }
 }
 
+/* Clamp a timestamp into the 32-bit unsigned range */
+static uint32_t v3_clamp_timestamp(int64_t t) {
+  if(t < 0)
+    return 0;
+  if(t > 0xFFFFFFFF)
+    return 0xFFFFFFFF;
+  return (uint32_t)t;
+}
+
 static void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs) {
-  uint32_t v3bits, m, a;
+  uint32_t v3bits;
 
   /* The timestamp flags change between v3 and v4.  In the structure we always
    * use the v4+ bits, so we must translate. */
@@ -110,19 +119,21 @@ static void v3_sendattrs(struct sftpjob *job, const struct sftpattr *attrs) {
   if(v3bits & SSH_FILEXFER_ATTR_PERMISSIONS)
     sftp_send_uint32(job->worker, attrs->permissions);
   if(v3bits & SSH_FILEXFER_ACMODTIME) {
-    m = attrs->mtime.seconds;
-    a = attrs->atime.seconds;
-    /* Check that the conversion was sound.  SFTP v3 becomes unsound in 2038CE.
-     * If you're looking at this code then, I suggest using a later protocol
-     * version.  If that's not acceptable, and you either don't care about
-     * bogus timestamps or have some other workaround, then delete the
-     * checks. */
-    if(m != attrs->mtime.seconds)
-      sftp_fatal("sending out-of-range mtime");
-    if(a != attrs->atime.seconds)
-      sftp_fatal("sending out-of-range mtime");
-    sftp_send_uint32(job->worker, a);
-    sftp_send_uint32(job->worker, m);
+    /* atime and mtime are 32-bit unsigned fields. So times
+     * prior to 1970, or after 2106 or so, can't be represented.
+     *
+     * This is a slightly weird decision given there are already
+     * 64-bit types in the protocol and the issues with limited
+     * timestamp sizes were already well understood when the
+     * draft was published, but here we are.
+     *
+     * We have two options. One is to omit the ACMODTIME bit, the other
+     * is to lie about timestamps we can't represent. I've chosen the
+     * latter since I suspect that missing out ACMODTIME will take
+     * clients into poorly tested code paths.
+     */
+    sftp_send_uint32(job->worker, v3_clamp_timestamp(attrs->atime.seconds));
+    sftp_send_uint32(job->worker, v3_clamp_timestamp(attrs->mtime.seconds));
   }
   /* Note that we just discard unknown bits rather than reporting errors. */
 }
