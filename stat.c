@@ -265,8 +265,8 @@ const char *sftp_format_attr(struct allocator *a, const struct sftpattr *attrs,
   formatted = sftp_alloc(a, 80 + strlen(attrs->name));
 
   /* The draft is pretty specific about field widths */
-  sprintf(formatted, "%10.10s %3.3s %-8.8s %-8.8s %8.8s %12.12s %s%s%s%s%s",
-          perms, linkcount, owner, group, size, date, attrs->name,
+  sprintf(formatted, "%10.10s %3s %-8s %-8s %8s %12s %s%s%s%s%s", perms,
+          linkcount, owner, group, size, date, attrs->name,
           attrs->target ? " -> " : "", attrs->target ? attrs->target : "",
           bits ? " " : "", bits ? bits : "");
   return formatted;
