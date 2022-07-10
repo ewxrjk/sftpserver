@@ -1,5 +1,9 @@
 # Release History
 
+## Change in version 3
+
+* In protocol v3, clamp out-of-range timestamps rather than erroring. [Fixes #14](https://github.com/ewxrjk/sftpserver/issues/14).
+
 ## Changes in version 2
 
 * Fix interpretation of malformed handles
