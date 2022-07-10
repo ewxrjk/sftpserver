@@ -88,14 +88,14 @@ void sftp_stat_to_attrs(struct allocator *a, const struct stat *sb,
   attrs->atime.seconds = sb->st_atime;
   attrs->mtime.seconds = sb->st_mtime;
   attrs->ctime.seconds = sb->st_ctime;
-#if HAVE_STAT_TIMESPEC
-  if(sb->st_atimespec.tv_nsec >= 0 && sb->st_atimespec.tv_nsec < 1000000000 &&
-     sb->st_mtimespec.tv_nsec >= 0 && sb->st_mtimespec.tv_nsec < 1000000000 &&
-     sb->st_ctimespec.tv_nsec >= 0 && sb->st_ctimespec.tv_nsec < 1000000000) {
+#ifdef ST_ATIM
+  if(sb->ST_ATIM.tv_nsec >= 0 && sb->ST_ATIM.tv_nsec < 1000000000 &&
+     sb->ST_MTIM.tv_nsec >= 0 && sb->ST_MTIM.tv_nsec < 1000000000 &&
+     sb->ST_CTIM.tv_nsec >= 0 && sb->ST_CTIM.tv_nsec < 1000000000) {
     /* Only send subsecond times if they are in range */
-    attrs->atime.nanoseconds = sb->st_atimespec.tv_nsec;
-    attrs->mtime.nanoseconds = sb->st_mtimespec.tv_nsec;
-    attrs->ctime.nanoseconds = sb->st_ctimespec.tv_nsec;
+    attrs->atime.nanoseconds = sb->ST_ATIM.tv_nsec;
+    attrs->mtime.nanoseconds = sb->ST_MTIM.tv_nsec;
+    attrs->ctime.nanoseconds = sb->ST_CTIM.tv_nsec;
     attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIMES;
   }
 #endif
@@ -335,17 +335,17 @@ struct sftp_set_status_callbacks {
 };
 
 /* Horrendous ugliness for SETSTAT/FSETSTAT */
-#if HAVE_STAT_TIMESPEC
+#ifdef ST_ATIM
 /** @brief Helper macro to set fractional part of timestamps */
 #  define SET_STATUS_NANOSEC                                                   \
     do {                                                                       \
       times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)         \
                               ? (long)attrs.atime.nanoseconds                  \
-                              : current.st_atimespec.tv_nsec) /                \
+                              : current.ST_ATIM.tv_nsec) /                     \
                          1000;                                                 \
       times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)         \
                               ? (long)attrs.mtime.nanoseconds                  \
-                              : current.st_mtimespec.tv_nsec) /                \
+                              : current.ST_MTIM.tv_nsec) /                     \
                          1000;                                                 \
     } while(0)
 #else
@@ -432,15 +432,15 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
     times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                            ? (time_t)attrs.mtime.seconds
                            : current.st_mtime);
-#if HAVE_STAT_TIMESPEC
+#if ST_ATIM
     if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
       times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
                               ? (long)attrs.atime.nanoseconds
-                              : current.st_atimespec.tv_nsec) /
+                              : current.ST_ATIM.tv_nsec) /
                          1000;
       times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                               ? (long)attrs.mtime.nanoseconds
-                              : current.st_mtimespec.tv_nsec) /
+                              : current.ST_MTIM.tv_nsec) /
                          1000;
     }
 #endif

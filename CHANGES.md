@@ -3,6 +3,7 @@
 ## Change in version 3
 
 * In protocol v3, clamp out-of-range timestamps rather than erroring. [Fixes #14](https://github.com/ewxrjk/sftpserver/issues/14).
+* Subsecond timestamps are now returned on POSIX platforms, where supported. [Fixes #12](https://github.com/ewxrjk/sftpserver/issues/12).
 
 ## Changes in version 2
 

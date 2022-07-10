@@ -142,9 +142,37 @@ AC_DEFUN([RJK_GTKFLAGS],[
 ])
 
 AC_DEFUN([RJK_STAT_TIMESPEC],[
-  AC_CHECK_MEMBER([struct stat.st_atimespec],
-		  [AC_DEFINE([HAVE_STAT_TIMESPEC],[1],
-		             [define if struct stat uses struct timespec])],
+  AC_CACHE_CHECK([for timespec style in struct stat],[rjk_cv_stat_timespec],[
+    rjk_cv_stat_timespec=none
+    AC_TRY_COMPILE([#include <sys/stat.h>],[
+      struct stat sb;
+      sb.st_atim.tv_sec = 0;
+      (void)sb;
+    ],[rjk_cv_stat_timespec=POSIX])
+    AC_TRY_COMPILE([#include <sys/stat.h>],[
+      struct stat sb;
+      sb.st_atimespec.tv_sec = 0;
+      (void)sb;
+    ],[rjk_cv_stat_timespec=BSD])
+  ])
+  case "$rjk_cv_stat_timespec" in
+  BSD )
+    AC_DEFINE([ST_ATIM],[st_atimespec],[define to last access time field])
+		AC_DEFINE([ST_MTIM],[st_mtimespec],[define to last modification time field])
+		AC_DEFINE([ST_CTIM],[st_Ctimespec],[define to creation time field])
+    ;;
+  POSIX )
+    AC_DEFINE([ST_ATIM],[st_atim],[define to last access time field])
+    AC_DEFINE([ST_MTIM],[st_mtim],[define to last modification time field])
+    AC_DEFINE([ST_CTIM],[st_ctim],[define to creation time field])
+    ;;
+  esac
+])
+
+AC_DEFUN([RJK_STAT_TIMESPEC_POSIX],[
+  AC_CHECK_MEMBER([struct stat.st_atim],
+		  [AC_DEFINE([HAVE_STAT_TIMESPEC_POSIX],[1],
+		             [define if struct stat uses struct timespec (POSIX variant)])],
 		  [rjk_cv_stat_timespec=no],
 		  [#include <sys/stat.h>])
   ])
