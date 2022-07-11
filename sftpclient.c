@@ -153,7 +153,7 @@ static void attribute((noreturn)) help(void) {
   sftp_xprintf("Usage:\n"
                "  sftpclient [OPTIONS] [USER@]HOST\n"
                "\n"
-               "Quick and dirty SFTP client\n"
+               "Quick and dirty SFTP client, not intended for production use.\n"
                "\n");
   sftp_xprintf(
       "Options:\n"
