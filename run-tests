@@ -54,6 +54,7 @@ failed = 0
 protocols = ['2', '3', '4', '5', '6', '7']
 dir = 'tests'
 debug = 'DEBUG' in os.environ
+failfast = 'FAILFAST' in os.environ
 
 args = sys.argv[1:]
 while len(args) > 0 and args[0][0] == '-':
@@ -71,6 +72,9 @@ while len(args) > 0 and args[0][0] == '-':
         args = args[2:]
     elif args[0] == "--debug":
         debug = True
+        args = args[1:]
+    elif args[0] == "--fail-fast":
+        failfast = True
         args = args[1:]
     else:
         fatal("unknown option '%s'" % args[0])
@@ -191,8 +195,12 @@ for test in tests:
                     for l in f.readlines():
                         sys.stderr.write(l)
             failed += 1
+            if failfast:
+                break
         else:
             sys.stderr.write(colored("passed\n", "green"))
+    if failed > 0 and failfast:
+        break
 
 if failed:
     print(colored("%d tests failed" % failed, "red"))
