@@ -60,11 +60,27 @@
 #  include <readline/history.h>
 #endif
 
+// Command options
+#define CMD_RAW 0x0001
+
+// Command table
 struct command {
+  // Command name
   const char *name;
+
+  // Supported options
+  unsigned options;
+
+  // Minimum/maximum number of arguments
   int minargs, maxargs;
-  int (*handler)(int ac, char **av);
+
+  // Handler function
+  int (*handler)(int ac, char **av, unsigned options);
+
+  // Argument descriptions
   const char *args;
+
+  // Command description
   const char *help;
 };
 
@@ -451,6 +467,22 @@ static int sftp_init(void) {
   return 0;
 }
 
+static char *sftp_fullpath(struct sftpjob *job, const char *path,
+                           unsigned options) {
+  char *fullpath;
+  if(path[0] == '/' || (options & CMD_RAW)) {
+    fullpath = sftp_alloc(job->a, strlen(path) + 1);
+    strcpy(fullpath, path);
+  } else {
+    remote_cwd();
+    fullpath = sftp_alloc(job->a, strlen(cwd) + strlen(path) + 2);
+    strcpy(fullpath, cwd);
+    strcat(fullpath, "/");
+    strcat(fullpath, path);
+  }
+  return fullpath;
+}
+
 static char *sftp_realpath(const char *path) {
   char *resolved;
   uint32_t u32, id;
@@ -498,7 +530,6 @@ static char *sftp_realpath_v6(const char *path, int control_byte,
 static int sftp_stat(const char *path, struct sftpattr *attrs, uint8_t type) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, type);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -532,7 +563,6 @@ static int sftp_fstat(const struct client_handle *hp, struct sftpattr *attrs) {
 static int sftp_opendir(const char *path, struct client_handle *hp) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_OPENDIR);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -567,6 +597,9 @@ static int sftp_readdir(const struct client_handle *hp,
       *attrsp = attrs;
     while(n > 0) {
       cpcheck(sftp_parse_path(&fakejob, &name));
+      // all variants require relative paths in responses to SSH_FXP_READDIR
+      if(name[0] == '/')
+        sftp_fatal("absolute path in SSH_FXP_READDIR response (%s)", name);
       if(protocol->version <= 3)
         cpcheck(sftp_parse_path(&fakejob, &longname));
       cpcheck(protocol->parseattrs(&fakejob, attrs));
@@ -607,7 +640,6 @@ static int sftp_close(const struct client_handle *hp) {
 static int sftp_setstat(const char *path, const struct sftpattr *attrs) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_SETSTAT);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -635,7 +667,6 @@ static int sftp_fsetstat(const struct client_handle *hp,
 static int sftp_rmdir(const char *path) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_RMDIR);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -648,7 +679,6 @@ static int sftp_rmdir(const char *path) {
 static int sftp_remove(const char *path) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_REMOVE);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -662,7 +692,6 @@ static int sftp_rename(const char *oldpath, const char *newpath,
                        unsigned flags) {
   uint32_t id;
 
-  remote_cwd();
   /* In v3/4 atomic is assumed, overwrite and native are not available */
   if(protocol->version <= 4 && (flags & (uint32_t)~SSH_FXF_RENAME_ATOMIC) != 0)
     return error("cannot emulate rename flags %#x in protocol %d", flags,
@@ -682,7 +711,6 @@ static int sftp_rename(const char *oldpath, const char *newpath,
 static int sftp_prename(const char *oldpath, const char *newpath) {
   uint32_t id;
 
-  remote_cwd();
   if(!rename_extension)
     return error("no posix-rename extension found");
   sftp_send_begin(&fakeworker);
@@ -699,7 +727,6 @@ static int sftp_prename(const char *oldpath, const char *newpath) {
 static int sftp_hardlink(const char *targetpath, const char *linkpath) {
   uint32_t id;
 
-  remote_cwd();
   if(!hardlink_extension)
     return error("no hardlink extension found");
   sftp_send_begin(&fakeworker);
@@ -723,7 +750,6 @@ static int sftp_link(const char *targetpath, const char *linkpath,
     return error("hard links not supported in protocol %" PRIu32,
                  protocol->version);
   }
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker,
                   (protocol->version >= 6 ? SSH_FXP_LINK : SSH_FXP_SYMLINK));
@@ -821,7 +847,6 @@ struct space_available {
 static int sftp_space_available(const char *path, struct space_available *as) {
   uint32_t id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -843,7 +868,6 @@ static int sftp_mkdir(const char *path, mode_t mode) {
   struct sftpattr attrs;
   uint32_t id;
 
-  remote_cwd();
   if(mode == (mode_t)-1)
     attrs.valid = 0;
   else {
@@ -865,7 +889,6 @@ static char *sftp_readlink(const char *path) {
   char *resolved;
   uint32_t u32, id;
 
-  remote_cwd();
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READLINK);
   sftp_send_uint32(&fakeworker, id = newid());
@@ -911,7 +934,6 @@ struct statvfs_reply {
 static int sftp_statvfs(const char *path, struct statvfs_reply *sr) {
   uint32_t id;
 
-  remote_cwd();
   if(!statvfs_extension)
     return error("no statvfs extension found");
   sftp_send_begin(&fakeworker);
@@ -939,12 +961,14 @@ static int sftp_statvfs(const char *path, struct statvfs_reply *sr) {
 
 /* Command line operations */
 
-static int cmd_pwd(int attribute((unused)) ac, char attribute((unused)) * *av) {
+static int cmd_pwd(int attribute((unused)) ac, char attribute((unused)) * *av,
+                   unsigned attribute((unused)) options) {
   sftp_xprintf("%s\n", remote_cwd());
   return 0;
 }
 
-static int cmd_cd(int attribute((unused)) ac, char **av) {
+static int cmd_cd(int attribute((unused)) ac, char **av,
+                  unsigned attribute((unused)) options) {
   const char *newcwd;
   struct sftpattr attrs;
 
@@ -977,15 +1001,16 @@ static int cmd_cd(int attribute((unused)) ac, char **av) {
   return 0;
 }
 
-static int cmd_quit(int attribute((unused)) ac,
-                    char attribute((unused)) * *av) {
+static int cmd_quit(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options) {
   exit(0);
 }
 
-static int cmd_help(int attribute((unused)) ac, char attribute((unused)) * *av);
+static int cmd_help(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options);
 
-static int cmd_lpwd(int attribute((unused)) ac,
-                    char attribute((unused)) * *av) {
+static int cmd_lpwd(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options) {
   char *lpwd;
 
   if(!(lpwd = sftp_getcwd(fakejob.a))) {
@@ -996,7 +1021,8 @@ static int cmd_lpwd(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_lcd(int attribute((unused)) ac, char **av) {
+static int cmd_lcd(int attribute((unused)) ac, char **av,
+                   unsigned attribute((unused)) options) {
   if(chdir(av[0]) < 0) {
     error("error calling chdir: %s", strerror(errno));
     return -1;
@@ -1059,8 +1085,8 @@ static void reverse(void *array, size_t count, size_t size) {
   }
 }
 
-static int cmd_ls(int ac, char **av) {
-  const char *options, *path;
+static int cmd_ls(int ac, char **av, unsigned options) {
+  const char *ls_options, *path;
   struct sftpattr *attrs, *allattrs = 0, fileattrs;
   size_t nattrs, nallattrs = 0, n, m, i, maxnamewidth = 0;
   struct client_handle h;
@@ -1069,21 +1095,23 @@ static int cmd_ls(int ac, char **av) {
 
   remote_cwd();
   if(ac > 0 && av[0][0] == '-') {
-    options = *av++;
+    ls_options = *av++;
     --ac;
   } else
-    options = "";
+    ls_options = "";
   path = ac > 0 ? av[0] : remote_cwd();
   /* See what type the file is */
-  if(sftp_stat(path, &fileattrs, SSH_FXP_LSTAT))
+  if(sftp_stat(sftp_fullpath(&fakejob, path, options), &fileattrs,
+               SSH_FXP_LSTAT))
     return -1;
-  if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY || strchr(options, 'd')) {
+  if(fileattrs.type != SSH_FILEXFER_TYPE_DIRECTORY || strchr(ls_options, 'd')) {
     /* The file is not a directory, or we used -d */
     allattrs = &fileattrs;
+    fileattrs.name = path; //
     nallattrs = 1;
     singlefile = 1;
   } else {
-    const int include_dotfiles = !!strchr(options, 'a');
+    const int include_dotfiles = !!strchr(ls_options, 'a');
 
     /* The file is a directory and we did not use -d */
     singlefile = 0;
@@ -1111,26 +1139,26 @@ static int cmd_ls(int ac, char **av) {
     }
     sftp_close(&h);
   }
-  if(!strchr(options, 'f')) {
+  if(!strchr(ls_options, 'f')) {
     int (*sorter)(const void *, const void *);
 
-    if(strchr(options, 'S'))
+    if(strchr(ls_options, 'S'))
       sorter = sort_by_size;
-    else if(strchr(options, 't'))
+    else if(strchr(ls_options, 't'))
       sorter = sort_by_mtime;
     else
       sorter = sort_by_name;
     if(nallattrs)
       qsort(allattrs, nallattrs, sizeof *allattrs, sorter);
-    if(strchr(options, 'r'))
+    if(strchr(ls_options, 'r'))
       reverse(allattrs, nallattrs, sizeof *allattrs);
   }
-  if(strchr(options, 'l') || strchr(options, 'n')) {
+  if(strchr(ls_options, 'l') || strchr(ls_options, 'n')) {
     /* long listing */
     time_t now;
     struct tm nowtime;
     const unsigned long flags =
-        (strchr(options, 'n') ? FORMAT_PREFER_NUMERIC_UID : 0) |
+        (strchr(ls_options, 'n') ? FORMAT_PREFER_NUMERIC_UID : 0) |
         FORMAT_PREFER_LOCALTIME | FORMAT_ATTRS;
 
     /* We'd like to know what year we're in for dates in longname */
@@ -1154,7 +1182,7 @@ static int cmd_ls(int ac, char **av) {
       sftp_xprintf("%s\n",
                    sftp_format_attr(fakejob.a, attrs, nowtime.tm_year, flags));
     }
-  } else if(strchr(options, '1')) {
+  } else if(strchr(ls_options, '1')) {
     /* single-column listing */
     for(n = 0; n < nallattrs; ++n)
       sftp_xprintf("%s\n", allattrs[n].name);
@@ -1214,7 +1242,7 @@ static int cmd_ls(int ac, char **av) {
   return 0;
 }
 
-static int cmd_lls(int ac, char **av) {
+static int cmd_lls(int ac, char **av, unsigned attribute((unused)) options) {
   const char **args = sftp_alloc(fakejob.a, (ac + 2) * sizeof(char *));
   int n = 0;
   pid_t pid;
@@ -1237,7 +1265,7 @@ static int cmd_lls(int ac, char **av) {
   return 0;
 }
 
-static int cmd_lumask(int ac, char **av) {
+static int cmd_lumask(int ac, char **av, unsigned attribute((unused)) options) {
   mode_t n;
 
   if(ac) {
@@ -1260,7 +1288,8 @@ static int cmd_lumask(int ac, char **av) {
   return 0;
 }
 
-static int cmd_lmkdir(int attribute((unused)) ac, char **av) {
+static int cmd_lmkdir(int attribute((unused)) ac, char **av,
+                      unsigned attribute((unused)) options) {
   if(mkdir(av[0], 0777) < 0) {
     error("creating directory %s: %s", av[0], strerror(errno));
     return -1;
@@ -1268,10 +1297,11 @@ static int cmd_lmkdir(int attribute((unused)) ac, char **av) {
   return 0;
 }
 
-static int cmd_chown(int attribute((unused)) ac, char **av) {
+static int cmd_chown(int attribute((unused)) ac, char **av, unsigned options) {
   struct sftpattr attrs;
 
-  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
+  remote_cwd();
+  if(sftp_stat(sftp_fullpath(&fakejob, av[1], options), &attrs, SSH_FXP_STAT))
     return -1;
   if(protocol->version >= 4) {
     if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
@@ -1282,13 +1312,14 @@ static int cmd_chown(int attribute((unused)) ac, char **av) {
       return error("cannot determine former UID/GID");
     attrs.uid = atoi(av[0]);
   }
-  return sftp_setstat(av[1], &attrs);
+  return sftp_setstat(sftp_fullpath(&fakejob, av[1], options), &attrs);
 }
 
-static int cmd_chgrp(int attribute((unused)) ac, char **av) {
+static int cmd_chgrp(int attribute((unused)) ac, char **av, unsigned options) {
   struct sftpattr attrs;
 
-  if(sftp_stat(av[1], &attrs, SSH_FXP_STAT))
+  remote_cwd();
+  if(sftp_stat(sftp_fullpath(&fakejob, av[1], options), &attrs, SSH_FXP_STAT))
     return -1;
   if(protocol->version >= 4) {
     if(!(attrs.valid & SSH_FILEXFER_ATTR_OWNERGROUP))
@@ -1299,30 +1330,34 @@ static int cmd_chgrp(int attribute((unused)) ac, char **av) {
       return error("cannot determine former UID/GID");
     attrs.gid = atoi(av[0]);
   }
-  return sftp_setstat(av[1], &attrs);
+  return sftp_setstat(sftp_fullpath(&fakejob, av[1], options), &attrs);
 }
 
-static int cmd_chmod(int attribute((unused)) ac, char **av) {
+static int cmd_chmod(int attribute((unused)) ac, char **av, unsigned options) {
   struct sftpattr attrs;
 
+  remote_cwd();
   attrs.valid = SSH_FILEXFER_ATTR_PERMISSIONS;
   attrs.type = SSH_FILEXFER_TYPE_UNKNOWN;
   errno = 0;
   attrs.permissions = strtol(av[0], 0, 8);
   if(errno || attrs.permissions != (attrs.permissions & 07777))
     error("invalid permissions: %s", strerror(errno));
-  return sftp_setstat(av[1], &attrs);
+  return sftp_setstat(sftp_fullpath(&fakejob, av[1], options), &attrs);
 }
 
-static int cmd_rm(int attribute((unused)) ac, char **av) {
-  return sftp_remove(av[0]);
+static int cmd_rm(int attribute((unused)) ac, char **av, unsigned options) {
+  remote_cwd();
+  return sftp_remove(sftp_fullpath(&fakejob, av[0], options));
 }
 
-static int cmd_rmdir(int attribute((unused)) ac, char **av) {
-  return sftp_rmdir(av[0]);
+static int cmd_rmdir(int attribute((unused)) ac, char **av, unsigned options) {
+  remote_cwd();
+  return sftp_rmdir(sftp_fullpath(&fakejob, av[0], options));
 }
 
-static int cmd_mv(int attribute((unused)) ac, char **av) {
+static int cmd_mv(int attribute((unused)) ac, char **av, unsigned options) {
+  remote_cwd();
   if(ac == 3) {
     const char *ptr = av[0];
     int c;
@@ -1350,19 +1385,26 @@ static int cmd_mv(int attribute((unused)) ac, char **av) {
       }
     }
     if(posixrename)
-      return sftp_prename(av[1], av[2]);
+      return sftp_prename(sftp_fullpath(&fakejob, av[1], options),
+                          sftp_fullpath(&fakejob, av[2], options));
     else
-      return sftp_rename(av[1], av[2], flags);
+      return sftp_rename(sftp_fullpath(&fakejob, av[1], options),
+                         sftp_fullpath(&fakejob, av[2], options), flags);
   } else
-    return sftp_rename(av[0], av[1], 0);
+    return sftp_rename(sftp_fullpath(&fakejob, av[0], options),
+                       sftp_fullpath(&fakejob, av[1], options), 0);
 }
 
-static int cmd_symlink(int attribute((unused)) ac, char **av) {
-  return sftp_link(av[0], av[1], 1);
+static int cmd_symlink(int attribute((unused)) ac, char **av,
+                       unsigned options) {
+  remote_cwd();
+  return sftp_link(av[0], sftp_fullpath(&fakejob, av[1], options), 1);
 }
 
-static int cmd_link(int attribute((unused)) ac, char **av) {
-  return sftp_link(av[0], av[1], 0);
+static int cmd_link(int attribute((unused)) ac, char **av, unsigned options) {
+  remote_cwd();
+  return sftp_link(sftp_fullpath(&fakejob, av[0], options),
+                   sftp_fullpath(&fakejob, av[1], options), 0);
 }
 
 /* cmd_get uses a background thread to send requests */
@@ -1563,7 +1605,7 @@ static void reap_write_response(struct reader_data *r) {
   }
 }
 
-static int cmd_get(int ac, char **av) {
+static int cmd_get(int ac, char **av, unsigned options) {
   int preserve = 0;
   const char *e;
   char *remote;
@@ -1576,6 +1618,7 @@ static int cmd_get(int ac, char **av) {
   int seek = 0;
   uint64_t line = 0;
 
+  remote_cwd();
   sftp_memset(&attrs, 0, sizeof attrs);
   sftp_memset(&r, 0, sizeof r);
   r.fd = -1;
@@ -1622,7 +1665,8 @@ static int cmd_get(int ac, char **av) {
     r.fd = -1;
   }
   /* open the remote file */
-  if(sftp_open(remote, ACE4_READ_DATA | ACE4_READ_ATTRIBUTES,
+  if(sftp_open(sftp_fullpath(&fakejob, remote, options),
+               ACE4_READ_DATA | ACE4_READ_ATTRIBUTES,
                SSH_FXF_OPEN_EXISTING | flags, &attrs, &r.h))
     goto error;
   /* stat the file */
@@ -1783,7 +1827,7 @@ static void *writer_thread(void *arg) {
   return 0;
 }
 
-static int cmd_put(int ac, char **av) {
+static int cmd_put(int ac, char **av, unsigned options) {
   char *local;
   const char *remote;
   struct sftpattr attrs;
@@ -1802,6 +1846,7 @@ static int cmd_put(int ac, char **av) {
   int setmode = 0;
   mode_t mode = 0;
 
+  remote_cwd();
   sftp_memset(&h, 0, sizeof h);
   sftp_memset(&attrs, 0, sizeof attrs);
   sftp_memset(&w, 0, sizeof w);
@@ -1890,8 +1935,9 @@ static int cmd_put(int ac, char **av) {
   }
   if(textmode)
     flags |= SSH_FXF_TEXT_MODE;
-  if(sftp_open(remote, ACE4_WRITE_DATA | ACE4_WRITE_ATTRIBUTES, disp | flags,
-               &attrs, &h))
+  if(sftp_open(sftp_fullpath(&fakejob, remote, options),
+               ACE4_WRITE_DATA | ACE4_WRITE_ATTRIBUTES, disp | flags, &attrs,
+               &h))
     goto error;
   if(textmode) {
     if(!(fp = fdopen(fd, "r"))) {
@@ -2039,7 +2085,8 @@ error:
   return -1;
 }
 
-static int cmd_progress(int ac, char **av) {
+static int cmd_progress(int ac, char **av,
+                        unsigned attribute((unused)) options) {
   if(ac) {
     if(!strcmp(av[0], "on"))
       progress_indicators = 1;
@@ -2052,8 +2099,8 @@ static int cmd_progress(int ac, char **av) {
   return 0;
 }
 
-static int cmd_text(int attribute((unused)) ac,
-                    char attribute((unused)) * *av) {
+static int cmd_text(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options) {
   if(protocol->version < 4)
     return error("text mode not supported in protocol version %d",
                  protocol->version);
@@ -2062,12 +2109,14 @@ static int cmd_text(int attribute((unused)) ac,
 }
 
 static int cmd_binary(int attribute((unused)) ac,
-                      char attribute((unused)) * *av) {
+                      char attribute((unused)) * *av,
+                      unsigned attribute((unused)) options) {
   textmode = 0;
   return 0;
 }
 
-static int cmd_version(int ac, char attribute((unused)) * *av) {
+static int cmd_version(int ac, char attribute((unused)) * *av,
+                       unsigned attribute((unused)) options) {
   if(ac == 1) {
     const uint32_t id = newid();
 
@@ -2075,7 +2124,7 @@ static int cmd_version(int ac, char attribute((unused)) * *av) {
     sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
     sftp_send_uint32(&fakeworker, id);
     sftp_send_string(&fakeworker, "version-select");
-    sftp_send_path(&fakejob, &fakeworker, av[0]);
+    sftp_send_string(&fakeworker, av[0]);
     sftp_send_end(&fakeworker);
     getresponse(SSH_FXP_STATUS, id, "version-select");
     if(status())
@@ -2105,8 +2154,8 @@ static int cmd_version(int ac, char attribute((unused)) * *av) {
   }
 }
 
-static int cmd_debug(int attribute((unused)) ac,
-                     char attribute((unused)) * *av) {
+static int cmd_debug(int attribute((unused)) ac, char attribute((unused)) * *av,
+                     unsigned attribute((unused)) options) {
   sftp_debugging = !sftp_debugging;
   D(("sftp_debugging enabled"));
   return 0;
@@ -2130,10 +2179,12 @@ static void report_bytes(int width, const char *what, uint64_t howmuch) {
     sftp_xprintf("%" PRIu64 " bytes\n", howmuch);
 }
 
-static int cmd_df(int ac, char **av) {
+static int cmd_df(int ac, char **av, unsigned options) {
   struct space_available as;
 
-  if(sftp_space_available(ac ? av[0] : remote_cwd(), &as))
+  remote_cwd();
+  if(sftp_space_available(
+         ac ? sftp_fullpath(&fakejob, av[0], options) : remote_cwd(), &as))
     return -1;
   report_bytes(32, "Bytes on device", as.bytes_on_device);
   report_bytes(32, "Unused bytes on device", as.unused_bytes_on_device);
@@ -2144,10 +2195,11 @@ static int cmd_df(int ac, char **av) {
   return 0;
 }
 
-static int cmd_mkdir(int ac, char **av) {
+static int cmd_mkdir(int ac, char **av, unsigned options) {
   const char *path;
   mode_t mode;
 
+  remote_cwd();
   if(ac == 2) {
     mode = strtoul(av[0], 0, 8);
     path = av[1];
@@ -2155,16 +2207,17 @@ static int cmd_mkdir(int ac, char **av) {
     mode = (mode_t)-1;
     path = av[0];
   }
-  return sftp_mkdir(path, mode);
+  return sftp_mkdir(sftp_fullpath(&fakejob, path, options), mode);
 }
 
-static int cmd_init(int attribute((unused)) ac,
-                    char attribute((unused)) * *av) {
+static int cmd_init(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options) {
   return sftp_init();
 }
 
 static int cmd_unsupported(int attribute((unused)) ac,
-                           char attribute((unused)) * *av) {
+                           char attribute((unused)) * *av,
+                           unsigned attribute((unused)) options) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, 0xFF);
   sftp_send_uint32(&fakeworker, 0); /* id */
@@ -2175,7 +2228,8 @@ static int cmd_unsupported(int attribute((unused)) ac,
 }
 
 static int cmd_ext_unsupported(int attribute((unused)) ac,
-                               char attribute((unused)) * *av) {
+                               char attribute((unused)) * *av,
+                               unsigned attribute((unused)) options) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_EXTENDED);
   sftp_send_uint32(&fakeworker, 0); /* id */
@@ -2186,8 +2240,10 @@ static int cmd_ext_unsupported(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_readlink(int attribute((unused)) ac, char **av) {
-  char *r = sftp_readlink(av[0]);
+static int cmd_readlink(int attribute((unused)) ac, char **av,
+                        unsigned options) {
+  remote_cwd();
+  char *r = sftp_readlink(sftp_fullpath(&fakejob, av[0], options));
 
   if(r) {
     sftp_xprintf("%s\n", r);
@@ -2196,8 +2252,10 @@ static int cmd_readlink(int attribute((unused)) ac, char **av) {
     return -1;
 }
 
-static int cmd_realpath(int attribute((unused)) ac, char **av) {
-  char *r = sftp_realpath(av[0]);
+static int cmd_realpath(int attribute((unused)) ac, char **av,
+                        unsigned options) {
+  remote_cwd();
+  char *r = sftp_realpath(sftp_fullpath(&fakejob, av[0], options));
 
   if(r) {
     sftp_xprintf("%s\n", r);
@@ -2206,13 +2264,15 @@ static int cmd_realpath(int attribute((unused)) ac, char **av) {
     return -1;
 }
 
-static int cmd_realpath6(int attribute((unused)) ac, char **av) {
+static int cmd_realpath6(int attribute((unused)) ac, char **av,
+                         unsigned options) {
   int control_byte;
   char *resolved;
   struct sftpattr attrs;
   time_t now;
   struct tm nowtime;
 
+  remote_cwd();
   if(!strcmp(av[0], "no-check"))
     control_byte = SSH_FXP_REALPATH_NO_CHECK;
   else if(!strcmp(av[0], "stat-if"))
@@ -2221,7 +2281,8 @@ static int cmd_realpath6(int attribute((unused)) ac, char **av) {
     control_byte = SSH_FXP_REALPATH_STAT_ALWAYS;
   else
     return error("unknown control string '%s'", av[0]);
-  resolved = sftp_realpath_v6(av[1], control_byte, av + 2, &attrs);
+  resolved = sftp_realpath_v6(sftp_fullpath(&fakejob, av[1], options),
+                              control_byte, av + 2, &attrs);
   if(!resolved)
     return -1;
   if(attrs.valid) {
@@ -2235,7 +2296,8 @@ static int cmd_realpath6(int attribute((unused)) ac, char **av) {
   return 0;
 }
 
-static int cmd_lrealpath(int attribute((unused)) ac, char **av) {
+static int cmd_lrealpath(int attribute((unused)) ac, char **av,
+                         unsigned attribute((unused)) options) {
   char *r;
   unsigned flags;
 
@@ -2258,7 +2320,8 @@ static int cmd_lrealpath(int attribute((unused)) ac, char **av) {
 }
 
 static int cmd_bad_handle(int attribute((unused)) ac,
-                          char attribute((unused)) * *av) {
+                          char attribute((unused)) * *av,
+                          unsigned attribute((unused)) options) {
   struct client_handle h;
 
   h.len = 8;
@@ -2278,7 +2341,8 @@ static int cmd_bad_handle(int attribute((unused)) ac,
 }
 
 static int cmd_bad_packet(int attribute((unused)) ac,
-                          char attribute((unused)) * *av) {
+                          char attribute((unused)) * *av,
+                          unsigned attribute((unused)) options) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_READ);
   /* completely missing ID */
@@ -2345,7 +2409,8 @@ static int cmd_bad_packet(int attribute((unused)) ac,
 }
 
 static int cmd_bad_packet456(int attribute((unused)) ac,
-                             char attribute((unused)) * *av) {
+                             char attribute((unused)) * *av,
+                             unsigned attribute((unused)) options) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_SETSTAT);
   sftp_send_uint32(&fakeworker, 0);
@@ -2359,7 +2424,8 @@ static int cmd_bad_packet456(int attribute((unused)) ac,
 }
 
 static int cmd_bad_path(int attribute((unused)) ac,
-                        char attribute((unused)) * *av) {
+                        char attribute((unused)) * *av,
+                        unsigned attribute((unused)) options) {
   sftp_send_begin(&fakeworker);
   sftp_send_uint8(&fakeworker, SSH_FXP_OPENDIR);
   sftp_send_uint32(&fakeworker, 0);
@@ -2372,36 +2438,40 @@ static int cmd_bad_path(int attribute((unused)) ac,
   return 0;
 }
 
-static int cmd_stat(int attribute((unused)) ac, char **av) {
+static int cmd_stat(int attribute((unused)) ac, char **av, unsigned options) {
   struct sftpattr attrs;
   time_t now;
   struct tm nowtime;
 
-  if(sftp_stat(av[0], &attrs, SSH_FXP_STAT))
+  remote_cwd();
+  if(sftp_stat(sftp_fullpath(&fakejob, av[0], options), &attrs, SSH_FXP_STAT))
     return -1;
+  attrs.name = av[0];
   time(&now);
   gmtime_r(&now, &nowtime);
   sftp_xprintf("%s\n", sftp_format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
   return 0;
 }
 
-static int cmd_lstat(int attribute((unused)) ac, char **av) {
+static int cmd_lstat(int attribute((unused)) ac, char **av, unsigned options) {
   struct sftpattr attrs;
   time_t now;
   struct tm nowtime;
 
-  if(sftp_stat(av[0], &attrs, SSH_FXP_LSTAT))
+  remote_cwd();
+  if(sftp_stat(sftp_fullpath(&fakejob, av[0], options), &attrs, SSH_FXP_LSTAT))
     return -1;
+  attrs.name = av[0];
   time(&now);
   gmtime_r(&now, &nowtime);
   sftp_xprintf("%s\n", sftp_format_attr(fakejob.a, &attrs, nowtime.tm_year, 0));
   return 0;
 }
 
-static int cmd_statfs(int attribute((unused)) ac, char **av) {
+static int cmd_statfs(int attribute((unused)) ac, char **av, unsigned options) {
   struct statvfs_reply sr;
 
-  if(sftp_statvfs(av[0], &sr))
+  if(sftp_statvfs(sftp_fullpath(&fakejob, av[0], options), &sr))
     return -1;
   sftp_xprintf("bsize %" PRIu64 " frsize %" PRIu64 " id %" PRIx64
                " flags %" PRIx64 " namemax %" PRIu64 "\n"
@@ -2412,17 +2482,19 @@ static int cmd_statfs(int attribute((unused)) ac, char **av) {
   return 0;
 }
 
-static int cmd_truncate(int attribute((unused)) ac, char **av) {
+static int cmd_truncate(int attribute((unused)) ac, char **av,
+                        unsigned options) {
   struct sftpattr attrs;
 
   sftp_memset(&attrs, 0, sizeof attrs);
   attrs.valid = SSH_FILEXFER_ATTR_SIZE;
   attrs.size = strtoull(av[0], 0, 0);
-  return sftp_setstat(av[1], &attrs);
+  return sftp_setstat(sftp_fullpath(&fakejob, av[1], options), &attrs);
 }
 
 static int cmd_overlap(int attribute((unused)) ac,
-                       char attribute((unused)) * *av) {
+                       char attribute((unused)) * *av,
+                       unsigned attribute((unused)) options) {
   struct sftpattr attrs;
   static const char a[] =
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -2519,64 +2591,72 @@ error:
 
 /* Table of command line operations */
 static const struct command commands[] = {
-    {"_bad_handle", 0, 0, cmd_bad_handle, 0, "operate on a bogus handle"},
-    {"_bad_packet", 0, 0, cmd_bad_packet, 0, "send bad packets"},
-    {"_bad_packet456", 0, 0, cmd_bad_packet456, 0,
+    {"_bad_handle", 0, 0, 0, cmd_bad_handle, 0, "operate on a bogus handle"},
+    {"_bad_packet", 0, 0, 0, cmd_bad_packet, 0, "send bad packets"},
+    {"_bad_packet456", 0, 0, 0, cmd_bad_packet456, 0,
      "send bad packets (protos >= 4 only)"},
-    {"_bad_path", 0, 0, cmd_bad_path, 0, "send bad paths"},
-    {"_ext_unsupported", 0, 0, cmd_ext_unsupported, 0,
+    {"_bad_path", 0, 0, 0, cmd_bad_path, 0, "send bad paths"},
+    {"_ext_unsupported", 0, 0, 0, cmd_ext_unsupported, 0,
      "send an unsupported extension"},
-    {"_init", 0, 0, cmd_init, 0, "resend SSH_FXP_INIT"},
-    {"_lrealpath", 2, 2, cmd_lrealpath, "CONTROL PATH",
+    {"_init", 0, 0, 0, cmd_init, 0, "resend SSH_FXP_INIT"},
+    {"_lrealpath", 0, 2, 2, cmd_lrealpath, "CONTROL PATH",
      "expand a local path name"},
-    {"_overlap", 0, 0, cmd_overlap, "", "test overlapping writes"},
-    {"_unsupported", 0, 0, cmd_unsupported, 0, "send an unsupported command"},
-    {"binary", 0, 0, cmd_binary, 0, "binary mode"},
-    {"bye", 0, 0, cmd_quit, 0, "quit"},
-    {"cd", 1, 1, cmd_cd, "DIR", "change remote directory"},
-    {"chgrp", 2, 2, cmd_chgrp, "GID PATH", "change remote file group"},
-    {"chmod", 2, 2, cmd_chmod, "OCTAL PATH", "change remote file permissions"},
-    {"chown", 2, 2, cmd_chown, "UID PATH", "change remote file ownership"},
-    {"debug", 0, 0, cmd_debug, 0, "toggle sftp_debugging"},
-    {"df", 0, 1, cmd_df, "[PATH]", "query available space"},
-    {"exit", 0, 0, cmd_quit, 0, "quit"},
-    {"get", 1, 3, cmd_get, "[-PfL<line>] REMOTE-PATH [LOCAL-PATH]",
+    {"_overlap", 0, 0, 0, cmd_overlap, "", "test overlapping writes"},
+    {"_unsupported", 0, 0, 0, cmd_unsupported, 0,
+     "send an unsupported command"},
+    {"binary", 0, 0, 0, cmd_binary, 0, "binary mode"},
+    {"bye", 0, 0, 0, cmd_quit, 0, "quit"},
+    {"cd", 0, 1, 1, cmd_cd, "DIR", "change remote directory"},
+    {"chgrp", CMD_RAW, 2, 2, cmd_chgrp, "GID PATH", "change remote file group"},
+    {"chmod", CMD_RAW, 2, 2, cmd_chmod, "OCTAL PATH",
+     "change remote file permissions"},
+    {"chown", CMD_RAW, 2, 2, cmd_chown, "UID PATH",
+     "change remote file ownership"},
+    {"debug", 0, 0, 0, cmd_debug, 0, "toggle sftp_debugging"},
+    {"df", 0, 0, 1, cmd_df, "[PATH]", "query available space"},
+    {"exit", 0, 0, 0, cmd_quit, 0, "quit"},
+    {"get", CMD_RAW, 1, 3, cmd_get, "[-PfL<line>] REMOTE-PATH [LOCAL-PATH]",
      "retrieve a remote file"},
-    {"help", 0, 0, cmd_help, 0, "display help"},
-    {"lcd", 1, 1, cmd_lcd, "DIR", "change local directory"},
-    {"link", 2, 2, cmd_link, "OLDPATH NEWPATH", "create a remote hard link"},
-    {"lpwd", 0, 0, cmd_lpwd, "DIR", "display current local directory"},
-    {"lls", 0, INT_MAX, cmd_lls, "[OPTIONS] [LOCAL-PATH]",
+    {"help", 0, 0, 0, cmd_help, 0, "display help"},
+    {"lcd", 0, 1, 1, cmd_lcd, "DIR", "change local directory"},
+    {"link", CMD_RAW, 2, 2, cmd_link, "OLDPATH NEWPATH",
+     "create a remote hard link"},
+    {"lpwd", 0, 0, 0, cmd_lpwd, "DIR", "display current local directory"},
+    {"lls", 0, 0, INT_MAX, cmd_lls, "[OPTIONS] [LOCAL-PATH]",
      "list local directory"},
-    {"lmkdir", 1, 1, cmd_lmkdir, "LOCAL-PATH", "create local directory"},
-    {"ls", 0, 2, cmd_ls, "[OPTIONS] [PATH]", "list remote directory"},
-    {"lstat", 1, 1, cmd_lstat, "PATH", "lstat a file"},
-    {"lumask", 0, 1, cmd_lumask, "OCTAL", "get or set local umask"},
-    {"mkdir", 1, 2, cmd_mkdir, "[MODE] DIRECTORY", "create a remote directory"},
-    {"mv", 2, 3, cmd_mv, "[-naop] OLDPATH NEWPATH", "rename a remote file"},
-    {"progress", 0, 1, cmd_progress, "[on|off]",
+    {"lmkdir", 0, 1, 1, cmd_lmkdir, "LOCAL-PATH", "create local directory"},
+    {"ls", CMD_RAW, 0, 2, cmd_ls, "[OPTIONS] [PATH]", "list remote directory"},
+    {"lstat", CMD_RAW, 1, 1, cmd_lstat, "PATH", "lstat a file"},
+    {"lumask", 0, 0, 1, cmd_lumask, "OCTAL", "get or set local umask"},
+    {"mkdir", CMD_RAW, 1, 2, cmd_mkdir, "[MODE] DIRECTORY",
+     "create a remote directory"},
+    {"mv", CMD_RAW, 2, 3, cmd_mv, "[-naop] OLDPATH NEWPATH",
+     "rename a remote file"},
+    {"progress", 0, 0, 1, cmd_progress, "[on|off]",
      "set or toggle progress indicators"},
-    {"put", 1, 3, cmd_put, "[-PaftemMODE] LOCAL-PATH [REMOTE-PATH]",
+    {"put", CMD_RAW, 1, 3, cmd_put, "[-PaftemMODE] LOCAL-PATH [REMOTE-PATH]",
      "upload a file"},
-    {"pwd", 0, 0, cmd_pwd, 0, "display current remote directory"},
-    {"quit", 0, 0, cmd_quit, 0, "quit"},
-    {"readlink", 1, 1, cmd_readlink, "PATH", "inspect a symlink"},
-    {"realpath", 1, 1, cmd_realpath, "PATH", "expand a path name"},
-    {"realpath6", 2, INT_MAX, cmd_realpath6, "CONTROL PATH [COMPOSE...]",
-     "expand a path name"},
-    {"rename", 2, 2, cmd_mv, "OLDPATH NEWPATH", "rename a remote file"},
-    {"rm", 1, 1, cmd_rm, "PATH", "remove remote file"},
-    {"rmdir", 1, 1, cmd_rmdir, "PATH", "remove remote directory"},
-    {"symlink", 2, 2, cmd_symlink, "TARGET NEWPATH", "create a remote symlink"},
-    {"stat", 1, 1, cmd_stat, "PATH", "stat a file"},
-    {"statfs", 1, 1, cmd_statfs, "PATH", "stat a filesystem"},
-    {"text", 0, 0, cmd_text, 0, "text mode"},
-    {"truncate", 2, 2, cmd_truncate, "LENGTH FILE", "truncate a file"},
-    {"version", 0, 1, cmd_version, 0, "set or display protocol version"},
-    {0, 0, 0, 0, 0, 0}};
+    {"pwd", 0, 0, 0, cmd_pwd, 0, "display current remote directory"},
+    {"quit", 0, 0, 0, cmd_quit, 0, "quit"},
+    {"readlink", CMD_RAW, 1, 1, cmd_readlink, "PATH", "inspect a symlink"},
+    {"realpath", CMD_RAW, 1, 1, cmd_realpath, "PATH", "expand a path name"},
+    {"realpath6", CMD_RAW, 2, INT_MAX, cmd_realpath6,
+     "CONTROL PATH [COMPOSE...]", "expand a path name"},
+    {"rename", CMD_RAW, 2, 2, cmd_mv, "OLDPATH NEWPATH",
+     "rename a remote file"},
+    {"rm", CMD_RAW, 1, 1, cmd_rm, "PATH", "remove remote file"},
+    {"rmdir", CMD_RAW, 1, 1, cmd_rmdir, "PATH", "remove remote directory"},
+    {"symlink", CMD_RAW, 2, 2, cmd_symlink, "TARGET NEWPATH",
+     "create a remote symlink"},
+    {"stat", CMD_RAW, 1, 1, cmd_stat, "PATH", "stat a file"},
+    {"statfs", CMD_RAW, 1, 1, cmd_statfs, "PATH", "stat a filesystem"},
+    {"text", 0, 0, 0, cmd_text, 0, "text mode"},
+    {"truncate", CMD_RAW, 2, 2, cmd_truncate, "LENGTH FILE", "truncate a file"},
+    {"version", 0, 0, 1, cmd_version, 0, "set or display protocol version"},
+    {0, 0, 0, 0, 0, 0, 0}};
 
-static int cmd_help(int attribute((unused)) ac,
-                    char attribute((unused)) * *av) {
+static int cmd_help(int attribute((unused)) ac, char attribute((unused)) * *av,
+                    unsigned attribute((unused)) options) {
   int n;
   size_t max = 0, len = 0;
 
@@ -2645,6 +2725,7 @@ static void process(const char *prompt, FILE *fp) {
       if(fflush(stdout) < 0)
         sftp_fatal("error calling fflush: %s", strerror(errno));
     }
+    // ! escapes to the shell
     if(line[0] == '!') {
       if(line[1] != '\n')
         rc = system(line + 1);
@@ -2654,13 +2735,16 @@ static void process(const char *prompt, FILE *fp) {
         error("subcommand status %#x", rc);
       goto next;
     }
+    // Split command into components
     if((ac = split(line, av = avbuf)) < 0) {
       if(stoponerror)
         sftp_fatal("stopping on error");
       goto next;
     }
+    // Skip blank lines
     if(!ac)
       goto next;
+    // Find the the command in the dispatch table
     for(n = 0; commands[n].name && strcmp(av[0], commands[n].name); ++n)
       ;
     if(!commands[n].name) {
@@ -2671,6 +2755,23 @@ static void process(const char *prompt, FILE *fp) {
     }
     ++av;
     --ac;
+    // Check for standard options
+    unsigned options = 0;
+    while(ac > 0) {
+      if(!strcmp(*av, "--raw"))
+        options |= CMD_RAW;
+      else
+        break;
+      ++av;
+      --ac;
+    }
+    if((options & commands[n].options) != options) {
+      error("unrecognize option");
+      if(stoponerror)
+        sftp_fatal("stopping on error");
+      goto next;
+    }
+    // Basic argument check
     if(ac < commands[n].minargs || ac > commands[n].maxargs) {
       error("wrong number of arguments (got %d, want %d-%d)", ac,
             commands[n].minargs, commands[n].maxargs);
@@ -2678,7 +2779,8 @@ static void process(const char *prompt, FILE *fp) {
         sftp_fatal("stopping on error");
       goto next;
     }
-    if(commands[n].handler(ac, av) && stoponerror)
+    // Execute the command
+    if(commands[n].handler(ac, av, options) && stoponerror)
       sftp_fatal("stopping on error");
   next:
     if(fflush(stdout) < 0)

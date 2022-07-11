@@ -6,5 +6,5 @@ rm nonempty
 #.*file is a directory.*
 rmdir nonempty
 #.*directory is not empty.*
-rmdir ""
+rmdir --raw ""
 #.*operation failed.*
