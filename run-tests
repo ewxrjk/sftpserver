@@ -63,6 +63,9 @@ while len(args) > 0 and args[0][0] == '-':
     elif args[0] == "--server":
         server = args[1]
         args = args[2:]
+    elif args[0] == "--client":
+        client = args[1]
+        args = args[2:]
     elif args[0] == "--directory":
         dir = args[1]
         args = args[2:]
@@ -73,6 +76,7 @@ while len(args) > 0 and args[0][0] == '-':
         fatal("unknown option '%s'" % args[0])
 
 server = os.path.abspath(server)
+client = os.path.abspath(client)
 
 if len(args) > 0:
     tests = args

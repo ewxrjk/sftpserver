@@ -58,9 +58,9 @@ check: gesftpserver sftpclient pwtest aliases
 
 #${srcdir}/paramiko-test
 
-check-valgrind: gesftpserver-valgrind sftpclient pwtest aliases
+check-valgrind: gesftpserver-valgrind sftpclient-valgrind pwtest aliases
 	rm -f ,valgrind*
-	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --debug --directory tests --server ./gesftpserver-valgrind $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --debug --directory tests --server ./gesftpserver-valgrind --client ./sftpclient-valgrind $(TESTS)
 
 aliases: gesftpserver-ro gesftpserver-debug gesftpserver-ro-debug \
 		gesftpserver-valgrind
@@ -77,10 +77,17 @@ gesftpserver-ro-debug:
 	rm -f $@
 	ln -s gesftpserver $@
 
-gesftpserver-valgrind:
+gesftpserver-valgrind: gesftpserver
 	echo "#! /bin/sh" > $@.new
 	echo "set -e" >> $@.new
 	echo "exec valgrind --leak-check=full -q --log-file=/dev/tty --num-callers=50 `pwd`/gesftpserver \"\$$@\"" >> $@.new
+	chmod +x $@.new
+	mv $@.new $@
+
+sftpclient-valgrind: sftpclient
+	echo "#! /bin/sh" > $@.new
+	echo "set -e" >> $@.new
+	echo "exec valgrind --leak-check=full -q --log-file=/dev/tty --num-callers=50 `pwd`/sftpclient \"\$$@\"" >> $@.new
 	chmod +x $@.new
 	mv $@.new $@
 

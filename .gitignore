@@ -17,6 +17,7 @@ Makefile.in
 config.log
 INSTALL
 sftpclient
+sftpclient-valgrind
 gesftpserver
 gesftpserver-debug
 gesftpserverro
