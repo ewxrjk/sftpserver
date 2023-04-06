@@ -81,10 +81,12 @@ void sftp_stat_to_attrs(struct allocator *a, const struct stat *sb,
   attrs->uid = sb->st_uid;
   attrs->gid = sb->st_gid;
   attrs->permissions = sb->st_mode;
-  attrs->atime.seconds = sb->st_atime;
-  attrs->mtime.seconds = sb->st_mtime;
-  attrs->ctime.seconds = sb->st_ctime;
-#ifdef ST_ATIM
+  attrs->atime.seconds = sb->st_atim.tv_sec;
+  attrs->atime.nanoseconds = sb->st_atim.tv_nsec;
+  attrs->mtime.seconds = sb->st_mtim.tv_sec;
+  attrs->mtime.nanoseconds = sb->st_mtim.tv_nsec;
+  attrs->ctime.seconds = sb->st_ctim.tv_sec;
+  attrs->ctime.nanoseconds = sb->st_ctim.tv_nsec;
   if(sb->ST_ATIM.tv_nsec >= 0 && sb->ST_ATIM.tv_nsec < 1000000000 &&
      sb->ST_MTIM.tv_nsec >= 0 && sb->ST_MTIM.tv_nsec < 1000000000 &&
      sb->ST_CTIM.tv_nsec >= 0 && sb->ST_CTIM.tv_nsec < 1000000000) {
@@ -94,7 +96,6 @@ void sftp_stat_to_attrs(struct allocator *a, const struct stat *sb,
     attrs->ctime.nanoseconds = sb->ST_CTIM.tv_nsec;
     attrs->valid |= SSH_FILEXFER_ATTR_SUBSECOND_TIMES;
   }
-#endif
   attrs->link_count = sb->st_nlink;
   /* If we know the path we can determine whether the file is hidden or not */
   if(path) {
@@ -426,7 +427,6 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
     times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                            ? (time_t)attrs.mtime.seconds
                            : current.st_mtime);
-#if ST_ATIM
     if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
       times[0].tv_nsec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
                               ? (long)attrs.atime.nanoseconds
@@ -435,7 +435,6 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
                               ? (long)attrs.mtime.nanoseconds
                               : current.ST_MTIM.tv_nsec);
     }
-#endif
     D(("...utimensat to atime %lu.%09lu mtime %lu.%09lu",
        (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_nsec,
        (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_nsec));
