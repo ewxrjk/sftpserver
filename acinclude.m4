@@ -275,6 +275,7 @@ AC_DEFUN([RJK_GETOPT],[
   AC_CHECK_FUNC([getopt_long],[],[
     AC_LIBOBJ([getopt])
     AC_LIBOBJ([getopt1])
+    CPPFLAGS="${CPPFLAGS} -isystem ${srcdir}/gnu-include"
   ])
 ])
 
