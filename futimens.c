@@ -22,16 +22,11 @@
 #include <errno.h>
 #include "replaced.h"
 
-int futimes(int fd, const struct timeval *times) {
-  errno = ENOSYS;
-  return -1;
+int futimens(int fd, const struct timespec *times) {
+  struct timeval tv[2];
+  tv[0].tv_sec = times[0].tv_sec;
+  tv[0].tv_usec = times[0].tv_nsec / 1000;
+  tv[1].tv_sec = times[1].tv_sec;
+  tv[1].tv_usec = times[1].tv_nsec / 1000;
+  return futimes(fd, tv);
 }
-
-/*
-Local Variables:
-c-basic-offset:2
-comment-column:40
-fill-column:79
-indent-tabs-mode:nil
-End:
-*/

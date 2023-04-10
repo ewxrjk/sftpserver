@@ -22,7 +22,7 @@
 #include <errno.h>
 #include "replaced.h"
 
-int futimes(int fd, const struct timeval *times) {
+int utimes(const char *filename, const struct timeval *times) {
   errno = ENOSYS;
   return -1;
 }

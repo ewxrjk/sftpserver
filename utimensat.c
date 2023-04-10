@@ -22,16 +22,16 @@
 #include <errno.h>
 #include "replaced.h"
 
-int futimes(int fd, const struct timeval *times) {
-  errno = ENOSYS;
-  return -1;
+int utimensat(int dirfd, const char *pathname, const struct timespec *times,
+              int flags) {
+  struct timeval tv[2];
+  if(dirfd != AT_FDCWD || flags != 0) {
+    errno = ENOSYS;
+    return -1;
+  }
+  tv[0].tv_sec = times[0].tv_sec;
+  tv[0].tv_usec = times[0].tv_nsec / 1000;
+  tv[1].tv_sec = times[1].tv_sec;
+  tv[1].tv_usec = times[1].tv_nsec / 1000;
+  return utimes(pathname, tv);
 }
-
-/*
-Local Variables:
-c-basic-offset:2
-comment-column:40
-fill-column:79
-indent-tabs-mode:nil
-End:
-*/

@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Verify that the AC_REPLACE_FUNCS replacements actually work
+#
+set -e
+
+if [ -e Makefile ]; then
+  make maintainer-clean
+fi
+rm -f xxx_*
+
+FILES="futimens.c utimensat.c configure.ac replaced.h stat.c"
+
+for file in ${FILES}; do
+  git checkout ${file}
+  sed < ${file} > ${file}.new -e 's/futimens/xxx_futimens/g;s/utimensat/xxx_utimensat/g;s/FD_ATCWD/XXX_FD_ATCWD/g;'
+  mv ${file}.new ${file}
+done
+
+mv futimens.c xxx_futimens.c
+mv utimensat.c xxx_utimensat.c 
+
+autoreconf -si
+./configure
+make -j $(nproc)
+make check
+
+for file in ${FILES}; do
+  git checkout ${file}
+done
+rm -f xxx_*

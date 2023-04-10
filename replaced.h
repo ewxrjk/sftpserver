@@ -17,21 +17,31 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
  * USA
  */
+#ifndef REPLACED_H
+#define REPLACED_H 1
 
-#include <config.h>
-#include <errno.h>
-#include "replaced.h"
+#include <fcntl.h>
+#include <sys/time.h>
 
-int futimes(int fd, const struct timeval *times) {
-  errno = ENOSYS;
-  return -1;
-}
+#ifndef FD_ATCWD
+#  define FD_ATCWD (-100)
+#endif
 
-/*
-Local Variables:
-c-basic-offset:2
-comment-column:40
-fill-column:79
-indent-tabs-mode:nil
-End:
-*/
+#if !HAVE_FUTIMENS
+int futimens(int fd, const struct timespec *times);
+#endif
+
+#if !HAVE_UTIMENSAT
+int utimensat(int dirfd, const char *pathname, const struct timespec *times,
+              int flags);
+#endif
+
+#if !HAVE_FUTIMES
+int futimes(int fd, const struct timeval *times);
+#endif
+
+#if !HAVE_UTIMES
+int utimes(const char *filename, const struct timeval *times);
+#endif
+
+#endif

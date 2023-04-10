@@ -34,10 +34,8 @@
 #include <time.h>
 #include <sys/time.h>
 #include <unistd.h>
-
-#if !HAVE_FUTIMES
-int futimes(int fd, const struct timeval *times);
-#endif
+#include <fcntl.h>
+#include "replaced.h"
 
 void sftp_stat_to_attrs(struct allocator *a, const struct stat *sb,
                         struct sftpattr *attrs, uint32_t flags,
@@ -331,26 +329,8 @@ struct sftp_set_status_callbacks {
    * @param tv New times
    * @return 0 on success, -ve on error
    */
-  int (*do_utimes)(const void *what, struct timeval *tv);
+  int (*do_utimens)(const void *what, struct timespec *tv);
 };
-
-/* Horrendous ugliness for SETSTAT/FSETSTAT */
-#ifdef ST_ATIM
-/** @brief Helper macro to set fractional part of timestamps */
-#  define SET_STATUS_NANOSEC                                                   \
-    do {                                                                       \
-      times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)         \
-                              ? (long)attrs.atime.nanoseconds                  \
-                              : current.ST_ATIM.tv_nsec) /                     \
-                         1000;                                                 \
-      times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)         \
-                              ? (long)attrs.mtime.nanoseconds                  \
-                              : current.ST_MTIM.tv_nsec) /                     \
-                         1000;                                                 \
-    } while(0)
-#else
-#  define SET_STATUS_NANOSEC ((void)0)
-#endif
 
 /** @brief Implementation of sftp_set_status() and sftp_set_fstatus()
  * @param a Allocator
@@ -364,7 +344,7 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
                                    const struct sftpattr *attrsp,
                                    const struct sftp_set_status_callbacks *cb,
                                    const char **whyp) {
-  struct timeval times[2];
+  struct timespec times[2];
   struct stat current;
   struct sftpattr attrs = *attrsp;
   const char *why;
@@ -436,19 +416,17 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
     if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
       times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
                               ? (long)attrs.atime.nanoseconds
-                              : current.ST_ATIM.tv_nsec) /
-                         1000;
+                              : current.ST_ATIM.tv_nsec);
       times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                               ? (long)attrs.mtime.nanoseconds
-                              : current.ST_MTIM.tv_nsec) /
-                         1000;
+                              : current.ST_MTIM.tv_nsec);
     }
 #endif
-    D(("...utimes to atime %lu.%06lu mtime %lu.%06lu",
-       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_usec,
-       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_usec));
-    if(cb->do_utimes(what, times) < 0) {
-      *whyp = "utimes";
+    D(("...utimes to atime %lu.%09lu mtime %lu.%09lu",
+       (unsigned long)times[0].tv_sec, (unsigned long)times[0].tv_nsec,
+       (unsigned long)times[1].tv_sec, (unsigned long)times[1].tv_nsec));
+    if(cb->do_utimens(what, times) < 0) {
+      *whyp = "utimens";
       return HANDLER_ERRNO;
     }
   }
@@ -497,13 +475,13 @@ static int name_lstat(const void *what, struct stat *sb) {
  * @param tv New times
  * @return 0 on success, -ve on error
  */
-static int name_utimes(const void *what, struct timeval *tv) {
-  return utimes(what, tv);
+static int name_utimens(const void *what, struct timespec *tv) {
+  return utimensat(AT_FDCWD, what, tv, 0);
 }
 
 /** @brief Table of callbacks for sftp_set_status() */
 static const struct sftp_set_status_callbacks name_callbacks = {
-    name_truncate, name_chown, name_chmod, name_lstat, name_utimes};
+    name_truncate, name_chown, name_chmod, name_lstat, name_utimens};
 
 uint32_t sftp_set_status(struct allocator *a, const char *path,
                          const struct sftpattr *attrsp, const char **whyp) {
@@ -552,13 +530,13 @@ static int fd_stat(const void *what, struct stat *sb) {
  * @param tv New times
  * @return 0 on success, -ve on error
  */
-static int fd_utimes(const void *what, struct timeval *tv) {
-  return futimes(*(const int *)what, tv);
+static int fd_utimens(const void *what, struct timespec *tv) {
+  return futimens(*(const int *)what, tv);
 }
 
 /** @brief Table of callbacks for sftp_set_fstatus() */
 static const struct sftp_set_status_callbacks fd_callbacks = {
-    fd_truncate, fd_chown, fd_chmod, fd_stat, fd_utimes};
+    fd_truncate, fd_chown, fd_chmod, fd_stat, fd_utimens};
 
 uint32_t sftp_set_fstatus(struct allocator *a, int fd,
                           const struct sftpattr *attrsp, const char **whyp) {

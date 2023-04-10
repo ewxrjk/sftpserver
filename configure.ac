@@ -45,8 +45,8 @@ RJK_ICONV
 AC_DEFINE([_GNU_SOURCE], [1], [required for e.g. strsignal])
 AC_C_INLINE
 AC_SYS_LARGEFILE
-AC_REPLACE_FUNCS([daemon futimes])
-AC_CHECK_FUNCS([futimesat getaddrinfo prctl])
+AC_REPLACE_FUNCS([daemon futimes utimes futimens utimensat])
+AC_CHECK_FUNCS([getaddrinfo prctl])
 AC_CHECK_DECLS([be64toh, htobe64])
 AC_C_BIGENDIAN
 
