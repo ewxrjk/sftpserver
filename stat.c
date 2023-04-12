@@ -412,12 +412,12 @@ static uint32_t do_sftp_set_status(struct allocator *a, const void *what,
     times[1].tv_sec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                            ? (time_t)attrs.mtime.seconds
                            : current.st_mtime);
-#if ST_ATIM
+#ifdef ST_ATIM
     if(attrs.valid & SSH_FILEXFER_ATTR_SUBSECOND_TIMES) {
-      times[0].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
+      times[0].tv_nsec = ((attrs.valid & SSH_FILEXFER_ATTR_ACCESSTIME)
                               ? (long)attrs.atime.nanoseconds
                               : current.ST_ATIM.tv_nsec);
-      times[1].tv_usec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
+      times[1].tv_nsec = ((attrs.valid & SSH_FILEXFER_ATTR_MODIFYTIME)
                               ? (long)attrs.mtime.nanoseconds
                               : current.ST_MTIM.tv_nsec);
     }
