@@ -253,7 +253,7 @@ uint32_t sftp_vany_rmdir(struct sftpjob *job) {
   pcheck(sftp_parse_path(job, &path));
   D(("sftp_vany_rmdir %s", path));
   if(rmdir(path) < 0)
-    if(errno == EEXIST)
+    if(errno == EEXIST || errno == ENOTEMPTY)
       return SSH_FX_DIR_NOT_EMPTY;
     else
       return HANDLER_ERRNO;
