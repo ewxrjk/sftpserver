@@ -31,6 +31,10 @@ server = "gesftpserver"
 
 
 def rmrf(path):
+    """Remove path and everything below it
+
+    shutil.rmtree isn't suitable because it's not aggressive enough about
+    permissions."""
     if os.path.lexists(path):
         if (not os.path.islink(path)) and os.path.isdir(path):
             os.chmod(path, 0o700)
@@ -42,6 +46,7 @@ def rmrf(path):
 
 
 def fatal(msg):
+    """Report an error and exist with nonzero status"""
     sys.stderr.write("%s\n" % msg)
     sys.exit(1)
 
@@ -102,6 +107,7 @@ def colored(text, color=None, on_color=None, attrs=None):
 
 if sys.stdout.isatty():
     try:
+        # apt-get install python3-termcolor
         import termcolor
         colored = termcolor.colored
     except:
