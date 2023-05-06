@@ -21,6 +21,7 @@
 /** @file sftpserver.c @brief SFTP server implementation */
 
 #include "sftpserver.h"
+#include "sftpconf.h"
 #include "queue.h"
 #include "alloc.h"
 #include "debug.h"
@@ -74,11 +75,9 @@ static void sftp_service(void);
 /** @brief Local character encoding */
 static const char *local_encoding;
 
-#if NTHREADS > 1
 /** @brief Queue-specific callbacks for processing SFTP requests */
 static const struct queuedetails workqueue_details = {
     worker_init, process_sftpjob, worker_cleanup};
-#endif
 
 const struct sftpprotocol *protocol = &sftp_preinit;
 const char sendtype[] = "response";
@@ -90,6 +89,7 @@ static const struct option options[] = {
     {"version", no_argument, 0, 'V'},
     {"debug", no_argument, 0, 'd'},
     {"debug-file", required_argument, 0, 'D'},
+    {"config", required_argument, 0, 'C'},
 #if DAEMON
     {"chroot", required_argument, 0, 'r'},
     {"user", required_argument, 0, 'u'},
@@ -112,6 +112,7 @@ static void attribute((noreturn)) help(void) {
   sftp_xprintf("Options:\n"
                "  --help, -h               Display usage message\n"
                "  --version, -V            Display version number\n"
+               "  --config, -C PATH        Path to configuration file\n"
 #if DAEMON
                "  --chroot, -r PATH        Change root to PATH\n"
                "  --user, -u USER          Change to user USER\n"
@@ -268,15 +269,13 @@ static uint32_t sftp_init(struct sftpjob *job) {
     sftp_send_string(job->worker, "linkpath-targetpath");
   }
   sftp_send_end(job->worker);
-#if NTHREADS > 1
   if(protocol->version < 6) {
     /* Now we are initialized we can safely process other jobs in the
      * background.  We can't do this for v6 because the first request might be
      * version-select. */
     D(("normal work queue creation"));
-    queue_init(&workqueue, &workqueue_details, NTHREADS);
+    queue_init(&workqueue, &workqueue_details, sftpconf_nthreads);
   }
-#endif
   return HANDLER_RESPONDED;
 }
 
@@ -397,15 +396,13 @@ done:
   serialize_remove_job(job);
   free(job->data);
   free(job);
-#if NTHREADS > 1
   if(type != SSH_FXP_INIT && workqueue == 0) {
     /* This must have been the first job after initializing to version 6.  It
      * might or might not have been version-select but either way it's now safe
      * to go multithreaded. */
     D(("late work queue creation"));
-    queue_init(&workqueue, &workqueue_details, NTHREADS);
+    queue_init(&workqueue, &workqueue_details, sftpconf_nthreads);
   }
-#endif
   return;
 }
 
@@ -423,6 +420,7 @@ static void sigchld_handler(int attribute((unused)) sig) {
 int main(int argc, char **argv) {
   int n;
   const char *bn;
+  const char *config = "/etc/gesftpserver.conf";
 #if DAEMON
   iconv_t cd;
   int listenfd = -1;
@@ -458,7 +456,7 @@ int main(int argc, char **argv) {
   setlocale(LC_CTYPE, "");
   local_encoding = nl_langinfo(CODESET);
 
-  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46R", options, 0)) >= 0) {
+  while((n = getopt_long(argc, argv, "hVdD:r:u:H:L:b46RC:", options, 0)) >= 0) {
     switch(n) {
     case 'h':
       help();
@@ -497,10 +495,16 @@ int main(int argc, char **argv) {
     case 'R':
       readonly = 1;
       break;
+    case 'C':
+      config = optarg;
+      break;
     default:
       exit(1);
     }
   }
+
+  // Read configuration
+  sftpconf_read(config);
 
 #if DAEMON
   if(daemonize && !port)
@@ -677,20 +681,16 @@ static void sftp_service(void) {
     queue_serializable_job(job);
     /* We process the job in a background thread, except that the background
      * threads don't exist until SSH_FXP_INIT has succeeded. */
-#if NTHREADS > 1
     if(workqueue) {
       queue_add(workqueue, job);
       continue;
     }
-#endif
     sftp_alloc_init(&a);
     process_sftpjob(job, wdv, &a);
     sftp_alloc_destroy(&a);
     /* process_sftpjob() frees JOB when it has finished with it */
   }
-#if NTHREADS > 1
   queue_destroy(workqueue);
-#endif
   worker_cleanup(wdv);
 }
 

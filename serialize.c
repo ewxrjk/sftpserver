@@ -19,6 +19,7 @@
  */
 
 #include "sftpserver.h"
+#include "sftpconf.h"
 #include "types.h"
 #include "thread.h"
 #include "utils.h"
@@ -87,13 +88,11 @@ struct sqnode {
 /** @brief The newest job in the queue */
 static struct sqnode *newest;
 
-#if NTHREADS > 1
 /** @brief Lock protecting the serialization queue */
 static pthread_mutex_t sq_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 /** @brief Condition variable signaling changes to the queue */
 static pthread_cond_t sq_cond = PTHREAD_COND_INITIALIZER;
-#endif
 
 /** @brief Test whether two handles are identical
  * @param h1 Handle
@@ -134,6 +133,9 @@ static int ranges_overlap(const struct sqnode *a, const struct sqnode *b) {
  */
 static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
                        unsigned flags) {
+  // Re-ordering can be globally suppressed
+  if(!sftpconf_reorder)
+    return 0;
   if((q1->type == SSH_FXP_READ || q1->type == SSH_FXP_WRITE) &&
      (q2->type == SSH_FXP_READ || q2->type == SSH_FXP_WRITE)) {
     /* We allow reads and writes to be re-ordered up to a point */
@@ -148,7 +150,7 @@ static int reorderable(const struct sqnode *q1, const struct sqnode *q2,
     if(q1->type == SSH_FXP_READ && q2->type == SSH_FXP_READ)
       return 0;
     if(flags & (HANDLE_TEXT | HANDLE_APPEND))
-      /* Operations on text or append-write files cannot be re-oredered. */
+      /* Operations on text or append-write files cannot be re-ordered. */
       return 0;
     if(q1->type == SSH_FXP_WRITE || q2->type == SSH_FXP_WRITE)
       if(ranges_overlap(q1, q2))

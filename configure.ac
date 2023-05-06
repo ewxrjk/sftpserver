@@ -80,10 +80,10 @@ fi
 
 AC_ARG_WITH([threads],
             [AS_HELP_STRING([--with-threads=N],
-                            [Number of runtime threads])],
+                            [Default number of runtime threads])],
             [nthreads="${withval}"],
             [nthreads=4])
-AC_DEFINE_UNQUOTED([NTHREADS],[$nthreads],[Number of runtime threads])
+AC_DEFINE_UNQUOTED([NTHREADS],[$nthreads],[Default number of runtime threads])
 
 RJK_GCOV
 

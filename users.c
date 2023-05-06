@@ -29,10 +29,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#if NTHREADS > 1
 /* We don't rely on the C library doing the right thing */
 static pthread_mutex_t user_lock = PTHREAD_MUTEX_INITIALIZER;
-#endif
 
 char *sftp_uid2name(struct allocator *a, uid_t uid) {
   char *s;

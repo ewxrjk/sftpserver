@@ -26,19 +26,15 @@
 #  include <pthread.h>
 #  include <stdio.h>
 
-#  if NTHREADS > 1 || CLIENT
 /** @brief Error-checking macro for @c pthread_... functions */
-#    define ferrcheck(E)                                                       \
-      do {                                                                     \
-        const int frc = (E);                                                   \
-        if(frc) {                                                              \
-          sftp_fatal("%s:%d: %s: %s\n", __FILE__, __LINE__, #E, strerror(frc));     \
-          exit(1);                                                             \
-        }                                                                      \
-      } while(0)
-#  else
-#    define ferrcheck(E) (void)0
-#  endif
+#  define ferrcheck(E)                                                         \
+    do {                                                                       \
+      const int frc = (E);                                                     \
+      if(frc) {                                                                \
+        sftp_fatal("%s:%d: %s: %s\n", __FILE__, __LINE__, #E, strerror(frc));  \
+        exit(1);                                                               \
+      }                                                                        \
+    } while(0)
 
 #endif /* THREAD_H */
 

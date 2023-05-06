@@ -1,6 +1,6 @@
 /*
  * This file is part of the Green End SFTP Server.
- * Copyright (C) 2007 Richard Kettlewell
+ * Copyright (C) Richard Kettlewell
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,38 +18,12 @@
  * USA
  */
 
-#include "sftpcommon.h"
-#include "types.h"
-#include "globals.h"
-#include "thread.h"
-#include "utils.h"
-#include <stdlib.h>
-#include <string.h>
+#ifndef SFTPCONF_H
+#define SFTPCONF_H
 
-struct queue *workqueue = 0;
+void sftpconf_read(const char *path);
 
-static pthread_mutex_t state_lock = PTHREAD_MUTEX_INITIALIZER;
-static enum sftp_state state;
+extern int sftpconf_nthreads; // Number of threads to use
+extern int sftpconf_reorder;  // Response re-ordering
 
-void sftp_state_set(enum sftp_state s) {
-  ferrcheck(pthread_mutex_lock(&state_lock));
-  state = s;
-  ferrcheck(pthread_mutex_unlock(&state_lock));
-}
-
-enum sftp_state sftp_state_get(void) {
-  enum sftp_state r;
-  ferrcheck(pthread_mutex_lock(&state_lock));
-  r = state;
-  ferrcheck(pthread_mutex_unlock(&state_lock));
-  return r;
-}
-
-/*
-Local Variables:
-c-basic-offset:2
-comment-column:40
-fill-column:79
-indent-tabs-mode:nil
-End:
-*/
+#endif /* SFTPCONF_H */

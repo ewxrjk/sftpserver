@@ -37,7 +37,31 @@ command to
 .nf
 Subsystem  sftp __libexecdir__/gesftpserver
 .fi
+.SH CONFIGURATION
+The SFTP server reads an (optional) configuration file, \fI/etc//etc/gesftpserver.conf\fR.
+.PP
+Within this file:
+.IP \(bu
+Comments are introduced with \fB#\fR.
+.IP \(bu
+Words are separated by spaces or tabs.
+.IP \(bu
+Words can be quoted with single or double quotes.
+.IP \(bu
+Within quotes, the backslash escapes the following character.
+.PP
+The supported configuration directives are:
+.TP
+.B reorder \fBtrue\fR|\fBfalse\fR
+Enable or disable request re-ordering.
+The default is \fBtrue\fR.
+See below for more information.
+.TP
+.B threads \fInthreads\fR
+Sets the number of threads to use.
+The default is a matter of build-time configuration, but usually 4.
 .SH "IMPLEMENTATION DETAILS"
+.SS Extensions
 .B gesftpserver
 supports up to version 6 of the SFTP protocol and the following
 extensions:
@@ -71,5 +95,23 @@ Select version.
 .TP
 .B posix-rename@openssh.org
 Provides POSIX rename semantics even in pre-v5 SFTP.
+.SS Concurrency
+By default the server runs multiple threads, meaning that responses may not match necessarily request order.
+.PP
+This is permitted by the SFTP protocol spec, and is intended as an optimization:
+if a client has sent multiple requests without waiting for the corresponding responses,
+then it means that a slow request (e.g. requiring a round trip to a physical storage) need not delay a fast one (e.g. satisfiable from a cache).
+.PP
+However some clients contain a bug in which they assume response order matches request order,
+rather than using request identifiers to match any requests and responses.
+Of course these clients must be fixed, but until a fixed version is deployed,
+the server can be instructed to suppress re-ordering by putting \fBreorder false\fR in the configuration file.
+.PP
+Note that this will not prevent concurrent IO:
+rather, it will cause responses to be held in a queue until they can be sent without reordering.
+To prevent concurrent IO completely, use \fBthreads 1\fR.
+.PP
+It's envisaged that re-ordering is most likely when one or more files are accessed in a random-access fashion.
+However, empirically, thread or IO scheduling behavior can lead to re-ordering even for single-file sequential IO.
 .SH "SEE ALSO"
 .BR sshd_config (5)

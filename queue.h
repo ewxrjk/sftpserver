@@ -25,8 +25,6 @@
 
 struct allocator;
 
-#  if NTHREADS > 1
-
 /** @brief Queue-specific callbacks */
 struct queuedetails {
   /** @brief Per-thread initialization
@@ -59,8 +57,8 @@ void queue_init(struct queue **qp, const struct queuedetails *details,
  * @param q Queue pointer
  * @param job Job to add to queue
  *
- * Add a JOB to Q.  Jobs are executed in order but if NTHREADS>1 then
- * their processing may overlap in time.  On non-threaded systems, the
+ * Add a JOB to Q.  Jobs are executed in order but if sftpconf_nthreads>1 then
+ * their processing may overlap in time.  In non-threaded configurations, the
  * job is executed before returning from queue_add(). */
 void queue_add(struct queue *q, void *job);
 
@@ -69,8 +67,6 @@ void queue_add(struct queue *q, void *job);
  *
  * All unprocessed jobs are executed before completion. */
 void queue_destroy(struct queue *q);
-
-#  endif
 
 #endif /* QUEUE_H */
 

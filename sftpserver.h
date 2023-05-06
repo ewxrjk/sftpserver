@@ -53,7 +53,7 @@
 #  endif
 
 #  ifndef NTHREADS
-/** @brief Number of threads */
+/** @brief Default number of runtime threads */
 #    define NTHREADS 4
 #  endif
 

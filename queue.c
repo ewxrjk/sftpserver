@@ -30,8 +30,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#if NTHREADS > 1
-
 /** @brief One job in a queue */
 struct queuejob {
   /** @brief Next job or a null pointer */
@@ -150,8 +148,6 @@ void queue_destroy(struct queue *q) {
     free(q);
   }
 }
-
-#endif
 
 /*
 Local Variables:
