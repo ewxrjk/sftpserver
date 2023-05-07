@@ -420,7 +420,7 @@ static void sigchld_handler(int attribute((unused)) sig) {
 int main(int argc, char **argv) {
   int n;
   const char *bn;
-  const char *config = "/etc/gesftpserver.conf";
+  const char *config = ETCDIR "/gesftpserver.conf";
 #if DAEMON
   iconv_t cd;
   int listenfd = -1;

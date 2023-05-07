@@ -85,6 +85,10 @@ AC_ARG_WITH([threads],
             [nthreads=4])
 AC_DEFINE_UNQUOTED([NTHREADS],[$nthreads],[Default number of runtime threads])
 
+# To override:
+#   ./configure ETCDIR=/path/to/etc
+AC_SUBST([ETCDIR],[${ETCDIR:-/etc}])
+
 RJK_GCOV
 
 AC_CONFIG_FILES([Makefile])
