@@ -118,6 +118,7 @@ static int nrequests = 16;
 static const char *subsystem;
 static const char *program;
 static const char *program_debugpath;
+static const char *program_config;
 static const char *batchfile;
 static int sshversion;
 static int compress;
@@ -131,6 +132,19 @@ static int forceversion;
 
 static char *sftp_realpath(const char *path);
 
+enum {
+  OPT_QUIRK_REVERSE_SYMLINK = 256,
+  OPT_STOP_ON_ERROR,
+  OPT_NO_STOP_ON_ERROR,
+  OPT_PROGRESS,
+  OPT_NO_PROGRESS,
+  OPT_ECHO,
+  OPT_FIX_SIGPIPE,
+  OPT_FORCE_VERSION,
+  OPT_PROGRAM_DEBUG_PATH,
+  OPT_PROGRAM_CONFIG,
+};
+
 static const struct option options[] = {
     {"help", no_argument, 0, 'h'},
     {"version", no_argument, 0, 'V'},
@@ -138,20 +152,21 @@ static const struct option options[] = {
     {"buffer", required_argument, 0, 'B'},
     {"batch", required_argument, 0, 'b'},
     {"program", required_argument, 0, 'P'},
+    {"program-config", required_argument, 0, OPT_PROGRAM_CONFIG},
     {"requests", required_argument, 0, 'R'},
     {"subsystem", required_argument, 0, 's'},
     {"sftp-version", required_argument, 0, 'S'},
-    {"quirk-reverse-symlink", no_argument, 0, 256},
-    {"stop-on-error", no_argument, 0, 257},
-    {"no-stop-on-error", no_argument, 0, 258},
-    {"progress", no_argument, 0, 259},
-    {"no-progress", no_argument, 0, 260},
-    {"echo", no_argument, 0, 261},
-    {"fix-sigpipe", no_argument, 0, 262},
-    {"force-version", required_argument, 0, 263},
+    {"quirk-reverse-symlink", no_argument, 0, OPT_QUIRK_REVERSE_SYMLINK},
+    {"stop-on-error", no_argument, 0, OPT_STOP_ON_ERROR},
+    {"no-stop-on-error", no_argument, 0, OPT_NO_STOP_ON_ERROR},
+    {"progress", no_argument, 0, OPT_PROGRESS},
+    {"no-progress", no_argument, 0, OPT_NO_PROGRESS},
+    {"echo", no_argument, 0, OPT_ECHO},
+    {"fix-sigpipe", no_argument, 0, OPT_FIX_SIGPIPE},
+    {"force-version", required_argument, 0, OPT_FORCE_VERSION},
     {"debug", no_argument, 0, 'd'},
     {"debug-path", required_argument, 0, 'D'},
-    {"program-debug-path", required_argument, 0, 264},
+    {"program-debug-path", required_argument, 0, OPT_PROGRAM_DEBUG_PATH},
     {"host", required_argument, 0, 'H'},
     {"port", required_argument, 0, 'p'},
     {"ipv4", no_argument, 0, '4'},
@@ -2825,7 +2840,7 @@ int main(int argc, char **argv) {
       terminal_width = 80;
   }
 
-  while((n = getopt_long(argc, argv, "hVrB:b:P:R:s:S:12CF:o:vdH:p:46D:",
+  while((n = getopt_long(argc, argv, "hVrB:b:P:R:s:S:12CF:o:vdH:p:46D:C:",
                          options, 0)) >= 0) {
     switch(n) {
     case 'h':
@@ -2880,33 +2895,36 @@ int main(int argc, char **argv) {
       sftp_debugging = 1;
       sftp_debugpath = optarg;
       break;
-    case 256:
+    case OPT_QUIRK_REVERSE_SYMLINK:
       quirk_reverse_symlink = 1;
       break;
-    case 257:
+    case OPT_STOP_ON_ERROR:
       stoponerror = 1;
       break;
-    case 258:
+    case OPT_NO_STOP_ON_ERROR:
       stoponerror = 0;
       break;
-    case 259:
+    case OPT_PROGRESS:
       progress_indicators = 1;
       break;
-    case 260:
+    case OPT_NO_PROGRESS:
       progress_indicators = 0;
       break;
-    case 261:
+    case OPT_ECHO:
       echo = 1;
       break;
-    case 262:
+    case OPT_FIX_SIGPIPE:
       signal(SIGPIPE, SIG_DFL);
       break; /* stupid python */
-    case 263:
+    case OPT_FORCE_VERSION:
       sftpversion = atoi(optarg);
       forceversion = 1;
       break;
-    case 264:
+    case OPT_PROGRAM_DEBUG_PATH:
       program_debugpath = optarg;
+      break;
+    case OPT_PROGRAM_CONFIG:
+      program_config = optarg;
       break;
     case 'H':
       host = optarg;
@@ -2971,6 +2989,10 @@ int main(int argc, char **argv) {
       if(program_debugpath) {
         cmdline[ncmdline++] = "-D";
         cmdline[ncmdline++] = program_debugpath;
+      }
+      if(program_config) {
+        cmdline[ncmdline++] = "-C";
+        cmdline[ncmdline++] = program_config;
       }
     } else {
       if(optind >= argc)

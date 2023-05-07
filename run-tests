@@ -60,6 +60,8 @@ protocols = ['2', '3', '4', '5', '6', '7']
 dir = 'tests'
 debug = 'DEBUG' in os.environ
 failfast = 'FAILFAST' in os.environ
+threads = None  # use default
+reorder = True
 
 args = sys.argv[1:]
 while len(args) > 0 and args[0][0] == '-':
@@ -77,6 +79,12 @@ while len(args) > 0 and args[0][0] == '-':
         args = args[2:]
     elif args[0] == "--debug":
         debug = True
+        args = args[1:]
+    elif args[0] == "--threads":
+        threads = int(args[1])
+        args = args[2:]
+    elif args[0] == "--no-reorder":
+        reorder = False
         args = args[1:]
     elif args[0] == "--fail-fast":
         failfast = True
@@ -127,11 +135,23 @@ for test in tests:
         root = os.path.join(builddir, ',testroot', '%s.%s' % (test, proto))
         os.makedirs(root)
         os.chdir(root)
+        # Make a config file if necessary
+        config = "/dev/null"
+        if (threads is not None) or not reorder:
+            config = os.path.join(builddir, ',testroot', 'gesftpserver.conf')
+            with open(config, "w") as f:
+                if threads is not None:
+                    print(f"threads {threads}", file=f)
+                if reorder:
+                    print("reorder true", file=f)
+                else:
+                    print("reorder false", file=f)
         # Run the client with the server as a child process
         clientcmd = [client,
                      "--force-version", proto,
                      "-P", server,
                      "-b", os.path.join(srcdir, dir, test),
+                     "--program-config", config,
                      '--echo',
                      '--fix-sigpipe',   # stupid Python
                      '--no-stop-on-error']

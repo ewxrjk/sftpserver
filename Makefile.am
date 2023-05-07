@@ -56,6 +56,8 @@ check: gesftpserver sftpclient pwtest aliases
 	rm -f *.gcda *.gcov
 	./pwtest
 	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests --no-reorder $(TESTS)
+	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory tests --threads 1 $(TESTS)
 	srcdir=${srcdir} ${PYTHON3} ${srcdir}/run-tests --directory rotests --server ./gesftpserver-ro $(ROTESTS)
 	${GCOV} ${srcdir}/*.c  | ${PYTHON3} ${srcdir}/format-gconv-report --html .
 
