@@ -28,12 +28,14 @@
 int sftpconf_nthreads = NTHREADS;
 int sftpconf_reorder = 1;
 
-static size_t sftpconf_split(char *line, char **words, size_t maxwords) {
+static size_t sftpconf_split(char *line, char **bufferp, char **words,
+                             size_t maxwords) {
   size_t nwords = 0;
-  char *buffer = sftp_xmalloc(strlen(line) + 1), *word;
+  char *buffer = sftp_xmalloc(strlen(line) + 1), *bufptr = buffer;
 
   // Keep going until we hit the end of the line, or start of a comment
   while(*line && *line != '#') {
+    char *word;
     if(isspace((unsigned char)*line)) {
       ++line;
       continue;
@@ -41,26 +43,34 @@ static size_t sftpconf_split(char *line, char **words, size_t maxwords) {
     if(*line == '"' || *line == '\'') {
       // Quoted word
       int quote = *line++; // Step over quote
-      word = buffer;
+      word = bufptr;
       while(*line && *line != quote) {
         if(*line == '\\') // Backslash escapes anything
           line++;
-        *buffer++ = *line++;
+        *bufptr++ = *line++;
       }
       if(*line) // Step over final quote if present
         line++;
-      *buffer++ = 0;
+      *bufptr++ = 0;
     } else {
       // Unquoted word
-      word = buffer;
+      word = bufptr;
       while(*line && !isspace((unsigned char)*line))
-        *buffer++ = *line++;
-      *buffer++ = 0;
+        *bufptr++ = *line++;
+      *bufptr++ = 0;
     }
-    if(nwords >= maxwords)
+    if(nwords >= maxwords) {
+      free(buffer);
+      *bufferp = NULL;
       return -1;
+    }
     words[nwords++] = word;
   }
+  if(!nwords) {
+    free(buffer);
+    buffer = NULL;
+  }
+  *bufferp = buffer;
   return nwords;
 }
 
@@ -76,10 +86,12 @@ void sftpconf_read(const char *path) {
     sftp_fatal("%s: %s", path, strerror(errno));
   }
   while(fgets(line, sizeof line, fp)) {
+    char *buffer = NULL;
     lineno++;
     if(!strchr(line, '\n'))
       sftp_fatal("%s:%d: line too long", path, lineno);
-    size_t nwords = sftpconf_split(line, words, sizeof words / sizeof *words);
+    size_t nwords =
+        sftpconf_split(line, &buffer, words, sizeof words / sizeof *words);
     if(nwords == (size_t)-1)
       sftp_fatal("%s:%d: too many parts to line", path, lineno);
     if(nwords == 0)
@@ -100,6 +112,7 @@ void sftpconf_read(const char *path) {
     } else {
       sftp_fatal("%s:%d: unrecognized directive: %s", path, lineno, words[0]);
     }
+    free(buffer);
   }
   fclose(fp);
 }
